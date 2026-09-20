@@ -1,0 +1,257 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("AUTHENTICATED_USER") // PUBLIC_USER, AUTHENTICATED_USER, MODERATOR, WARD_OPERATOR, AUTHORITY_ADMIN, SUPER_ADMIN
+  phone        String?
+  wardId       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reports      Report[]
+  auditLogs    AuditLog[]
+}
+
+model BmcWard {
+  id                           String    @id @default(cuid())
+  wardCode                     String    @unique // A, B, C... K East, K West, etc.
+  wardName                     String
+  municipalBody                String    @default("Brihanmumbai Municipal Corporation")
+  regionZone                   String?   // Island City, Western Suburbs, Eastern Suburbs
+  wardOfficeName               String
+  wardOfficeAddress            String
+  officialSourceUrl            String
+  sourceLastVerified           String
+  boundaryGeometry             String?   // GeoJSON text
+  centerLatitude               Float
+  centerLongitude              Float
+  assistantCommissioner        String?
+  assistantCommissionerSource  String?
+  active                       Boolean   @default(true)
+  reports                      Report[]
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+}
+
+model AssemblyConstituency {
+  id               String           @id @default(cuid())
+  acNumber         Int              @unique // 152 to 187
+  acName           String
+  district         String           // Mumbai City, Mumbai Suburban
+  boundaryGeometry String?          // GeoJSON text
+  centerLatitude   Float
+  centerLongitude  Float
+  pcId             String?
+  pc               ParliamentaryConstituency? @relation(fields: [pcId], references: [id])
+  representatives  Representative[]
+  reports          Report[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model ParliamentaryConstituency {
+  id                   String                 @id @default(cuid())
+  pcNumber             Int                    @unique // 26 to 31
+  pcName               String                 // Mumbai North, Mumbai South, etc.
+  district             String
+  mpName               String?
+  party                String?
+  source               String?
+  sourceDate           String?
+  boundaryGeometry     String?
+  assemblySegments     AssemblyConstituency[]
+  representatives      Representative[]
+  reports              Report[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model Representative {
+  id                   String                 @id @default(cuid())
+  name                 String
+  type                 String                 // MLA, MP
+  party                String
+  partyShort           String
+  acId                 String?
+  ac                   AssemblyConstituency?  @relation(fields: [acId], references: [id])
+  pcId                 String?
+  pc                   ParliamentaryConstituency? @relation(fields: [pcId], references: [id])
+  source               String
+  verifiedAt           String
+  active               Boolean                @default(true)
+  terms                RepresentativeTerm[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model RepresentativeTerm {
+  id                   String                 @id @default(cuid())
+  representativeId     String
+  representative       Representative         @relation(fields: [representativeId], references: [id], onDelete: Cascade)
+  electionCycle        String                 @default("2024")
+  constituencyName     String
+  roleTitle            String                 // Member of Legislative Assembly (MLA) / Member of Parliament (MP)
+  startDate            String
+  endDate              String?
+  officialSource       String
+  verifiedAt           String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String
+  active      Boolean  @default(true)
+  reports     Report[]
+}
+
+model Report {
+  id                           String                 @id @default(cuid())
+  publicReportId               String                 @unique // MUM-000182
+  categoryId                   String
+  category                     Category               @relation(fields: [categoryId], references: [id])
+  description                  String
+  latitude                     Float
+  longitude                    Float
+  locationAccuracy             Float?
+  locality                     String
+  bmcWardId                    String?
+  bmcWard                      BmcWard?               @relation(fields: [bmcWardId], references: [id])
+  assemblyConstituencyId       String?
+  assemblyConstituency         AssemblyConstituency?  @relation(fields: [assemblyConstituencyId], references: [id])
+  parliamentaryConstituencyId  String?
+  parliamentaryConstituency    ParliamentaryConstituency? @relation(fields: [parliamentaryConstituencyId], references: [id])
+  status                       String                 @default("SUBMITTED") // SUBMITTED, ACKNOWLEDGED, ASSIGNED, IN_PROGRESS, RESOLUTION_SUBMITTED, VERIFICATION_PENDING, VERIFIED, REOPENED, REJECTED
+  severity                     String                 @default("MEDIUM") // LOW, MEDIUM, HIGH
+  source                       String                 @default("WEB") // WEB, MOBILE_PWA
+  verificationStatus           String                 @default("PENDING") // PENDING, VERIFIED_BY_CITIZEN, REOPENED_BY_CITIZEN
+  duplicateGroupId             String?
+  duplicateGroup               DuplicateGroup?        @relation(fields: [duplicateGroupId], references: [id])
+  moderationStatus             String                 @default("APPROVED") // PENDING, APPROVED, FLAGGED, REJECTED
+  resolvedAt                   DateTime?
+  verifiedAt                   DateTime?
+  reporterName                 String?
+  reporterEmail                String?                // Private
+  reporterPhone                String?                // Private
+  userId                       String?
+  user                         User?                  @relation(fields: [userId], references: [id])
+  photos                       ReportPhoto[]
+  timelineEvents               TimelineEvent[]
+  resolutionEvidence           ResolutionEvidence[]
+  citizenVerifications         CitizenVerification[]
+  moderationCases              ModerationCase[]
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+}
+
+model ReportPhoto {
+  id               String   @id @default(cuid())
+  reportId         String
+  report           Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  storagePath      String
+  thumbnailPath    String?
+  mimeType         String
+  fileSize         Int
+  width            Int?
+  height           Int?
+  hash             String?
+  moderationStatus String   @default("APPROVED")
+  uploadedAt       DateTime @default(now())
+}
+
+model TimelineEvent {
+  id               String   @id @default(cuid())
+  reportId         String
+  report           Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  eventType        String   // SUBMITTED, ACKNOWLEDGED, ASSIGNED, IN_PROGRESS, RESOLUTION_SUBMITTED, VERIFICATION_REQUESTED, CITIZEN_VERIFIED, REOPENED
+  actorType        String   // CITIZEN, ADMIN, WARD_OFFICER, SYSTEM
+  timestamp        DateTime @default(now())
+  description      String
+  evidence         String?  // JSON string
+  publicVisibility Boolean  @default(true)
+}
+
+model ResolutionEvidence {
+  id              String   @id @default(cuid())
+  reportId        String
+  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  beforeImagePath String?
+  afterImagePath  String
+  description     String
+  timestamp       DateTime @default(now())
+  actorName       String
+  actorRole       String
+  latitude        Float?
+  longitude       Float?
+}
+
+model CitizenVerification {
+  id                String   @id @default(cuid())
+  reportId          String
+  report            Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  isResolved        Boolean
+  rating            Int?
+  comments          String?
+  evidencePhotoPath String?
+  timestamp         DateTime @default(now())
+}
+
+model DuplicateGroup {
+  id              String   @id @default(cuid())
+  primaryReportId String
+  score           Float    @default(0.85)
+  reports         Report[]
+  createdAt       DateTime @default(now())
+}
+
+model ModerationCase {
+  id         String   @id @default(cuid())
+  reportId   String
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reason     String   // SPAM, ABUSIVE, FALSE_REPORT, INAPPROPRIATE_IMAGE, PERSONAL_INFO
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  flaggedBy  String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model DataSource {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  organization String
+  url          String
+  dataType     String
+  retrievedAt  String
+  lastVerified String
+  version      String
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  actorId     String?
+  actorName   String
+  role        String
+  action      String
+  entity      String
+  entityId    String
+  beforeState String?  // JSON string
+  afterState  String?  // JSON string
+  ipAddress   String?
+  user        User?    @relation(fields: [actorId], references: [id])
+}
