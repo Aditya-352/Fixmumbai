@@ -93,8 +93,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Category database entry not found' }, { status: 400 });
     }
 
-    // 1. Perform automatic GIS spatial boundary lookup
+    // 1. Perform automatic GIS spatial boundary lookup and Mumbai boundary check
     const gisInfo = mapCoordinatesToCivicBoundary(latitude, longitude);
+
+    if (!gisInfo.isWithinMumbai) {
+      return NextResponse.json({
+        success: false,
+        error: 'Location restricted: FixMumbai only accepts civic reports located within Mumbai (24 BMC Wards).'
+      }, { status: 400 });
+    }
 
     // 2. Fetch matched Ward, AC, PC from DB
     const wardObj = await db.bmcWard.findUnique({ where: { wardCode: gisInfo.wardCode } });

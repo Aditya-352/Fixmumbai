@@ -8,11 +8,14 @@
     "wardOfficeAddress": "134, Shahid Bhagat Singh Road, Near Regal Cinema, Colaba, Mumbai - 400001",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9220,
-    "centerLongitude": 72.8310,
+    "centerLatitude": 18.9175,
+    "centerLongitude": 72.8250,
     "assistantCommissioner": "Shri. Jaydeep More",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.810, 18.890, 72.845, 18.945]
+    "bbox": [72.810, 18.890, 72.840, 18.945],
+    "polygon": [
+      [18.8900, 72.8100], [18.8900, 72.8400], [18.9450, 72.8400], [18.9450, 72.8100]
+    ]
   },
   {
     "wardCode": "B",
@@ -23,11 +26,14 @@
     "wardOfficeAddress": "121, Ramchandra Bhatt Marg, Babula Tank, Opp. J.J. Hospital, Mumbai - 400009",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9510,
-    "centerLongitude": 72.8350,
+    "centerLatitude": 18.9525,
+    "centerLongitude": 72.8375,
     "assistantCommissioner": "Shri. Dhanaji Herwade",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.830, 18.945, 72.845, 18.960]
+    "bbox": [72.830, 18.945, 72.845, 18.960],
+    "polygon": [
+      [18.9450, 72.8300], [18.9450, 72.8450], [18.9600, 72.8450], [18.9600, 72.8300]
+    ]
   },
   {
     "wardCode": "C",
@@ -38,11 +44,14 @@
     "wardOfficeAddress": "76, 78, Chandanwadi, Marine Lines, Mumbai - 400002",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9500,
-    "centerLongitude": 72.8240,
+    "centerLatitude": 18.9525,
+    "centerLongitude": 72.8225,
     "assistantCommissioner": "Shri. Sharad Ughade",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.815, 18.940, 72.830, 18.960]
+    "bbox": [72.815, 18.945, 72.830, 18.960],
+    "polygon": [
+      [18.9450, 72.8150], [18.9450, 72.8300], [18.9600, 72.8300], [18.9600, 72.8150]
+    ]
   },
   {
     "wardCode": "D",
@@ -53,11 +62,14 @@
     "wardOfficeAddress": "Jobanputra Compound, Nana Chowk, Grant Road (W), Mumbai - 400007",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9620,
-    "centerLongitude": 72.8110,
+    "centerLatitude": 18.9600,
+    "centerLongitude": 72.8050,
     "assistantCommissioner": "Shri. Prashant Gaikwad",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.795, 18.945, 72.825, 18.975]
+    "bbox": [72.795, 18.945, 72.815, 18.975],
+    "polygon": [
+      [18.9450, 72.7950], [18.9450, 72.8150], [18.9750, 72.8150], [18.9750, 72.7950]
+    ]
   },
   {
     "wardCode": "E",
@@ -68,29 +80,17 @@
     "wardOfficeAddress": "10, Shaikh Hafizuddin Marg, Byculla (W), Mumbai - 400008",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9730,
-    "centerLongitude": 72.8320,
+    "centerLatitude": 18.9725,
+    "centerLongitude": 72.8300,
     "assistantCommissioner": "Shri. Manish Valanju",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.820, 18.960, 72.845, 18.985]
+    "bbox": [72.815, 18.960, 72.845, 18.985],
+    "polygon": [
+      [18.9600, 72.8150], [18.9600, 72.8450], [18.9850, 72.8450], [18.9850, 72.8150]
+    ]
   },
   {
-    "wardCode": "F North",
-    "wardName": "Ward F North (Matunga, Wadala, Sion West)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Island City",
-    "wardOfficeName": "F/North Ward Office",
-    "wardOfficeAddress": "Plot No. 96, Margashirsha Marg, Wadala (W), Mumbai - 400031",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0260,
-    "centerLongitude": 72.8570,
-    "assistantCommissioner": "Gajanan Bellale",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.845, 19.010, 72.870, 19.040]
-  },
-  {
-    "wardCode": "F South",
+    "wardCode": "F/S",
     "wardName": "Ward F South (Parel, Sewri, Naigaon)",
     "municipalBody": "Brihanmumbai Municipal Corporation",
     "regionZone": "Island City",
@@ -98,29 +98,17 @@
     "wardOfficeAddress": "Jagannath Bhatankar Marg, Parel, Mumbai - 400012",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9950,
-    "centerLongitude": 72.8420,
+    "centerLatitude": 18.9975,
+    "centerLongitude": 72.8450,
     "assistantCommissioner": "Mahesh Patil",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.830, 18.980, 72.860, 19.010]
+    "bbox": [72.830, 18.985, 72.860, 19.010],
+    "polygon": [
+      [18.9850, 72.8300], [18.9850, 72.8600], [19.0100, 72.8600], [19.0100, 72.8300]
+    ]
   },
   {
-    "wardCode": "G North",
-    "wardName": "Ward G North (Dadar, Dharavi, Mahim)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Island City",
-    "wardOfficeName": "G/North Ward Office",
-    "wardOfficeAddress": "Harishchandra Yelve Marg, Dadar (W), Mumbai - 400028",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0340,
-    "centerLongitude": 72.8410,
-    "assistantCommissioner": "Prashant Sapkale",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.825, 19.015, 72.855, 19.050]
-  },
-  {
-    "wardCode": "G South",
+    "wardCode": "G/S",
     "wardName": "Ward G South (Worli, Prabhadevi, Lower Parel)",
     "municipalBody": "Brihanmumbai Municipal Corporation",
     "regionZone": "Island City",
@@ -128,29 +116,53 @@
     "wardOfficeAddress": "N.M. Joshi Marg, Elphinstone (W), Mumbai - 400013",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0060,
-    "centerLongitude": 72.8250,
+    "centerLatitude": 19.0000,
+    "centerLongitude": 72.8175,
     "assistantCommissioner": "Santosh Kumar Dhonde",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.805, 18.985, 72.840, 19.020]
+    "bbox": [72.805, 18.985, 72.830, 19.015],
+    "polygon": [
+      [18.9850, 72.8050], [18.9850, 72.8300], [19.0150, 72.8300], [19.0150, 72.8050]
+    ]
   },
   {
-    "wardCode": "H East",
-    "wardName": "Ward H East (Bandra East, Santacruz East, Kalina)",
+    "wardCode": "F/N",
+    "wardName": "Ward F North (Matunga, Wadala, Sion West)",
     "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Western Suburbs",
-    "wardOfficeName": "H/East Ward Office",
-    "wardOfficeAddress": "TPS III, Prabhat Colony, Santacruz (E), Mumbai - 400055",
+    "regionZone": "Island City",
+    "wardOfficeName": "F/North Ward Office",
+    "wardOfficeAddress": "Plot No. 96, Margashirsha Marg, Wadala (W), Mumbai - 400031",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0720,
-    "centerLongitude": 72.8540,
-    "assistantCommissioner": "Swapnaja Kshirsagar",
+    "centerLatitude": 19.0275,
+    "centerLongitude": 72.8575,
+    "assistantCommissioner": "Gajanan Bellale",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.840, 19.050, 72.875, 19.090]
+    "bbox": [72.845, 19.010, 72.870, 19.045],
+    "polygon": [
+      [19.0100, 72.8450], [19.0100, 72.8700], [19.0450, 72.8700], [19.0450, 72.8450]
+    ]
   },
   {
-    "wardCode": "H West",
+    "wardCode": "G/N",
+    "wardName": "Ward G North (Dadar, Dharavi, Mahim)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Island City",
+    "wardOfficeName": "G/North Ward Office",
+    "wardOfficeAddress": "Harishchandra Yelve Marg, Dadar (W), Mumbai - 400028",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.0325,
+    "centerLongitude": 72.8350,
+    "assistantCommissioner": "Prashant Sapkale",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.825, 19.015, 72.845, 19.050],
+    "polygon": [
+      [19.0150, 72.8250], [19.0150, 72.8450], [19.0500, 72.8450], [19.0500, 72.8250]
+    ]
+  },
+  {
+    "wardCode": "H/W",
     "wardName": "Ward H West (Bandra West, Khar West, Santacruz West)",
     "municipalBody": "Brihanmumbai Municipal Corporation",
     "regionZone": "Western Suburbs",
@@ -158,29 +170,35 @@
     "wardOfficeAddress": "Second Hasnabad Lane, Khar (W), Mumbai - 400052",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0600,
-    "centerLongitude": 72.8330,
+    "centerLatitude": 19.0675,
+    "centerLongitude": 72.8275,
     "assistantCommissioner": "Vinayak Vispute",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.815, 19.040, 72.845, 19.085]
+    "bbox": [72.815, 19.050, 72.840, 19.085],
+    "polygon": [
+      [19.0500, 72.8150], [19.0500, 72.8400], [19.0850, 72.8400], [19.0850, 72.8150]
+    ]
   },
   {
-    "wardCode": "K East",
-    "wardName": "Ward K East (Andheri East, Jogeshwari East, Marol)",
+    "wardCode": "H/E",
+    "wardName": "Ward H East (Bandra East, Santacruz East, Kalina)",
     "municipalBody": "Brihanmumbai Municipal Corporation",
     "regionZone": "Western Suburbs",
-    "wardOfficeName": "K/East Ward Office",
-    "wardOfficeAddress": "Azad Road, Gundavali, Andheri (E), Mumbai - 400069",
+    "wardOfficeName": "H/East Ward Office",
+    "wardOfficeAddress": "TPS III, Prabhat Colony, Santacruz (E), Mumbai - 400055",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1170,
-    "centerLongitude": 72.8650,
-    "assistantCommissioner": "Manish Valanju",
+    "centerLatitude": 19.0675,
+    "centerLongitude": 72.8525,
+    "assistantCommissioner": "Swapnaja Kshirsagar",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.845, 19.090, 72.890, 19.145]
+    "bbox": [72.840, 19.050, 72.865, 19.085],
+    "polygon": [
+      [19.0500, 72.8400], [19.0500, 72.8650], [19.0850, 72.8650], [19.0850, 72.8400]
+    ]
   },
   {
-    "wardCode": "K West",
+    "wardCode": "K/W",
     "wardName": "Ward K West (Andheri West, Vile Parle West, Versova, Lokhandwala)",
     "municipalBody": "Brihanmumbai Municipal Corporation",
     "regionZone": "Western Suburbs",
@@ -188,11 +206,158 @@
     "wardOfficeAddress": "Paliram Road, Opp. Andheri Railway Station, Andheri (W), Mumbai - 400058",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1360,
-    "centerLongitude": 72.8320,
+    "centerLatitude": 19.1150,
+    "centerLongitude": 72.8250,
     "assistantCommissioner": "Prithviraj Chauhan",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.805, 19.090, 72.850, 19.155]
+    "bbox": [72.805, 19.085, 72.845, 19.145],
+    "polygon": [
+      [19.0850, 72.8050], [19.0850, 72.8450], [19.1450, 72.8450], [19.1450, 72.8050]
+    ]
+  },
+  {
+    "wardCode": "K/E",
+    "wardName": "Ward K East (Andheri East, Jogeshwari East, Marol)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Western Suburbs",
+    "wardOfficeName": "K/East Ward Office",
+    "wardOfficeAddress": "Azad Road, Gundavali, Andheri (E), Mumbai - 400069",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.1150,
+    "centerLongitude": 72.8625,
+    "assistantCommissioner": "Manish Valanju",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.845, 19.085, 72.880, 19.145],
+    "polygon": [
+      [19.0850, 72.8450], [19.0850, 72.8800], [19.1450, 72.8800], [19.1450, 72.8450]
+    ]
+  },
+  {
+    "wardCode": "P/S",
+    "wardName": "Ward P South (Goregaon West, Goregaon East, Aarey Colony)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Western Suburbs",
+    "wardOfficeName": "P/South Ward Office",
+    "wardOfficeAddress": "S.V. Road, Opp. Railway Station, Goregaon (W), Mumbai - 400104",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.1600,
+    "centerLongitude": 72.8450,
+    "assistantCommissioner": "Rajesh Akre",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.810, 19.145, 72.880, 19.175],
+    "polygon": [
+      [19.1450, 72.8100], [19.1450, 72.8800], [19.1750, 72.8800], [19.1750, 72.8100]
+    ]
+  },
+  {
+    "wardCode": "P/N",
+    "wardName": "Ward P North (Malad West, Malad East, Marve)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Western Suburbs",
+    "wardOfficeName": "P/North Ward Office",
+    "wardOfficeAddress": "Liberty Garden, Mamletdarwadi, Malad (W), Mumbai - 400064",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.1900,
+    "centerLongitude": 72.8400,
+    "assistantCommissioner": "Kiran Dighavkar",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.805, 19.175, 72.875, 19.205],
+    "polygon": [
+      [19.1750, 72.8050], [19.1750, 72.8750], [19.2050, 72.8750], [19.2050, 72.8050]
+    ]
+  },
+  {
+    "wardCode": "R/S",
+    "wardName": "Ward R South (Kandivali West, Kandivali East, Charkop)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Western Suburbs",
+    "wardOfficeName": "R/South Ward Office",
+    "wardOfficeAddress": "Mahatma Gandhi Road, Kandivali (W), Mumbai - 400067",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.2175,
+    "centerLongitude": 72.8350,
+    "assistantCommissioner": "Lalmani Verma",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.800, 19.205, 72.870, 19.230],
+    "polygon": [
+      [19.2050, 72.8000], [19.2050, 72.8700], [19.2300, 72.8700], [19.2300, 72.8000]
+    ]
+  },
+  {
+    "wardCode": "R/C",
+    "wardName": "Ward R Central (Borivali West, Borivali East, Gorai)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Western Suburbs",
+    "wardOfficeName": "R/Central Ward Office",
+    "wardOfficeAddress": "Chandavarkar Road, Borivali (W), Mumbai - 400092",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.2425,
+    "centerLongitude": 72.8325,
+    "assistantCommissioner": "Sandhya Nandedkar",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.790, 19.230, 72.875, 19.255],
+    "polygon": [
+      [19.2300, 72.7900], [19.2300, 72.8750], [19.2550, 72.8750], [19.2550, 72.7900]
+    ]
+  },
+  {
+    "wardCode": "R/N",
+    "wardName": "Ward R North (Dahisar East, Dahisar West)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Western Suburbs",
+    "wardOfficeName": "R/North Ward Office",
+    "wardOfficeAddress": "C.S. Complex, Dahisar (E), Mumbai - 400068",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.2675,
+    "centerLongitude": 72.8625,
+    "assistantCommissioner": "Navnath Ghadge",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.835, 19.255, 72.890, 19.280],
+    "polygon": [
+      [19.2550, 72.8350], [19.2550, 72.8900], [19.2800, 72.8900], [19.2800, 72.8350]
+    ]
+  },
+  {
+    "wardCode": "M/W",
+    "wardName": "Ward M West (Chembur, Tilak Nagar, Sindhi Society)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Eastern Suburbs",
+    "wardOfficeName": "M/West Ward Office",
+    "wardOfficeAddress": "Sharad Bhau Acharya Marg, Chembur, Mumbai - 400071",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.0575,
+    "centerLongitude": 72.8950,
+    "assistantCommissioner": "Vishwas Mote",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.880, 19.040, 72.910, 19.075],
+    "polygon": [
+      [19.0400, 72.8800], [19.0400, 72.9100], [19.0750, 72.9100], [19.0750, 72.8800]
+    ]
+  },
+  {
+    "wardCode": "M/E",
+    "wardName": "Ward M East (Govandi, Mankhurd, Deonar, Shivaji Nagar)",
+    "municipalBody": "Brihanmumbai Municipal Corporation",
+    "regionZone": "Eastern Suburbs",
+    "wardOfficeName": "M/East Ward Office",
+    "wardOfficeAddress": "Madhukar Kadam Marg, Govandi, Mumbai - 400043",
+    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
+    "sourceLastVerified": "2026-09-20",
+    "centerLatitude": 19.0500,
+    "centerLongitude": 72.9350,
+    "assistantCommissioner": "Alka Sasane",
+    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
+    "bbox": [72.910, 19.025, 72.960, 19.075],
+    "polygon": [
+      [19.0250, 72.9100], [19.0250, 72.9600], [19.0750, 72.9600], [19.0750, 72.9100]
+    ]
   },
   {
     "wardCode": "L",
@@ -203,41 +368,14 @@
     "wardOfficeAddress": "L.B.S. Marg, Near Kurla Railway Station, Kurla (W), Mumbai - 400070",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0850,
-    "centerLongitude": 72.8890,
+    "centerLatitude": 19.0875,
+    "centerLongitude": 72.8850,
     "assistantCommissioner": "Dhanaji Giri",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.865, 19.060, 72.915, 19.120]
-  },
-  {
-    "wardCode": "M East",
-    "wardName": "Ward M East (Govandi, Mankhurd, Deonar, Shivaji Nagar)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Eastern Suburbs",
-    "wardOfficeName": "M/East Ward Office",
-    "wardOfficeAddress": "Madhukar Kadam Marg, Govandi, Mumbai - 400043",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0520,
-    "centerLongitude": 72.9250,
-    "assistantCommissioner": "Alka Sasane",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.900, 19.025, 72.960, 19.080]
-  },
-  {
-    "wardCode": "M West",
-    "wardName": "Ward M West (Chembur, Tilak Nagar, Sindhi Society)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Eastern Suburbs",
-    "wardOfficeName": "M/West Ward Office",
-    "wardOfficeAddress": "Sharad Bhau Acharya Marg, Chembur, Mumbai - 400071",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0620,
-    "centerLongitude": 72.8980,
-    "assistantCommissioner": "Vishwas Mote",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.880, 19.040, 72.915, 19.085]
+    "bbox": [72.865, 19.060, 72.905, 19.115],
+    "polygon": [
+      [19.0600, 72.8650], [19.0600, 72.9050], [19.1150, 72.9050], [19.1150, 72.8650]
+    ]
   },
   {
     "wardCode": "N",
@@ -248,86 +386,14 @@
     "wardOfficeAddress": "Jawahar Road, Ghatkopar (E), Mumbai - 400077",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0940,
-    "centerLongitude": 72.9120,
+    "centerLatitude": 19.0950,
+    "centerLongitude": 72.9225,
     "assistantCommissioner": "Sanjay Kurhade",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.890, 19.075, 72.940, 19.120]
-  },
-  {
-    "wardCode": "P North",
-    "wardName": "Ward P North (Malad West, Malad East, Marve)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Western Suburbs",
-    "wardOfficeName": "P/North Ward Office",
-    "wardOfficeAddress": "Liberty Garden, Mamletdarwadi, Malad (W), Mumbai - 400064",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1850,
-    "centerLongitude": 72.8460,
-    "assistantCommissioner": "Kiran Dighavkar",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.805, 19.165, 72.875, 19.210]
-  },
-  {
-    "wardCode": "P South",
-    "wardName": "Ward P South (Goregaon West, Goregaon East, Aarey Colony)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Western Suburbs",
-    "wardOfficeName": "P/South Ward Office",
-    "wardOfficeAddress": "S.V. Road, Opp. Railway Station, Goregaon (W), Mumbai - 400104",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1620,
-    "centerLongitude": 72.8430,
-    "assistantCommissioner": "Rajesh Akre",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.810, 19.145, 72.885, 19.180]
-  },
-  {
-    "wardCode": "R Central",
-    "wardName": "Ward R Central (Borivali West, Borivali East, Gorai)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Western Suburbs",
-    "wardOfficeName": "R/Central Ward Office",
-    "wardOfficeAddress": "Chandavarkar Road, Borivali (W), Mumbai - 400092",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.2310,
-    "centerLongitude": 72.8520,
-    "assistantCommissioner": "Sandhya Nandedkar",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.790, 19.215, 72.880, 19.250]
-  },
-  {
-    "wardCode": "R North",
-    "wardName": "Ward R North (Dahisar East, Dahisar West)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Western Suburbs",
-    "wardOfficeName": "R/North Ward Office",
-    "wardOfficeAddress": "C.S. Complex, Dahisar (E), Mumbai - 400068",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.2550,
-    "centerLongitude": 72.8620,
-    "assistantCommissioner": "Navnath Ghadge",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.835, 19.240, 72.890, 19.280]
-  },
-  {
-    "wardCode": "R South",
-    "wardName": "Ward R South (Kandivali West, Kandivali East, Charkop)",
-    "municipalBody": "Brihanmumbai Municipal Corporation",
-    "regionZone": "Western Suburbs",
-    "wardOfficeName": "R/South Ward Office",
-    "wardOfficeAddress": "Mahatma Gandhi Road, Kandivali (W), Mumbai - 400067",
-    "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
-    "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.2080,
-    "centerLongitude": 72.8420,
-    "assistantCommissioner": "Lalmani Verma",
-    "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.800, 19.195, 72.870, 19.225]
+    "bbox": [72.905, 19.075, 72.940, 19.115],
+    "polygon": [
+      [19.0750, 72.9050], [19.0750, 72.9400], [19.1150, 72.9400], [19.1150, 72.9050]
+    ]
   },
   {
     "wardCode": "S",
@@ -338,11 +404,14 @@
     "wardOfficeAddress": "L.B.S. Marg, Near Bhandup Railway Station, Bhandup (W), Mumbai - 400078",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1450,
-    "centerLongitude": 72.9320,
+    "centerLatitude": 19.1350,
+    "centerLongitude": 72.9200,
     "assistantCommissioner": "Ajitkumar Ambi",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.890, 19.115, 72.965, 19.165]
+    "bbox": [72.880, 19.115, 72.960, 19.155],
+    "polygon": [
+      [19.1150, 72.8800], [19.1150, 72.9600], [19.1550, 72.9600], [19.1550, 72.8800]
+    ]
   },
   {
     "wardCode": "T",
@@ -353,10 +422,13 @@
     "wardOfficeAddress": "Lala Devidayal Marg, Mulund (W), Mumbai - 400080",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1720,
-    "centerLongitude": 72.9560,
+    "centerLatitude": 19.1775,
+    "centerLongitude": 72.9525,
     "assistantCommissioner": "Chakrapani Alle",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.925, 19.155, 72.980, 19.200]
+    "bbox": [72.925, 19.155, 72.980, 19.200],
+    "polygon": [
+      [19.1550, 72.9250], [19.1550, 72.9800], [19.2000, 72.9800], [19.2000, 72.9250]
+    ]
   }
 ]

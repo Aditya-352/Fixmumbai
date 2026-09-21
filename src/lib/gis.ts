@@ -1,6 +1,7 @@
 import wardsData from '@/data/mumbai-wards.json';
 import acsData from '@/data/mumbai-acs.json';
 import pcsData from '@/data/mumbai-pcs.json';
+import mumbaiPlaces from '@/data/mumbai-places.json';
 
 export interface WardGisInfo {
   wardCode: string;
@@ -31,6 +32,48 @@ export interface GeographicMappingResult {
   representative: string;
   party: string;
   confidence: 'HIGH' | 'MEDIUM' | 'APPROXIMATE';
+  isWithinMumbai: boolean;
+}
+
+/**
+ * Geographic bounding box for Brihanmumbai Municipal Corporation (BMC) boundaries.
+ */
+export const MUMBAI_GEOFENCE = {
+  minLat: 18.8800,
+  maxLat: 19.3000,
+  minLng: 72.7500,
+  maxLng: 73.0000,
+};
+
+/**
+ * Checks if coordinates fall within Mumbai's municipal boundaries.
+ */
+export function isLocationInMumbai(lat: number, lng: number): boolean {
+  return (
+    lat >= MUMBAI_GEOFENCE.minLat &&
+    lat <= MUMBAI_GEOFENCE.maxLat &&
+    lng >= MUMBAI_GEOFENCE.minLng &&
+    lng <= MUMBAI_GEOFENCE.maxLng
+  );
+}
+
+export interface MumbaiPlaceItem {
+  name: string;
+  wardCode: string;
+  lat: number;
+  lng: number;
+  region: string;
+}
+
+/**
+ * Search places within Mumbai for instant autocomplete & detail filling.
+ */
+export function searchMumbaiPlaces(query: string): MumbaiPlaceItem[] {
+  if (!query || query.trim().length === 0) return mumbaiPlaces.slice(0, 8);
+  const q = query.toLowerCase().trim();
+  return mumbaiPlaces
+    .filter(p => p.name.toLowerCase().includes(q) || p.wardCode.toLowerCase().includes(q) || p.region.toLowerCase().includes(q))
+    .slice(0, 10);
 }
 
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -104,6 +147,7 @@ export function mapCoordinatesToCivicBoundary(lat: number, lng: number): Geograp
     pcName: matchedPc.pcName,
     representative: matchedAc.representative,
     party: matchedAc.party,
-    confidence: 'HIGH'
+    confidence: 'HIGH',
+    isWithinMumbai: isLocationInMumbai(lat, lng)
   };
 }
