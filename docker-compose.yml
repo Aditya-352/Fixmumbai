@@ -26,7 +26,7 @@ services:
 networks:
   app_network:  # Compose's internal/reference name
     external: true
-    name: ${DOCKER_NETOWORK}  # actual docker network name
+    name: ${DOCKER_NETWORK}  # actual docker network name
 
 volumes:
   fixmumbai_prisma:
