@@ -1,5 +1,7 @@
 FROM node:20-alpine AS deps
 
+RUN apk add --no-cache libc6-compat openssl
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -8,6 +10,8 @@ RUN npm ci
 
 
 FROM node:20-alpine AS builder
+
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
@@ -19,6 +23,8 @@ RUN npm run build
 
 
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
