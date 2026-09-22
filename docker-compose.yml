@@ -1,0 +1,32 @@
+services:
+  fixmumbai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: fixmumbai
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+
+    volumes:
+      - fixmumbai_prisma:/app/prisma
+
+    networks:
+      - app_network
+
+    expose:
+      - "3000"
+
+networks:
+  app_network:  # Compose's internal/reference name
+    external: true
+    name: ${DOCKER_NETOWORK}  # actual docker network name
+
+volumes:
+  fixmumbai_prisma:
