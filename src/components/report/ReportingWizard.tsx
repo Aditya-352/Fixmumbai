@@ -47,7 +47,7 @@ export default function ReportingWizard() {
   const [reporterEmail, setReporterEmail] = useState<string>('');
 
   useEffect(() => {
-    fetch('/api/categories')
+    fetch('/civic/api/categories')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data?.length > 0) {
@@ -219,7 +219,7 @@ export default function ReportingWizard() {
     setError(null);
 
     try {
-      const res = await fetch('/api/reports', {
+      const res = await fetch('/civic/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

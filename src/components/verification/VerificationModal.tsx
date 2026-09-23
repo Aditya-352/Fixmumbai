@@ -29,7 +29,7 @@ export default function VerificationModal({
     setError(null);
 
     try {
-      const res = await fetch(`/api/reports/${reportId}/verification`, {
+      const res = await fetch(`/civic/api/reports/${reportId}/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

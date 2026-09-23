@@ -21,7 +21,7 @@ export default function AdminReportsPage() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      let url = '/api/reports?limit=100';
+      let url = '/civic/api/reports?limit=100';
       if (selectedWard) url += `&ward=${selectedWard}`;
       if (selectedStatus) url += `&status=${selectedStatus}`;
       const res = await fetch(url);
@@ -45,7 +45,7 @@ export default function AdminReportsPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch(`/api/reports/${activeReport.id}`, {
+      const res = await fetch(`/civic/api/reports/${activeReport.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
