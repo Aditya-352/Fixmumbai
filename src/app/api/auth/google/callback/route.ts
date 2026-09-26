@@ -13,10 +13,12 @@ export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const publicUrl = (path: string) =>
+    new URL(path, appUrl);
 
   if (!clientId || !clientSecret || !appUrl) {
     return NextResponse.redirect(
-      new URL('/admin/login?error=google_error', req.url)
+      new URL('/civic/admin/login?error=google_error', req.url)
     );
   }
 
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   if (!code || !returnedState || !savedState || returnedState !== savedState) {
     return NextResponse.redirect(
-      new URL('/admin/login?error=invalid_state', req.url)
+      new URL('/civic/admin/login?error=invalid_state', req.url)
     );
   }
 
@@ -75,7 +77,7 @@ export async function GET(req: NextRequest) {
 
     if (!googleUser.email || !googleUser.email_verified) {
       return NextResponse.redirect(
-        new URL('/admin/login?error=not_authorized', req.url)
+        new URL('/civic/admin/login?error=not_authorized', req.url)
       );
     }
 
@@ -88,7 +90,7 @@ export async function GET(req: NextRequest) {
       !['AUTHORITY_ADMIN', 'SUPER_ADMIN'].includes(user.role)
     ) {
       return NextResponse.redirect(
-        new URL('/admin/login?error=not_authorized', req.url)
+        new URL('/civic/admin/login?error=not_authorized', req.url)
       );
     }
 
@@ -106,7 +108,9 @@ export async function GET(req: NextRequest) {
       wardId: user.wardId || undefined,
     });
 
-    const response = NextResponse.redirect(new URL('/admin', req.url));
+    const response = NextResponse.redirect(
+      new URL('/civic/admin', appUrl)
+    );
 
     response.cookies.set('fixmumbai_session', session, {
       httpOnly: true,
@@ -128,7 +132,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Google OAuth error:', error);
     return NextResponse.redirect(
-      new URL('/admin/login?error=google_error', req.url)
+      new URL('/civic/admin/login?error=google_error', req.url)
     );
   }
 }
