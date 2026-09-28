@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { calculateDistanceMeters } from '@/lib/gis';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
-    const { status, actionDescription, actorName, actorRole, resolutionAfterImage, resolutionNotes } = body;
+    const { status, actionDescription, actorName, actorRole, resolutionAfterImage, resolutionNotes, resolutionLatitude, resolutionLongitude } = body;
 
     const existingReport = await db.report.findFirst({
       where: { OR: [{ id: params.id }, { publicReportId: params.id }] },
@@ -60,6 +61,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (!existingReport) {
       return NextResponse.json({ success: false, error: 'Report not found' }, { status: 404 });
+    }
+
+    // Strict State Machine Rules
+    const validTransitions: Record<string, string[]> = {
+      SUBMITTED: ['ACKNOWLEDGED', 'REJECTED'],
+      ACKNOWLEDGED: ['ASSIGNED', 'REJECTED'],
+      ASSIGNED: ['IN_PROGRESS', 'REJECTED'],
+      IN_PROGRESS: ['RESOLUTION_SUBMITTED', 'REJECTED'],
+      RESOLUTION_SUBMITTED: ['VERIFICATION_PENDING', 'VERIFIED', 'REOPENED', 'REJECTED'],
+      VERIFICATION_PENDING: ['VERIFIED', 'REOPENED', 'REJECTED'],
+      VERIFIED: ['REOPENED'],
+      REOPENED: ['ASSIGNED', 'IN_PROGRESS', 'REJECTED'],
+      REJECTED: ['SUBMITTED', 'ACKNOWLEDGED']
+    };
+
+    if (status && status !== existingReport.status) {
+      const allowedNext = validTransitions[existingReport.status] || [];
+      if (!allowedNext.includes(status)) {
+        return NextResponse.json({
+          success: false,
+          error: `Invalid status transition from ${existingReport.status} to ${status}. Allowed next steps: ${allowedNext.join(', ')}`
+        }, { status: 400 });
+      }
     }
 
     const updatedData: any = {
@@ -79,13 +103,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       include: { category: true, bmcWard: true }
     });
 
+    let locationMismatch = false;
+    let distanceMeters: number | null = null;
+    let mismatchNotice = '';
+
+    if (resolutionLatitude != null && resolutionLongitude != null) {
+      const dist = calculateDistanceMeters(
+        existingReport.latitude,
+        existingReport.longitude,
+        parseFloat(resolutionLatitude),
+        parseFloat(resolutionLongitude)
+      );
+      distanceMeters = Math.round(dist);
+      if (dist > 200) {
+        locationMismatch = true;
+        mismatchNotice = ` ⚠️ Location Mismatch Warning: Resolution logged ${distanceMeters >= 1000 ? (distanceMeters/1000).toFixed(1) + 'km' : distanceMeters + 'm'} away from reported issue site.`;
+      }
+    }
+
     // Add Timeline Event
     await db.timelineEvent.create({
       data: {
         reportId: existingReport.id,
         eventType: status || 'UPDATED',
         actorType: actorRole || 'ADMIN',
-        description: actionDescription || `Status changed from ${existingReport.status} to ${status}`
+        description: (actionDescription || `Status changed from ${existingReport.status} to ${status}`) + mismatchNotice
       }
     });
 
@@ -96,9 +138,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           reportId: existingReport.id,
           beforeImagePath: existingReport.photos[0]?.storagePath || null,
           afterImagePath: resolutionAfterImage,
-          description: resolutionNotes || 'Cleanliness resolution work completed by municipal team.',
+          description: (resolutionNotes || 'Cleanliness resolution work completed by municipal team.') + mismatchNotice,
           actorName: actorName || 'Ward Officer',
-          actorRole: actorRole || 'WARD_OPERATOR'
+          actorRole: actorRole || 'WARD_OPERATOR',
+          latitude: resolutionLatitude ? parseFloat(resolutionLatitude) : null,
+          longitude: resolutionLongitude ? parseFloat(resolutionLongitude) : null,
+          distanceMeters,
+          locationMismatch
         }
       });
     }
