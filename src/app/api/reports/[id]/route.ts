@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { calculateDistanceMeters } from '@/lib/gis';
+import { getServerSession } from '@/lib/auth';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -51,8 +52,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const session = await getServerSession();
+
+    if (!session || !['AUTHORITY_ADMIN', 'SUPER_ADMIN'].includes(session.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const body = await req.json();
-    const { status, actionDescription, actorName, actorRole, resolutionAfterImage, resolutionNotes, resolutionLatitude, resolutionLongitude } = body;
+    const {
+      status,
+      actionDescription,
+      actorName,
+      actorRole,
+      resolutionAfterImage,
+      resolutionNotes,
+      resolutionLatitude,
+      resolutionLongitude
+    } = body;
 
     const existingReport = await db.report.findFirst({
       where: { OR: [{ id: params.id }, { publicReportId: params.id }] },
@@ -126,7 +144,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data: {
         reportId: existingReport.id,
         eventType: status || 'UPDATED',
-        actorType: actorRole || 'ADMIN',
+        actorType: actorRole || session.role || 'ADMIN',
         description: (actionDescription || `Status changed from ${existingReport.status} to ${status}`) + mismatchNotice
       }
     });
@@ -139,8 +157,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           beforeImagePath: existingReport.photos[0]?.storagePath || null,
           afterImagePath: resolutionAfterImage,
           description: (resolutionNotes || 'Cleanliness resolution work completed by municipal team.') + mismatchNotice,
-          actorName: actorName || 'Ward Officer',
-          actorRole: actorRole || 'WARD_OPERATOR',
+          actorName: actorName || session.name || 'Ward Officer',
+          actorRole: actorRole || session.role || 'WARD_OPERATOR',
           latitude: resolutionLatitude ? parseFloat(resolutionLatitude) : null,
           longitude: resolutionLongitude ? parseFloat(resolutionLongitude) : null,
           distanceMeters,
@@ -152,8 +170,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // Log to Audit Trail
     await db.auditLog.create({
       data: {
-        actorName: actorName || 'Authority User',
-        role: actorRole || 'AUTHORITY_ADMIN',
+        actorId: session.id,
+        actorName: session.name,
+        role: session.role,
         action: `STATUS_CHANGE_TO_${status}`,
         entity: 'Report',
         entityId: existingReport.id,
@@ -165,5 +184,76 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ success: true, data: updatedReport });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession();
+
+    if (!session || !['AUTHORITY_ADMIN', 'SUPER_ADMIN'].includes(session.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const existingReport = await db.report.findFirst({
+      where: {
+        OR: [
+          { id: params.id },
+          { publicReportId: params.id }
+        ]
+      }
+    });
+
+    if (!existingReport) {
+      return NextResponse.json(
+        { success: false, error: 'Report not found' },
+        { status: 404 }
+      );
+    }
+
+    await db.auditLog.create({
+      data: {
+        actorId: session.id,
+        actorName: session.name,
+        role: session.role,
+        action: 'DELETE_REPORT',
+        entity: 'Report',
+        entityId: existingReport.id,
+        beforeState: JSON.stringify({
+          publicReportId: existingReport.publicReportId,
+          status: existingReport.status
+        }),
+        afterState: JSON.stringify({
+          deleted: true
+        })
+      }
+    });
+
+    await db.report.delete({
+      where: {
+        id: existingReport.id
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Report ${existingReport.publicReportId} deleted successfully`
+    });
+  } catch (error: any) {
+    console.error('Delete report error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'Failed to delete report'
+      },
+      { status: 500 }
+    );
   }
 }

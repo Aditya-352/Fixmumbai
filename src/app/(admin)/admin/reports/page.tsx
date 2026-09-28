@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/ui/Badge';
-import { Shield, Eye, CheckCircle2, RefreshCw, AlertCircle, Upload, Check } from 'lucide-react';
+import { Shield, RefreshCw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminReportsPage() {
@@ -21,7 +21,7 @@ export default function AdminReportsPage() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      let url = '/api/reports?limit=100';
+      let url = '/civic/api/reports?limit=100';
       if (selectedWard) url += `&ward=${selectedWard}`;
       if (selectedStatus) url += `&status=${selectedStatus}`;
       const res = await fetch(url);
@@ -45,7 +45,7 @@ export default function AdminReportsPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch(`/api/reports/${activeReport.id}`, {
+      const res = await fetch(`/civic/api/reports/${activeReport.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,6 +70,35 @@ export default function AdminReportsPage() {
       console.error(e);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleDeleteReport = async (report: any) => {
+    const confirmed = window.confirm(
+      `Delete report ${report.publicReportId}? This permanently removes the report and its related evidence/timeline records.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/civic/api/reports/${report.id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete report');
+      }
+
+      if (activeReport?.id === report.id) {
+        setActiveReport(null);
+      }
+
+      await fetchReports();
+    } catch (error: any) {
+      console.error(error);
+      window.alert(error.message || 'Failed to delete report');
     }
   };
 
@@ -122,6 +151,7 @@ export default function AdminReportsPage() {
             <option value="RESOLUTION_SUBMITTED">Resolution Submitted</option>
             <option value="VERIFIED">Verified</option>
             <option value="REOPENED">Reopened</option>
+            <option value="REJECTED">Rejected</option>
           </select>
         </div>
       </div>
@@ -163,6 +193,13 @@ export default function AdminReportsPage() {
                         className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1.5 rounded-lg border border-emerald-500/30"
                       >
                         Action Workflow
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReport(r)}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold px-3 py-1.5 rounded-lg border border-rose-500/30 inline-flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                       </button>
                     </td>
                   </tr>

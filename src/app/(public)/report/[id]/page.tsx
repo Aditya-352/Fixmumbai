@@ -22,7 +22,7 @@ export default function PublicReportDetailPage() {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/reports/${reportId}`);
+      const res = await fetch(`/civic/api/reports/${reportId}`);
       const data = await res.json();
       if (data.success) {
         setReport(data.data);
