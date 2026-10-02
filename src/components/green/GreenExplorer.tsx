@@ -83,14 +83,18 @@ export default function GreenExplorer() {
           <p className="text-xs text-slate-500 mt-0.5">
             Satellite-derived vegetation with OpenStreetMap accessibility evidence
           </p>
-          {tiles?.observationStart && tiles?.observationEnd && (
-            <p className="text-[10px] text-slate-400 mt-0.5">
+          {tiles?.observationStart && tiles?.observationEnd && tiles.layers.length > 0 ? (
+            <p className="text-[10px] text-slate-500 mt-0.5">
               NDVI window: {tiles.observationStart} – {tiles.observationEnd}
               {tiles.isMonsoon && (
-                <span className="ml-2 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">
+                <span className="ml-2 bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">
                   Monsoon composite
                 </span>
               )}
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-400 mt-0.5 italic">
+              NDVI layer: not yet processed
             </p>
           )}
         </div>

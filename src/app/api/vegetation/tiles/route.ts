@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, TilesResponse, DensityClass } from '@/lib/green/types';
-import { GREEN_EXPLORER_ENABLED, DENSITY_META, NDVI_WINDOW_DAYS } from '@/lib/green/config';
+import { GREEN_EXPLORER_ENABLED, DENSITY_META } from '@/lib/green/config';
 import { getNdviTileUrl } from '@/lib/green/gee-service';
 
 /**
  * GET /api/vegetation/tiles
  *
  * Returns Sentinel-2 / Earth Engine NDVI Tile layers and observation metadata.
+ * If GEE is not yet configured, honestly returns empty layers.
  */
 export async function GET(req: NextRequest) {
   if (!GREEN_EXPLORER_ENABLED) {
@@ -18,6 +19,37 @@ export async function GET(req: NextRequest) {
       },
       { status: 503 }
     );
+  }
+
+  // Check if real GEE composite service or custom GEE tile URL is configured
+  const isGeeConfigured = Boolean(
+    process.env.GEE_PROJECT_ID ||
+    process.env.GEE_SERVICE_ACCOUNT_KEY ||
+    process.env.GEE_NDVI_TILE_URL
+  );
+
+  if (!isGeeConfigured) {
+    const responseData: TilesResponse = {
+      layers: [],
+      observationStart: null,
+      observationEnd: null,
+      compositeType: null,
+      isMonsoon: false,
+      warnings: ['GEE_PROJECT_ID / GEE_SERVICE_ACCOUNT_KEY not configured. NDVI satellite composite pending.'],
+    };
+
+    return NextResponse.json<ApiResponse<TilesResponse>>({
+      ok: true,
+      data: responseData,
+      meta: {
+        sources: ['Sentinel-2 L2A (Pending GEE Processing)'],
+        fetchedAt: new Date().toISOString(),
+        cache: 'NONE',
+        partial: false,
+        warnings: ['NDVI layer: not yet processed. GEE_PROJECT_ID missing.'],
+      },
+      error: null,
+    });
   }
 
   try {

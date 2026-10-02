@@ -42,12 +42,12 @@ export const DEFAULT_RADIUS_M = Number(process.env.GREEN_EXPLORER_DEFAULT_RADIUS
 
 // ── Mumbai city config ───────────────────────────────────────────────────────
 export const MUMBAI: CityConfig = {
-  name: 'Mumbai',
+  name: 'Bandra West, Mumbai',
   country: 'India',
   // Brihanmumbai Municipal Corporation outer envelope (padded slightly)
   bbox: [18.87, 72.76, 19.31, 73.00],
-  centre: [19.0760, 72.8777],
-  defaultZoom: 11,
+  centre: [19.0596, 72.8295],
+  defaultZoom: 12,
   // Jun(5) Jul(6) Aug(7) Sep(8) — monsoon months
   monsoonMonths: [5, 6, 7, 8],
   maxRadiusM: Number(process.env.GREEN_EXPLORER_MAX_RADIUS_METERS ?? 10_000),
@@ -56,7 +56,7 @@ export const MUMBAI: CityConfig = {
 // ── Active city (swap for multi-city support) ────────────────────────────────
 export const ACTIVE_CITY = MUMBAI;
 
-// ── Feature flag ────────────────────────────────────────────────────────────
+// ── Feature flag ────────────────────────────────────────────────────
 export const GREEN_EXPLORER_ENABLED =
   (process.env.GREEN_EXPLORER_ENABLED ?? 'true') === 'true';
 
@@ -70,15 +70,17 @@ export const DENSITY_META: Record<DensityClass, { label: string; colour: string;
   UNAVAILABLE: { label: 'NDVI unavailable', colour: '#94a3b8', range: undefined },
 };
 
-// ── Basemap tile templates (no secrets; public attribution required) ─────────
+// ── Basemap tile templates (Esri World Light Gray Canvas & Esri World Imagery - Zero watermarks) ──
 export const BASEMAP_LIGHT_URL =
   process.env.BASEMAP_LIGHT_URL ??
-  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+
+export const BASEMAP_LIGHT_REF_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
 
 export const BASEMAP_SAT_URL =
-  process.env.ESRI_IMAGERY_URL
-    ? `${process.env.ESRI_IMAGERY_URL}/tile/{z}/{y}/{x}`
-    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  process.env.ESRI_IMAGERY_URL ??
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 // ── Radius selector chips ────────────────────────────────────────────────────
 export const RADIUS_OPTIONS_M = [1000, 3000, 5000, 10_000] as const;

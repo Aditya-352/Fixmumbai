@@ -33,15 +33,34 @@ export default function GreenSidebar() {
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-[240px] bg-[#0f172a] flex-shrink-0 border-r border-slate-800"
+      className="hidden lg:flex flex-col w-[210px] bg-[#0f172a] flex-shrink-0 border-r border-slate-800 h-full overflow-hidden"
       role="navigation"
       aria-label="Map mode navigation"
     >
-      <div className="p-4 border-b border-slate-700">
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Map Modes</p>
+      {/* Brand / Title block at top */}
+      <div className="p-3.5 border-b border-slate-800/80 bg-[#0b1120]">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center text-white font-black text-xs shadow-md shadow-red-600/30">
+            F
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-black text-white uppercase tracking-tight">
+              Fix<span className="text-red-500">Mumbai</span>
+            </span>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest truncate">
+              Civic GIS &amp; Nature
+            </span>
+          </div>
+        </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+      <div className="px-3 pt-3 pb-1">
+        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+          Map Modes
+        </p>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
         {MODES.map((mode) => {
           const isActive =
             pathname === mode.href ||
@@ -51,36 +70,36 @@ export default function GreenSidebar() {
             <Link
               key={mode.number}
               href={mode.href}
-              className={`flex items-start gap-3 px-3 py-3 rounded-xl transition-all group focus:outline-none focus:ring-2 focus:ring-green-500 ${
+              className={`flex items-start gap-2.5 px-2.5 py-2.5 rounded-xl transition-all group focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                 isActive
-                  ? 'bg-green-900/40 border border-green-700/50'
-                  : 'hover:bg-slate-800 border border-transparent'
+                  ? 'bg-emerald-950/60 border border-emerald-700/60 shadow-sm'
+                  : 'hover:bg-slate-800/70 border border-transparent'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >
               <span
-                className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                  isActive ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-300'
+                className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                  isActive ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'
                 }`}
                 aria-hidden="true"
               >
                 {mode.number}
               </span>
               <div className="min-w-0">
-                <p className={`text-sm font-bold leading-tight ${isActive ? 'text-green-400' : 'text-slate-300'}`}>
+                <p className={`text-xs font-bold leading-tight ${isActive ? 'text-emerald-300' : 'text-slate-300'}`}>
                   {mode.icon} {mode.label}
                 </p>
-                <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{mode.sublabel}</p>
+                <p className="text-[9.5px] text-slate-400 mt-0.5 leading-tight">{mode.sublabel}</p>
               </div>
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom hint */}
-      <div className="p-4 border-t border-slate-700">
-        <p className="text-[9px] text-slate-600 leading-relaxed">
-          All data from public sources. NDVI: Copernicus Sentinel-2. Walkability: OpenStreetMap (ODbL).
+      {/* Non-clipped footer hint */}
+      <div className="p-3 border-t border-slate-800/80 bg-[#0b1120]/70 flex-shrink-0">
+        <p className="text-[8.5px] text-slate-400 leading-snug">
+          Sentinel-2 NDVI &amp; OpenStreetMap (ODbL) public records.
         </p>
       </div>
     </aside>
