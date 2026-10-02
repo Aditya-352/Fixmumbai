@@ -5,6 +5,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/civic',
+        basePath: false,
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
