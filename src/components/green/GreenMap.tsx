@@ -19,7 +19,6 @@ import {
   ACTIVE_CITY,
   DENSITY_META,
   BASEMAP_LIGHT_URL,
-  BASEMAP_LIGHT_REF_URL,
   BASEMAP_SAT_URL,
 } from '@/lib/green/config';
 import { Locate } from 'lucide-react';
@@ -48,7 +47,6 @@ export default function GreenMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const lightBaseLayerRef = useRef<any>(null);
-  const lightRefLayerRef = useRef<any>(null);
   const satLayerRef = useRef<any>(null);
   const spaceLayersRef = useRef<any[]>([]);
   const centreMarkerRef = useRef<any>(null);
@@ -68,7 +66,7 @@ export default function GreenMap({
     };
   }, [onSpaceClick]);
 
-  // ── Initialise map once (Robust React 18 cleanup to prevent "already initialized" errors) ──
+  // ── Initialise map once (Optimized tile buffering & smooth panning) ──
   useEffect(() => {
     let isCancelled = false;
     const container = mapContainerRef.current;
@@ -100,6 +98,7 @@ export default function GreenMap({
         zoom: ACTIVE_CITY.defaultZoom,
         zoomControl: false,
         attributionControl: true,
+        preferCanvas: true,
       });
 
       // Attribution
@@ -107,23 +106,23 @@ export default function GreenMap({
         '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
       );
 
-      // Esri Light Gray Canvas Base + Labels Reference (Zero Watermarks)
+      // Fast, lightweight Esri World Light Gray Base Layer with keepBuffer for snappy pan/zoom
       const lightBase = L.tileLayer(BASEMAP_LIGHT_URL, {
-        attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ',
+        attribution: 'Tiles © Esri',
         maxZoom: 19,
+        keepBuffer: 8,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
       }).addTo(map);
       lightBaseLayerRef.current = lightBase;
 
-      const lightRef = L.tileLayer(BASEMAP_LIGHT_REF_URL, {
-        maxZoom: 19,
-        pane: 'overlayPane',
-      }).addTo(map);
-      lightRefLayerRef.current = lightRef;
-
-      // Esri World Imagery (Satellite)
+      // Fast Esri World Imagery (Satellite)
       satLayerRef.current = L.tileLayer(BASEMAP_SAT_URL, {
         attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
         maxZoom: 19,
+        keepBuffer: 8,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
       });
 
       // Zoom control at bottom-left
@@ -139,7 +138,7 @@ export default function GreenMap({
         if (!isCancelled && mapRef.current) {
           mapRef.current.invalidateSize();
         }
-      }, 250);
+      }, 200);
     });
 
     return () => {
@@ -158,7 +157,7 @@ export default function GreenMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Basemap toggle ───────────────────────────────────────────────────────
+  // ── Instant Basemap toggle ────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !lightBaseLayerRef.current || !satLayerRef.current) return;
@@ -166,14 +165,8 @@ export default function GreenMap({
     if (basemap === 'satellite') {
       if (!map.hasLayer(satLayerRef.current)) map.addLayer(satLayerRef.current);
       if (map.hasLayer(lightBaseLayerRef.current)) map.removeLayer(lightBaseLayerRef.current);
-      if (lightRefLayerRef.current && map.hasLayer(lightRefLayerRef.current)) {
-        map.removeLayer(lightRefLayerRef.current);
-      }
     } else {
       if (!map.hasLayer(lightBaseLayerRef.current)) map.addLayer(lightBaseLayerRef.current);
-      if (lightRefLayerRef.current && !map.hasLayer(lightRefLayerRef.current)) {
-        map.addLayer(lightRefLayerRef.current);
-      }
       if (map.hasLayer(satLayerRef.current)) map.removeLayer(satLayerRef.current);
     }
   }, [basemap, mapReady]);

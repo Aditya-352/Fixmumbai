@@ -9,7 +9,7 @@
  *   │ Title bar (A)                                        │
  *   ├──────────┬───────────────────────────┬───────────────┤
  *   │ Sidebar  │ Map (centre)              │ Right panel   │
- *   │ (B)      │ (C) — Leaflet, ssr:false  │ (D)           │
+ *   │ (B)      │ (C) — Leaflet, ssr:false  │ (D) + Drawer  │
  *   ├──────────┴───────────────────────────┴───────────────┤
  *   │ Footer strip (F)                                     │
  *   └──────────────────────────────────────────────────────┘
@@ -30,7 +30,7 @@ const GreenMap = dynamic(() => import('./GreenMap'), {
   loading: () => (
     <div className="w-full h-full bg-slate-100 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3 text-slate-500">
-        <div className="w-8 h-8 rounded-full border-4 border-green-500 border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
         <span className="text-sm font-semibold">Loading map…</span>
       </div>
     </div>
@@ -70,11 +70,11 @@ export default function GreenExplorer() {
 
   return (
     <div
-      className="flex flex-col"
+      className="flex flex-col overflow-hidden select-none"
       style={{ height: 'calc(100vh - 64px)' }} // 64px = header h-16
     >
       {/* ── A. Title bar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-2.5 bg-white border-b border-slate-200 flex-shrink-0">
         <div>
           <h1 className="text-base font-black text-slate-900 leading-tight">
             🌿 Vegetation &amp; Green Spaces
@@ -113,8 +113,8 @@ export default function GreenExplorer() {
         {/* B. Left sidebar */}
         <GreenSidebar />
 
-        {/* C. Map area */}
-        <div className="flex-1 relative overflow-hidden">
+        {/* C. Map area (Centre - 100% visible, never obstructed by drawer) */}
+        <div className="flex-1 relative overflow-hidden h-full">
           {/* Floating search bar */}
           <div className="absolute top-3 left-3 z-[1000] w-72">
             <SearchBox
@@ -140,10 +140,31 @@ export default function GreenExplorer() {
 
           {/* Legend — bottom-right of map */}
           <GreenLegend />
+        </div>
 
-          {/* Detail drawer — slides over right panel */}
+        {/* D. Right panel + Ground Detail Drawer Container */}
+        <div className="relative w-[340px] flex-shrink-0 h-full overflow-hidden bg-white border-l border-slate-200">
+          <GreenRightPanel
+            centre={centre}
+            spaces={spaces}
+            spacesLoading={spacesLoading}
+            spacesError={spacesError}
+            spacesPartial={spacesPartial}
+            spacesWarnings={spacesWarnings}
+            onRetry={refetchSpaces}
+            filters={filters}
+            onRadiusChange={setRadiusM}
+            onFilterTypeChange={setFilterType}
+            onToggleVerifiedOnly={toggleVerifiedOnly}
+            onToggleNdviLayer={toggleNdviLayer}
+            tiles={tiles}
+            selectedSpaceId={selectedSpaceId}
+            onSpaceClick={handleSpaceClick}
+          />
+
+          {/* Detail drawer — cleanly replaces the RightPanel when a space is selected so map stays completely open */}
           {(detailLoading || selectedSpace) && (
-            <div className="absolute inset-y-0 right-0 w-[340px] z-30">
+            <div className="absolute inset-0 z-30 bg-white">
               <GreenDetailDrawer
                 space={selectedSpace}
                 loading={detailLoading}
@@ -154,7 +175,6 @@ export default function GreenExplorer() {
                 onDirections={
                   selectedSpace?.walkClass === 'WALKABLE_VERIFIED'
                     ? (id) => {
-                        // Route drawn on map — wire up in Phase 5
                         console.info('[green] directions requested for', id);
                       }
                     : undefined
@@ -163,48 +183,29 @@ export default function GreenExplorer() {
             </div>
           )}
         </div>
-
-        {/* D. Right panel */}
-        <GreenRightPanel
-          centre={centre}
-          spaces={spaces}
-          spacesLoading={spacesLoading}
-          spacesError={spacesError}
-          spacesPartial={spacesPartial}
-          spacesWarnings={spacesWarnings}
-          onRetry={refetchSpaces}
-          filters={filters}
-          onRadiusChange={setRadiusM}
-          onFilterTypeChange={setFilterType}
-          onToggleVerifiedOnly={toggleVerifiedOnly}
-          onToggleNdviLayer={toggleNdviLayer}
-          tiles={tiles}
-          selectedSpaceId={selectedSpaceId}
-          onSpaceClick={handleSpaceClick}
-        />
       </div>
 
       {/* F. Footer strip */}
-      <footer className="flex-shrink-0 bg-slate-50 border-t border-slate-200 px-5 py-2.5 flex gap-8 text-xs text-slate-500">
+      <footer className="flex-shrink-0 bg-slate-50 border-t border-slate-200 px-5 py-2 flex gap-8 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-base">🛰</span>
           <div>
-            <p className="font-bold text-slate-700">Vegetation Data</p>
-            <p>Sentinel-2 NDVI via Google Earth Engine</p>
+            <p className="font-bold text-slate-700 leading-tight">Vegetation Data</p>
+            <p className="text-[11px] leading-tight">Sentinel-2 NDVI via Google Earth Engine</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-base">🗺</span>
           <div>
-            <p className="font-bold text-slate-700">Walkability &amp; Accessibility</p>
-            <p>OpenStreetMap via Overpass (© contributors, ODbL)</p>
+            <p className="font-bold text-slate-700 leading-tight">Walkability &amp; Accessibility</p>
+            <p className="text-[11px] leading-tight">OpenStreetMap via Overpass (© contributors, ODbL)</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-base">🗄</span>
           <div>
-            <p className="font-bold text-slate-700">Processing &amp; Storage</p>
-            <p>PostgreSQL/PostGIS + existing map infrastructure</p>
+            <p className="font-bold text-slate-700 leading-tight">Processing &amp; Storage</p>
+            <p className="text-[11px] leading-tight">PostgreSQL/PostGIS + existing map infrastructure</p>
           </div>
         </div>
       </footer>
