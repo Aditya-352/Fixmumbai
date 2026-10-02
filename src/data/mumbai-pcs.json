@@ -1,0 +1,56 @@
+[
+  {
+    "pcNumber": 26,
+    "pcName": "Mumbai North",
+    "district": "Mumbai Suburban",
+    "mpName": "Piyush Goyal",
+    "party": "Bharatiya Janata Party",
+    "source": "Election Commission of India / Govt Portal",
+    "sourceDate": "2024-06-04"
+  },
+  {
+    "pcNumber": 27,
+    "pcName": "Mumbai North-West",
+    "district": "Mumbai Suburban",
+    "mpName": "Ravindra Waikar",
+    "party": "Shiv Sena",
+    "source": "Election Commission of India / Govt Portal",
+    "sourceDate": "2024-06-04"
+  },
+  {
+    "pcNumber": 28,
+    "pcName": "Mumbai North-East",
+    "district": "Mumbai Suburban",
+    "mpName": "Sanjay Dina Patil",
+    "party": "Shiv Sena (UBT)",
+    "source": "Election Commission of India / Govt Portal",
+    "sourceDate": "2024-06-04"
+  },
+  {
+    "pcNumber": 29,
+    "pcName": "Mumbai North-Central",
+    "district": "Mumbai Suburban",
+    "mpName": "Varsha Gaikwad",
+    "party": "Indian National Congress",
+    "source": "Election Commission of India / Govt Portal",
+    "sourceDate": "2024-06-04"
+  },
+  {
+    "pcNumber": 30,
+    "pcName": "Mumbai South-Central",
+    "district": "Mumbai City",
+    "mpName": "Anil Desai",
+    "party": "Shiv Sena (UBT)",
+    "source": "Election Commission of India / Govt Portal",
+    "sourceDate": "2024-06-04"
+  },
+  {
+    "pcNumber": 31,
+    "pcName": "Mumbai South",
+    "district": "Mumbai City",
+    "mpName": "Arvind Sawant",
+    "party": "Shiv Sena (UBT)",
+    "source": "Election Commission of India / Govt Portal",
+    "sourceDate": "2024-06-04"
+  }
+]
