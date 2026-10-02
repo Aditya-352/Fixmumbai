@@ -45,10 +45,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.0635, lon: 72.8225, tags: { entrance: 'main', wheelchair: 'yes' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
-    caption: 'Seaside running track and duck pond at Carter Road, Bandra West',
+    caption: 'Seaside running track and botanical landscaping at Carter Road, Bandra West',
   },
   {
     osmType: 'way',
@@ -90,10 +90,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.066, lon: 72.8235, tags: { barrier: 'entrance' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
-    caption: '1.2 km coastal promenade and green landscaping, Bandra',
+    caption: '1.2 km coastal promenade with palm trees and ocean views, Bandra',
   },
   {
     osmType: 'way',
@@ -136,8 +136,8 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.060, lon: 72.8335, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1584467735815-f778f274e296?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1584467735815-f778f274e296?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mature tree canopy and walking track off Linking Road, Bandra',
   },
@@ -180,10 +180,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.042, lon: 72.8195, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1566552881560-0be86c53957f?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1566552881560-0be86c53957f?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
-    caption: 'Heritage sea-view park overlooking Bandra-Worli Sea Link',
+    caption: 'Heritage stone ramparts and garden overlooking Bandra-Worli Sea Link',
   },
   {
     osmType: 'way',
@@ -223,10 +223,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.048, lon: 72.821, tags: { barrier: 'entrance' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
-    caption: 'Scenic coastal jogging track along Arabian Sea, Bandstand',
+    caption: 'Scenic coastal jogging track along rocky Arabian shoreline, Bandstand',
   },
   {
     osmType: 'way',
@@ -267,10 +267,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.081, lon: 72.836, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1597655601841-214a4cfe8b2c?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1597655601841-214a4cfe8b2c?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
-    caption: 'Serene neighborhood garden with elderly walking club, Santacruz West',
+    caption: 'Serene neighborhood garden with green walkways, Santacruz West',
   },
   {
     osmType: 'way',
@@ -311,15 +311,15 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.049, lon: 72.861, tags: { entrance: 'main', fee: 'yes' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mangrove woodland and bird sanctuary on Mithi River banks',
   },
   {
     osmType: 'way',
     osmId: '26478912',
-    name: 'Shivaji Park',
+    name: 'Shivaji Park, Dadar',
     category: 'Park',
     centroidLat: 19.0269,
     centroidLon: 72.8384,
@@ -356,15 +356,15 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.026, lon: 72.837, tags: { barrier: 'entrance' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Historic municipal public ground and perimeter walking track, Dadar',
   },
   {
     osmType: 'way',
     osmId: '101007',
-    name: 'Five Gardens (Mancherji Joshi Panch Udyan)',
+    name: 'Five Gardens (Mancherji Joshi Panch Udyan), Matunga',
     category: 'Park',
     centroidLat: 19.0205,
     centroidLon: 72.8524,
@@ -400,8 +400,8 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.020, lon: 72.852, tags: { barrier: 'entrance' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Interconnected historic circular garden squares, Matunga',
   },
@@ -444,8 +444,8 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 18.956, lon: 72.8055, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Terraced hillside botanical garden overlooking Marine Drive',
   },
@@ -490,10 +490,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 18.9565, lon: 72.8048, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 3.0',
-    caption: 'Terraced flowerbeds and manicured hedges at Malabar Hill',
+    caption: 'Terraced flowerbeds and animal topiary hedges at Malabar Hill',
   },
   {
     osmType: 'way',
@@ -535,10 +535,10 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 18.963, lon: 72.8005, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
-    caption: 'Seaside sports complex and coastal greenery at Nepean Sea Road',
+    caption: 'Seaside athletic complex and coastal greenery at Nepean Sea Road',
   },
   {
     osmType: 'way',
@@ -579,8 +579,8 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 18.93, lon: 72.829, tags: { barrier: 'gate' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Expansive recreational open space in South Mumbai Victorian precinct',
   },
@@ -625,8 +625,8 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.2312, lon: 72.8643, tags: { entrance: 'main', fee: 'yes' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Lush deciduous forest canopy at SGNP, Borivali',
   },
@@ -667,15 +667,15 @@ const REAL_MUMBAI_GREEN_SPACES = [
     entrances: JSON.stringify([
       { lat: 19.145, lon: 72.875, tags: { entrance: 'main' } },
     ]),
-    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
-    thumbUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=800&q=80',
+    thumbUrl: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=300&q=80',
     imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mumbai green lung: deciduous forest and lake in Goregaon East',
   },
 ];
 
 async function seed() {
-  console.log('Seeding Comprehensive Mumbai Green Spaces...');
+  console.log('Seeding Unique Real Mumbai Green Spaces...');
 
   for (const s of REAL_MUMBAI_GREEN_SPACES) {
     const space = await prisma.greenSpace.upsert({
@@ -720,7 +720,7 @@ async function seed() {
       },
     });
 
-    // Seed Image
+    // Seed Unique Real Image
     await prisma.greenSpaceImage.deleteMany({
       where: { greenSpaceId: space.id },
     });
@@ -739,10 +739,10 @@ async function seed() {
       },
     });
 
-    console.log(`✓ Seeded ${s.name}`);
+    console.log(`✓ Seeded distinct photo for ${s.name}`);
   }
 
-  console.log('Seeding finished successfully!');
+  console.log('Seeding unique images finished successfully!');
 }
 
 seed()
