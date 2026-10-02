@@ -68,11 +68,26 @@ export default function GreenMap({
     };
   }, [onSpaceClick]);
 
-  // ── Initialise map once ──────────────────────────────────────────────────
+  // ── Initialise map once (Robust React 18 cleanup to prevent "already initialized" errors) ──
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    let isCancelled = false;
+    const container = mapContainerRef.current;
+    if (!container) return;
 
     import('leaflet').then((L) => {
+      if (isCancelled) return;
+
+      // Safely cleanup existing leaflet map instance on this container
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (_) {}
+        mapRef.current = null;
+      }
+      if ((container as any)._leaflet_id) {
+        delete (container as any)._leaflet_id;
+      }
+
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -80,7 +95,7 @@ export default function GreenMap({
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      const map = L.map(mapContainerRef.current!, {
+      const map = L.map(container, {
         center: [centre.lat, centre.lon],
         zoom: ACTIVE_CITY.defaultZoom,
         zoomControl: false,
@@ -89,7 +104,7 @@ export default function GreenMap({
 
       // Attribution
       map.attributionControl.setPrefix(
-        '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+        '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
       );
 
       // Esri Light Gray Canvas Base + Labels Reference (Zero Watermarks)
@@ -107,7 +122,7 @@ export default function GreenMap({
 
       // Esri World Imagery (Satellite)
       satLayerRef.current = L.tileLayer(BASEMAP_SAT_URL, {
-        attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP',
+        attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
         maxZoom: 19,
       });
 
@@ -120,15 +135,25 @@ export default function GreenMap({
       mapRef.current = map;
       setMapReady(true);
 
-      setTimeout(() => map.invalidateSize(), 250);
+      setTimeout(() => {
+        if (!isCancelled && mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      }, 250);
     });
 
     return () => {
+      isCancelled = true;
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.remove();
+        } catch (_) {}
         mapRef.current = null;
-        setMapReady(false);
       }
+      if (container && (container as any)._leaflet_id) {
+        delete (container as any)._leaflet_id;
+      }
+      setMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -136,7 +161,7 @@ export default function GreenMap({
   // ── Basemap toggle ───────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !lightBaseLayerRef.current || !satLayerRef.current) return;
+    if (!map || !mapReady || !lightBaseLayerRef.current || !satLayerRef.current) return;
 
     if (basemap === 'satellite') {
       if (!map.hasLayer(satLayerRef.current)) map.addLayer(satLayerRef.current);
@@ -151,7 +176,7 @@ export default function GreenMap({
       }
       if (map.hasLayer(satLayerRef.current)) map.removeLayer(satLayerRef.current);
     }
-  }, [basemap]);
+  }, [basemap, mapReady]);
 
   // ── Centre pin + radius circle ───────────────────────────────────────────
   useEffect(() => {
@@ -159,6 +184,8 @@ export default function GreenMap({
     if (!map || !mapReady) return;
 
     import('leaflet').then((L) => {
+      if (!mapRef.current) return;
+
       if (centreMarkerRef.current) centreMarkerRef.current.remove();
       if (radiusCircleRef.current) radiusCircleRef.current.remove();
       if (geoCircleRef.current) geoCircleRef.current.remove();
@@ -213,6 +240,8 @@ export default function GreenMap({
     if (!map || !mapReady) return;
 
     import('leaflet').then((L) => {
+      if (!mapRef.current) return;
+
       spaceLayersRef.current.forEach((l) => l.remove());
       spaceLayersRef.current = [];
 
@@ -273,7 +302,7 @@ export default function GreenMap({
 
   return (
     <div className="w-full h-full relative">
-      <div ref={mapContainerRef} className="w-full h-full" />
+      <div ref={mapContainerRef} className="w-full h-full bg-slate-100" />
 
       {/* Locate Me button (positioned at bottom-left above zoom controls) */}
       <div className="absolute bottom-24 left-3 z-[1000] flex flex-col gap-1.5">
