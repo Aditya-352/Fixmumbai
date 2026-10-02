@@ -255,3 +255,73 @@ model AuditLog {
   ipAddress   String?
   user        User?    @relation(fields: [actorId], references: [id])
 }
+
+model GreenSpace {
+  id                     String                       @id @default(cuid())
+  osmType                String
+  osmId                  String
+  osmVersion             Int                          @default(0)
+  name                   String
+  category               String
+  tags                   String                       // JSON string
+  geometryJson           String?                      // GeoJSON string
+  centroidLat            Float
+  centroidLon            Float
+  areaM2                 Float?
+  accessStatus           String                       @default("UNKNOWN")
+  walkClass              String                       @default("UNKNOWN")
+  accessEvidence         String                       @default("[]") // JSON string
+  pathCount              Int                          @default(0)
+  totalPathLengthM       Float                        @default(0)
+  entrances              String?                      @default("[]") // JSON string
+  source                 String                       @default("OSM_OVERPASS")
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  vegetationObservations GreenVegetationObservation[]
+  images                 GreenSpaceImage[]
+
+  @@unique([osmType, osmId])
+  @@index([centroidLat, centroidLon])
+  @@index([category])
+  @@index([walkClass])
+}
+
+model GreenVegetationObservation {
+  id               String      @id @default(cuid())
+  greenSpaceId     String?
+  greenSpace       GreenSpace? @relation(fields: [greenSpaceId], references: [id], onDelete: Cascade)
+  ndviMean         Float?
+  ndviMin          Float?
+  ndviMax          Float?
+  pixelCount       Int?
+  densityClass     String?     // HIGH, MEDIUM, LOW, WATER_BARREN, UNAVAILABLE
+  confidence       Float?
+  compositeType    String?     // MEDIAN_COMPOSITE, SINGLE_SCENE, SYNTHETIC
+  observationStart DateTime?
+  observationEnd   DateTime?
+  imageCount       Int?
+  cloudCoverage    Float?
+  satelliteSource  String?     // COPERNICUS_SENTINEL_2, GOOGLE_EARTH_ENGINE, SYNTHETIC
+  processedAt      DateTime    @default(now())
+
+  @@index([greenSpaceId])
+  @@index([densityClass])
+}
+
+model GreenSpaceImage {
+  id               String      @id @default(cuid())
+  greenSpaceId     String?
+  greenSpace       GreenSpace? @relation(fields: [greenSpaceId], references: [id], onDelete: Cascade)
+  imageUrl         String
+  thumbUrl         String?
+  sourceUrl        String
+  attribution      String
+  licence          String
+  verificationTier String      // TIER_1_VERIFIED, TIER_2_COMMONS, TIER_3_UNVERIFIED
+  source           String      // WIKIMEDIA_COMMONS, WIKIPEDIA, OSM
+  caption          String?
+  createdAt        DateTime    @default(now())
+
+  @@index([greenSpaceId])
+}
+
