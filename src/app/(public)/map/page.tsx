@@ -71,6 +71,32 @@ export default async function MapPage({
         </Link>
       </div>
 
+      {/* Map Modes Switcher Bar */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+        <Link
+          href="/map"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-900 shadow-sm border border-slate-200"
+        >
+          <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px]">1</span>
+          ⚠️ Civic Risk Map
+        </Link>
+        <Link
+          href="/map"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white/60 transition"
+        >
+          <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px]">2</span>
+          💨 Air Quality Layer
+        </Link>
+        <Link
+          href="/green"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
+        >
+          <span className="w-5 h-5 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[10px]">3</span>
+          🌿 Green Density & Nature Explorer
+          <span className="bg-emerald-500/80 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-black text-white">NEW</span>
+        </Link>
+      </div>
+
       {/* Filter Toolbar */}
       <form method="GET" className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div>

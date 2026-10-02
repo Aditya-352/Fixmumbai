@@ -9,21 +9,21 @@ const MODES = [
     number: 1,
     label: 'Civic Risk Map',
     sublabel: 'Issue reporting & tracking',
-    href: '/civic/map',
+    href: '/map',
     icon: '⚠️',
   },
   {
     number: 2,
     label: 'Air Quality Map',
     sublabel: 'CPCB / OpenAQ live data',
-    href: '/civic/map', // same map, AQ tab — adjust if dedicated route exists
+    href: '/map',
     icon: '💨',
   },
   {
     number: 3,
     label: 'Green Density & Nature Exploration',
     sublabel: 'Vegetation & walkable spaces',
-    href: '/civic/green',
+    href: '/green',
     icon: '🌿',
   },
 ] as const;
@@ -43,7 +43,10 @@ export default function GreenSidebar() {
 
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
         {MODES.map((mode) => {
-          const isActive = pathname === mode.href || (mode.href === '/civic/green' && pathname?.startsWith('/civic/green'));
+          const isActive =
+            pathname === mode.href ||
+            pathname === `/civic${mode.href}` ||
+            (mode.href === '/green' && (pathname?.includes('/green') ?? false));
           return (
             <Link
               key={mode.number}
