@@ -1,18 +1,22 @@
-import { calculateAqi } from './aqi-calculator';
+import { calculateAqi, categoryForAqi } from './aqi-calculator';
+import { getAqicnStationsForLocation, getAqicnStationsForMumbai } from './aqicn-client';
 import { getCpcbStationsForMumbai } from './cpcb-client';
 import { getOpenAqStationsNear } from './openaq-client';
-import { isLocationInMumbai, rankStationsByDistance } from './station-resolver';
+import { isLocationInIndia, isLocationInMumbai, rankStationsByDistance } from './station-resolver';
 import type {
   AirQualityResponse,
+  AqiCategory,
+  AqiSource,
   PollutantId,
   PollutantReading,
   RawStationReading,
 } from './types';
 import { AirQualityServiceError } from './types';
 
-const STALE_DATA_THRESHOLD_MINUTES = 180; // CPCB/OpenAQ both nominally update hourly
-const CPCB_MAX_DISTANCE_KM = 25; // Mumbai's CAAQMS network is sparse; too tight a radius yields no data
-const OPENAQ_MAX_DISTANCE_KM = 20;
+const STALE_DATA_THRESHOLD_MINUTES = 180;
+const AQICN_MAX_DISTANCE_KM = 80; // Supports any city, town, or district in India
+const CPCB_MAX_DISTANCE_KM = 35;
+const OPENAQ_MAX_DISTANCE_KM = 30;
 
 function toPollutantMap(
   pollutants: PollutantReading[]
@@ -65,10 +69,41 @@ export function validateCoordinates(lat: unknown, lon: unknown): { lat: number; 
 }
 
 /**
- * Fetches CPCB (primary) and OpenAQ (secondary) data for a location, resolves
- * the nearest usable station from each, computes AQI where possible, and
- * returns a single normalized response. CPCB and OpenAQ values are never
- * averaged together — each keeps its own `source` label throughout.
+ * Returns formatted active AQI monitoring stations for display on the interactive map.
+ */
+export async function getLiveAqiStationsForMap() {
+  const hasAqicn = Boolean(process.env.AQICN_API_TOKEN || process.env.AQICN_API_KEY);
+  if (!hasAqicn) return null;
+
+  try {
+    const stations = await getAqicnStationsForMumbai();
+    return stations
+      .filter((s) => s.latitude !== null && s.longitude !== null && (s.measuredAqi !== null || s.pollutants.length > 0))
+      .map((s, idx) => {
+        const val = s.measuredAqi ?? calculateAqi(toPollutantMap(s.pollutants))?.value ?? 50;
+        const cat = categoryForAqi(val);
+        const dominant = s.dominantPollutant || 'PM2.5';
+        return {
+          id: `aqicn-${s.stationId || idx}`,
+          name: s.stationName.split(',')[0] || s.stationName,
+          area: s.stationName,
+          lat: s.latitude as number,
+          lng: s.longitude as number,
+          value: Math.round(val),
+          category: cat,
+          pollutant: dominant,
+          lastUpdated: s.lastUpdated,
+        };
+      });
+  } catch (err) {
+    console.error('[air-quality] Failed to fetch AQICN map stations:', err);
+    return null;
+  }
+}
+
+/**
+ * Fetches real-time AQICN (primary), CPCB, and OpenAQ data for ANY location across India,
+ * resolves the nearest usable station, computes AQI, and returns a normalized response.
  */
 export async function getAirQualityForLocation(
   rawLat: unknown,
@@ -76,83 +111,146 @@ export async function getAirQualityForLocation(
 ): Promise<AirQualityResponse> {
   const { lat, lon } = validateCoordinates(rawLat, rawLon);
 
-  if (!isLocationInMumbai(lat, lon)) {
+  if (!isLocationInIndia(lat, lon)) {
     throw new AirQualityServiceError(
-      'The requested location is outside the Mumbai service area covered by this feature.',
+      'The requested location is outside India (supported coverage area).',
       'OUT_OF_SERVICE_AREA',
       422
     );
   }
 
-  const [cpcbResult, openAqResult] = await Promise.allSettled([
-    getCpcbStationsForMumbai(lat, lon),
-    getOpenAqStationsNear(lat, lon),
+  const inMumbai = isLocationInMumbai(lat, lon);
+  const hasAqicn = Boolean(process.env.AQICN_API_TOKEN || process.env.AQICN_API_KEY);
+  const hasCpcb = Boolean(process.env.CPCB_API_KEY);
+  const hasOpenAq = Boolean(process.env.OPENAQ_API_KEY);
+
+  const [aqicnResult, cpcbResult, openAqResult] = await Promise.allSettled([
+    hasAqicn ? getAqicnStationsForLocation(lat, lon) : Promise.resolve([]),
+    hasCpcb && inMumbai ? getCpcbStationsForMumbai(lat, lon) : Promise.resolve([]),
+    hasOpenAq ? getOpenAqStationsNear(lat, lon) : Promise.resolve([]),
   ]);
 
+  const aqicnStationsRaw = aqicnResult.status === 'fulfilled' ? aqicnResult.value : [];
   const cpcbStationsRaw = cpcbResult.status === 'fulfilled' ? cpcbResult.value : [];
   const openAqStationsRaw = openAqResult.status === 'fulfilled' ? openAqResult.value : [];
 
+  const aqicnStations = rankStationsByDistance(aqicnStationsRaw, lat, lon, AQICN_MAX_DISTANCE_KM);
   const cpcbStations = rankStationsByDistance(cpcbStationsRaw, lat, lon, CPCB_MAX_DISTANCE_KM);
-  const openAqStations = rankStationsByDistance(
-    openAqStationsRaw,
-    lat,
-    lon,
-    OPENAQ_MAX_DISTANCE_KM
-  );
+  const openAqStations = rankStationsByDistance(openAqStationsRaw, lat, lon, OPENAQ_MAX_DISTANCE_KM);
 
-  const sources: AirQualityResponse['sources'] = [
-    {
+  const sources: AirQualityResponse['sources'] = [];
+
+  if (hasAqicn) {
+    sources.push({
+      name: 'AQICN',
+      stationsFound: aqicnStations.length,
+      available: aqicnResult.status === 'fulfilled',
+      ...(aqicnResult.status === 'rejected' ? { error: String(aqicnResult.reason) } : {}),
+    });
+  }
+
+  if (hasCpcb && inMumbai) {
+    sources.push({
       name: 'CPCB',
       stationsFound: cpcbStations.length,
       available: cpcbResult.status === 'fulfilled',
       ...(cpcbResult.status === 'rejected' ? { error: String(cpcbResult.reason) } : {}),
-    },
-    {
+    });
+  }
+
+  if (hasOpenAq) {
+    sources.push({
       name: 'OPENAQ',
       stationsFound: openAqStations.length,
       available: openAqResult.status === 'fulfilled',
       ...(openAqResult.status === 'rejected' ? { error: String(openAqResult.reason) } : {}),
-    },
-  ];
+    });
+  }
 
-  if (cpcbStations.length === 0 && openAqStations.length === 0) {
+  if (aqicnStations.length === 0 && cpcbStations.length === 0 && openAqStations.length === 0) {
     throw new AirQualityServiceError(
-      'No CPCB or OpenAQ monitoring stations with usable data were found near this location.',
+      'No air quality monitoring stations with usable data were found near this location in India.',
       'NO_DATA_AVAILABLE',
       404
     );
   }
 
-  // --- Primary: nearest CPCB station with a computable AQI ---
+  // --- Primary Provider Resolution ---
   let primaryStation: RawStationReading | null = null;
-  let primaryAqi: ReturnType<typeof calculateAqi> = null;
-  let primarySource: 'CPCB' | 'OPENAQ' | null = null;
+  let primaryAqi: {
+    value: number;
+    category: AqiCategory;
+    dominantPollutant: PollutantId | null;
+    valueType: 'measured' | 'calculated';
+  } | null = null;
+  let primarySource: AqiSource | null = null;
 
-  for (const station of cpcbStations) {
-    const aqi = calculateAqi(toPollutantMap(station.pollutants));
-    if (aqi) {
-      primaryStation = station;
-      primaryAqi = aqi;
-      primarySource = 'CPCB';
-      break;
-    }
-  }
-
-  // Fall back to OpenAQ only when CPCB has no usable station nearby at all.
-  if (!primaryStation) {
-    for (const station of openAqStations) {
-      const aqi = calculateAqi(toPollutantMap(station.pollutants));
-      if (aqi) {
+  // 1. Try AQICN (Priority - Real-time network)
+  if (aqicnStations.length > 0) {
+    for (const station of aqicnStations) {
+      if (typeof station.measuredAqi === 'number' && station.measuredAqi > 0) {
         primaryStation = station;
-        primaryAqi = aqi;
-        primarySource = 'OPENAQ';
+        primarySource = 'AQICN';
+        primaryAqi = {
+          value: Math.round(station.measuredAqi),
+          category: categoryForAqi(station.measuredAqi),
+          dominantPollutant: station.dominantPollutant ?? 'PM2.5',
+          valueType: 'measured',
+        };
+        break;
+      }
+      const calc = calculateAqi(toPollutantMap(station.pollutants));
+      if (calc) {
+        primaryStation = station;
+        primarySource = 'AQICN';
+        primaryAqi = {
+          value: calc.value,
+          category: calc.category,
+          dominantPollutant: calc.dominantPollutant,
+          valueType: 'calculated',
+        };
         break;
       }
     }
   }
 
-  // Supplementary: every OpenAQ station near the location, kept fully
-  // separate from whatever backs the primary AQI figure above.
+  // 2. Fall back to CPCB if AQICN not matched (for Mumbai)
+  if (!primaryStation && cpcbStations.length > 0) {
+    for (const station of cpcbStations) {
+      const calc = calculateAqi(toPollutantMap(station.pollutants));
+      if (calc) {
+        primaryStation = station;
+        primarySource = 'CPCB';
+        primaryAqi = {
+          value: calc.value,
+          category: calc.category,
+          dominantPollutant: calc.dominantPollutant,
+          valueType: 'calculated',
+        };
+        break;
+      }
+    }
+  }
+
+  // 3. Fall back to OpenAQ if still not matched
+  if (!primaryStation && openAqStations.length > 0) {
+    for (const station of openAqStations) {
+      const calc = calculateAqi(toPollutantMap(station.pollutants));
+      if (calc) {
+        primaryStation = station;
+        primarySource = 'OPENAQ';
+        primaryAqi = {
+          value: calc.value,
+          category: calc.category,
+          dominantPollutant: calc.dominantPollutant,
+          valueType: 'calculated',
+        };
+        break;
+      }
+    }
+  }
+
+  // Supplementary stations
   const supplementary = openAqStations
     .filter((s) => primarySource !== 'OPENAQ' || s.stationId !== primaryStation?.stationId)
     .map((station) => ({
@@ -162,34 +260,31 @@ export async function getAirQualityForLocation(
       aqi: calculateAqi(toPollutantMap(station.pollutants)),
     }));
 
-  const nearestOverall = primaryStation ?? cpcbStations[0] ?? openAqStations[0] ?? null;
+  const nearestOverall = primaryStation ?? aqicnStations[0] ?? cpcbStations[0] ?? openAqStations[0] ?? null;
   const dataAgeMinutes = ageInMinutes(primaryStation?.lastUpdated ?? nearestOverall?.lastUpdated ?? null);
   const isStale = dataAgeMinutes !== null && dataAgeMinutes > STALE_DATA_THRESHOLD_MINUTES;
 
   const noteParts = [
     'This value reflects the nearest available monitoring station, not a sensor at your exact GPS coordinate.',
   ];
-  if (primarySource === 'OPENAQ') {
-    noteParts.push('No CPCB station was available nearby, so this is an OpenAQ-derived indicative AQI.');
+  if (primarySource === 'AQICN') {
+    noteParts.push('Air quality observations provided via AQICN real-time monitoring network.');
+  } else if (primarySource === 'OPENAQ') {
+    noteParts.push('No primary station was available nearby, so this is an OpenAQ-derived indicative AQI.');
   }
   if (isStale) {
     noteParts.push('The underlying reading is more than 3 hours old and may not reflect current conditions.');
   }
-  if (primaryStation?.coordinatesResolvedFrom === 'reference-table') {
-    noteParts.push(
-      `Station location approximated from the "${primaryStation.stationName}" locality (CPCB does not publish exact station coordinates).`
-    );
-  }
 
   return {
     location: { latitude: lat, longitude: lon },
-    aqi: primaryAqi && primaryStation
+    aqi: primaryAqi && primarySource
       ? {
           value: primaryAqi.value,
           category: primaryAqi.category,
-          source: primarySource as 'CPCB' | 'OPENAQ',
+          source: primarySource,
           dominantPollutant: primaryAqi.dominantPollutant,
-          valueType: 'calculated',
+          valueType: primaryAqi.valueType,
         }
       : null,
     station: primaryStation ? stationSummary(primaryStation) : null,

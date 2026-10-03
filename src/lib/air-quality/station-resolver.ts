@@ -19,6 +19,22 @@ import type { RawStationReading } from './types';
 
 export { MUMBAI_GEOFENCE, isLocationInMumbai };
 
+export const INDIA_GEOFENCE = {
+  minLat: 6.5,
+  maxLat: 38.0,
+  minLng: 68.0,
+  maxLng: 98.0,
+};
+
+export function isLocationInIndia(lat: number, lon: number): boolean {
+  return (
+    lat >= INDIA_GEOFENCE.minLat &&
+    lat <= INDIA_GEOFENCE.maxLat &&
+    lon >= INDIA_GEOFENCE.minLng &&
+    lon <= INDIA_GEOFENCE.maxLng
+  );
+}
+
 function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }

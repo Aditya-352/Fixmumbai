@@ -70,3 +70,15 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Atmospheric AQI Heatmap Gaussian Layer */
+.leaflet-pane.leaflet-aqi-heat-pane {
+  filter: blur(26px);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.leaflet-heatmap-layer {
+  opacity: 0.85;
+  pointer-events: none;
+}

@@ -8,14 +8,57 @@
     "wardOfficeAddress": "134, Shahid Bhagat Singh Road, Near Regal Cinema, Colaba, Mumbai - 400001",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9175,
-    "centerLongitude": 72.8250,
+    "centerLatitude": 18.9212,
+    "centerLongitude": 72.826,
     "assistantCommissioner": "Shri. Jaydeep More",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.810, 18.890, 72.840, 18.945],
+    "bbox": [
+      72.81,
+      18.89,
+      72.84,
+      18.945
+    ],
     "polygon": [
-      [18.8900, 72.8100], [18.8900, 72.8400], [18.9450, 72.8400], [18.9450, 72.8100]
-    ]
+      [
+        18.892,
+        72.813
+      ],
+      [
+        18.905,
+        72.808
+      ],
+      [
+        18.918,
+        72.816
+      ],
+      [
+        18.928,
+        72.822
+      ],
+      [
+        18.943,
+        72.825
+      ],
+      [
+        18.943,
+        72.842
+      ],
+      [
+        18.935,
+        72.848
+      ],
+      [
+        18.922,
+        72.836
+      ],
+      [
+        18.905,
+        72.824
+      ]
+    ],
+    "color": "#3B82F6",
+    "borderColor": "#1D4ED8",
+    "colorName": "Royal Blue"
   },
   {
     "wardCode": "B",
@@ -27,13 +70,36 @@
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
     "centerLatitude": 18.9525,
-    "centerLongitude": 72.8375,
+    "centerLongitude": 72.8398,
     "assistantCommissioner": "Shri. Dhanaji Herwade",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.830, 18.945, 72.845, 18.960],
+    "bbox": [
+      72.83,
+      18.945,
+      72.845,
+      18.96
+    ],
     "polygon": [
-      [18.9450, 72.8300], [18.9450, 72.8450], [18.9600, 72.8450], [18.9600, 72.8300]
-    ]
+      [
+        18.943,
+        72.832
+      ],
+      [
+        18.943,
+        72.846
+      ],
+      [
+        18.962,
+        72.848
+      ],
+      [
+        18.962,
+        72.833
+      ]
+    ],
+    "color": "#F59E0B",
+    "borderColor": "#B45309",
+    "colorName": "Amber Gold"
   },
   {
     "wardCode": "C",
@@ -44,14 +110,37 @@
     "wardOfficeAddress": "76, 78, Chandanwadi, Marine Lines, Mumbai - 400002",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9525,
-    "centerLongitude": 72.8225,
+    "centerLatitude": 18.9505,
+    "centerLongitude": 72.8272,
     "assistantCommissioner": "Shri. Sharad Ughade",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.815, 18.945, 72.830, 18.960],
+    "bbox": [
+      72.815,
+      18.945,
+      72.83,
+      18.96
+    ],
     "polygon": [
-      [18.9450, 72.8150], [18.9450, 72.8300], [18.9600, 72.8300], [18.9600, 72.8150]
-    ]
+      [
+        18.943,
+        72.822
+      ],
+      [
+        18.943,
+        72.832
+      ],
+      [
+        18.96,
+        72.833
+      ],
+      [
+        18.956,
+        72.822
+      ]
+    ],
+    "color": "#10B981",
+    "borderColor": "#047857",
+    "colorName": "Emerald"
   },
   {
     "wardCode": "D",
@@ -62,14 +151,53 @@
     "wardOfficeAddress": "Jobanputra Compound, Nana Chowk, Grant Road (W), Mumbai - 400007",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9600,
-    "centerLongitude": 72.8050,
+    "centerLatitude": 18.9579,
+    "centerLongitude": 72.8079,
     "assistantCommissioner": "Shri. Prashant Gaikwad",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.795, 18.945, 72.815, 18.975],
+    "bbox": [
+      72.795,
+      18.945,
+      72.815,
+      18.975
+    ],
     "polygon": [
-      [18.9450, 72.7950], [18.9450, 72.8150], [18.9750, 72.8150], [18.9750, 72.7950]
-    ]
+      [
+        18.942,
+        72.798
+      ],
+      [
+        18.945,
+        72.795
+      ],
+      [
+        18.958,
+        72.795
+      ],
+      [
+        18.975,
+        72.804
+      ],
+      [
+        18.972,
+        72.816
+      ],
+      [
+        18.962,
+        72.818
+      ],
+      [
+        18.956,
+        72.822
+      ],
+      [
+        18.953,
+        72.815
+      ]
+    ],
+    "color": "#EC4899",
+    "borderColor": "#BE185D",
+    "colorName": "Rose Pink"
   },
   {
     "wardCode": "E",
@@ -80,14 +208,37 @@
     "wardOfficeAddress": "10, Shaikh Hafizuddin Marg, Byculla (W), Mumbai - 400008",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9725,
-    "centerLongitude": 72.8300,
+    "centerLatitude": 18.975,
+    "centerLongitude": 72.8355,
     "assistantCommissioner": "Shri. Manish Valanju",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.815, 18.960, 72.845, 18.985],
+    "bbox": [
+      72.815,
+      18.96,
+      72.845,
+      18.985
+    ],
     "polygon": [
-      [18.9600, 72.8150], [18.9600, 72.8450], [18.9850, 72.8450], [18.9850, 72.8150]
-    ]
+      [
+        18.962,
+        72.818
+      ],
+      [
+        18.962,
+        72.848
+      ],
+      [
+        18.988,
+        72.852
+      ],
+      [
+        18.988,
+        72.824
+      ]
+    ],
+    "color": "#8B5CF6",
+    "borderColor": "#6D28D9",
+    "colorName": "Purple"
   },
   {
     "wardCode": "F/S",
@@ -98,14 +249,45 @@
     "wardOfficeAddress": "Jagannath Bhatankar Marg, Parel, Mumbai - 400012",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 18.9975,
-    "centerLongitude": 72.8450,
+    "centerLatitude": 18.9995,
+    "centerLongitude": 72.8445,
     "assistantCommissioner": "Mahesh Patil",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.830, 18.985, 72.860, 19.010],
+    "bbox": [
+      72.83,
+      18.985,
+      72.86,
+      19.01
+    ],
     "polygon": [
-      [18.9850, 72.8300], [18.9850, 72.8600], [19.0100, 72.8600], [19.0100, 72.8300]
-    ]
+      [
+        18.988,
+        72.824
+      ],
+      [
+        18.995,
+        72.831
+      ],
+      [
+        19.014,
+        72.836
+      ],
+      [
+        19.014,
+        72.862
+      ],
+      [
+        18.998,
+        72.862
+      ],
+      [
+        18.988,
+        72.852
+      ]
+    ],
+    "color": "#F97316",
+    "borderColor": "#C2410C",
+    "colorName": "Saffron Orange"
   },
   {
     "wardCode": "G/S",
@@ -116,14 +298,53 @@
     "wardOfficeAddress": "N.M. Joshi Marg, Elphinstone (W), Mumbai - 400013",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0000,
-    "centerLongitude": 72.8175,
+    "centerLatitude": 18.9953,
+    "centerLongitude": 72.8173,
     "assistantCommissioner": "Santosh Kumar Dhonde",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.805, 18.985, 72.830, 19.015],
+    "bbox": [
+      72.805,
+      18.985,
+      72.83,
+      19.015
+    ],
     "polygon": [
-      [18.9850, 72.8050], [18.9850, 72.8300], [19.0150, 72.8300], [19.0150, 72.8050]
-    ]
+      [
+        18.975,
+        72.804
+      ],
+      [
+        18.985,
+        72.805
+      ],
+      [
+        19.005,
+        72.812
+      ],
+      [
+        19.025,
+        72.815
+      ],
+      [
+        19.017,
+        72.831
+      ],
+      [
+        18.995,
+        72.831
+      ],
+      [
+        18.988,
+        72.824
+      ],
+      [
+        18.972,
+        72.816
+      ]
+    ],
+    "color": "#06B6D4",
+    "borderColor": "#0E7490",
+    "colorName": "Cyan Teal"
   },
   {
     "wardCode": "F/N",
@@ -134,14 +355,41 @@
     "wardOfficeAddress": "Plot No. 96, Margashirsha Marg, Wadala (W), Mumbai - 400031",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0275,
-    "centerLongitude": 72.8575,
+    "centerLatitude": 19.0304,
+    "centerLongitude": 72.8628,
     "assistantCommissioner": "Gajanan Bellale",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.845, 19.010, 72.870, 19.045],
+    "bbox": [
+      72.845,
+      19.01,
+      72.87,
+      19.045
+    ],
     "polygon": [
-      [19.0100, 72.8450], [19.0100, 72.8700], [19.0450, 72.8700], [19.0450, 72.8450]
-    ]
+      [
+        19.014,
+        72.842
+      ],
+      [
+        19.046,
+        72.855
+      ],
+      [
+        19.048,
+        72.875
+      ],
+      [
+        19.03,
+        72.88
+      ],
+      [
+        19.014,
+        72.862
+      ]
+    ],
+    "color": "#3B82F6",
+    "borderColor": "#1D4ED8",
+    "colorName": "Royal Blue"
   },
   {
     "wardCode": "G/N",
@@ -152,14 +400,49 @@
     "wardOfficeAddress": "Harishchandra Yelve Marg, Dadar (W), Mumbai - 400028",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0325,
-    "centerLongitude": 72.8350,
+    "centerLatitude": 19.0293,
+    "centerLongitude": 72.8426,
     "assistantCommissioner": "Prashant Sapkale",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.825, 19.015, 72.845, 19.050],
+    "bbox": [
+      72.825,
+      19.015,
+      72.845,
+      19.05
+    ],
     "polygon": [
-      [19.0150, 72.8250], [19.0150, 72.8450], [19.0500, 72.8450], [19.0500, 72.8250]
-    ]
+      [
+        19.017,
+        72.831
+      ],
+      [
+        19.028,
+        72.836
+      ],
+      [
+        19.04,
+        72.838
+      ],
+      [
+        19.046,
+        72.855
+      ],
+      [
+        19.042,
+        72.86
+      ],
+      [
+        19.018,
+        72.842
+      ],
+      [
+        19.014,
+        72.836
+      ]
+    ],
+    "color": "#10B981",
+    "borderColor": "#047857",
+    "colorName": "Emerald"
   },
   {
     "wardCode": "H/W",
@@ -170,14 +453,49 @@
     "wardOfficeAddress": "Second Hasnabad Lane, Khar (W), Mumbai - 400052",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0675,
-    "centerLongitude": 72.8275,
+    "centerLatitude": 19.0654,
+    "centerLongitude": 72.8307,
     "assistantCommissioner": "Vinayak Vispute",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.815, 19.050, 72.840, 19.085],
+    "bbox": [
+      72.815,
+      19.05,
+      72.84,
+      19.085
+    ],
     "polygon": [
-      [19.0500, 72.8150], [19.0500, 72.8400], [19.0850, 72.8400], [19.0850, 72.8150]
-    ]
+      [
+        19.042,
+        72.819
+      ],
+      [
+        19.065,
+        72.822
+      ],
+      [
+        19.075,
+        72.825
+      ],
+      [
+        19.088,
+        72.828
+      ],
+      [
+        19.088,
+        72.842
+      ],
+      [
+        19.055,
+        72.841
+      ],
+      [
+        19.045,
+        72.838
+      ]
+    ],
+    "color": "#8B5CF6",
+    "borderColor": "#6D28D9",
+    "colorName": "Purple"
   },
   {
     "wardCode": "H/E",
@@ -188,14 +506,45 @@
     "wardOfficeAddress": "TPS III, Prabhat Colony, Santacruz (E), Mumbai - 400055",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0675,
-    "centerLongitude": 72.8525,
+    "centerLatitude": 19.0695,
+    "centerLongitude": 72.8565,
     "assistantCommissioner": "Swapnaja Kshirsagar",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.840, 19.050, 72.865, 19.085],
+    "bbox": [
+      72.84,
+      19.05,
+      72.865,
+      19.085
+    ],
     "polygon": [
-      [19.0500, 72.8400], [19.0500, 72.8650], [19.0850, 72.8650], [19.0850, 72.8400]
-    ]
+      [
+        19.055,
+        72.841
+      ],
+      [
+        19.088,
+        72.842
+      ],
+      [
+        19.088,
+        72.862
+      ],
+      [
+        19.074,
+        72.868
+      ],
+      [
+        19.062,
+        72.872
+      ],
+      [
+        19.05,
+        72.854
+      ]
+    ],
+    "color": "#F59E0B",
+    "borderColor": "#B45309",
+    "colorName": "Amber Gold"
   },
   {
     "wardCode": "K/W",
@@ -206,14 +555,53 @@
     "wardOfficeAddress": "Paliram Road, Opp. Andheri Railway Station, Andheri (W), Mumbai - 400058",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1150,
-    "centerLongitude": 72.8250,
+    "centerLatitude": 19.1159,
+    "centerLongitude": 72.834,
     "assistantCommissioner": "Prithviraj Chauhan",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.805, 19.085, 72.845, 19.145],
+    "bbox": [
+      72.805,
+      19.085,
+      72.845,
+      19.145
+    ],
     "polygon": [
-      [19.0850, 72.8050], [19.0850, 72.8450], [19.1450, 72.8450], [19.1450, 72.8050]
-    ]
+      [
+        19.088,
+        72.828
+      ],
+      [
+        19.115,
+        72.822
+      ],
+      [
+        19.135,
+        72.812
+      ],
+      [
+        19.148,
+        72.831
+      ],
+      [
+        19.135,
+        72.848
+      ],
+      [
+        19.12,
+        72.846
+      ],
+      [
+        19.098,
+        72.843
+      ],
+      [
+        19.088,
+        72.842
+      ]
+    ],
+    "color": "#06B6D4",
+    "borderColor": "#0E7490",
+    "colorName": "Cyan Teal"
   },
   {
     "wardCode": "K/E",
@@ -224,14 +612,49 @@
     "wardOfficeAddress": "Azad Road, Gundavali, Andheri (E), Mumbai - 400069",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1150,
-    "centerLongitude": 72.8625,
+    "centerLatitude": 19.1137,
+    "centerLongitude": 72.8619,
     "assistantCommissioner": "Manish Valanju",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.845, 19.085, 72.880, 19.145],
+    "bbox": [
+      72.845,
+      19.085,
+      72.88,
+      19.145
+    ],
     "polygon": [
-      [19.0850, 72.8450], [19.0850, 72.8800], [19.1450, 72.8800], [19.1450, 72.8450]
-    ]
+      [
+        19.088,
+        72.842
+      ],
+      [
+        19.12,
+        72.846
+      ],
+      [
+        19.135,
+        72.848
+      ],
+      [
+        19.138,
+        72.872
+      ],
+      [
+        19.125,
+        72.885
+      ],
+      [
+        19.102,
+        72.878
+      ],
+      [
+        19.088,
+        72.862
+      ]
+    ],
+    "color": "#EC4899",
+    "borderColor": "#BE185D",
+    "colorName": "Rose Pink"
   },
   {
     "wardCode": "P/S",
@@ -242,14 +665,45 @@
     "wardOfficeAddress": "S.V. Road, Opp. Railway Station, Goregaon (W), Mumbai - 400104",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1600,
-    "centerLongitude": 72.8450,
+    "centerLatitude": 19.152,
+    "centerLongitude": 72.854,
     "assistantCommissioner": "Rajesh Akre",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.810, 19.145, 72.880, 19.175],
+    "bbox": [
+      72.81,
+      19.145,
+      72.88,
+      19.175
+    ],
     "polygon": [
-      [19.1450, 72.8100], [19.1450, 72.8800], [19.1750, 72.8800], [19.1750, 72.8100]
-    ]
+      [
+        19.148,
+        72.831
+      ],
+      [
+        19.168,
+        72.835
+      ],
+      [
+        19.168,
+        72.858
+      ],
+      [
+        19.155,
+        72.88
+      ],
+      [
+        19.138,
+        72.872
+      ],
+      [
+        19.135,
+        72.848
+      ]
+    ],
+    "color": "#F59E0B",
+    "borderColor": "#B45309",
+    "colorName": "Amber Gold"
   },
   {
     "wardCode": "P/N",
@@ -260,14 +714,53 @@
     "wardOfficeAddress": "Liberty Garden, Mamletdarwadi, Malad (W), Mumbai - 400064",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1900,
-    "centerLongitude": 72.8400,
+    "centerLatitude": 19.1705,
+    "centerLongitude": 72.8318,
     "assistantCommissioner": "Kiran Dighavkar",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.805, 19.175, 72.875, 19.205],
+    "bbox": [
+      72.805,
+      19.175,
+      72.875,
+      19.205
+    ],
     "polygon": [
-      [19.1750, 72.8050], [19.1750, 72.8750], [19.2050, 72.8750], [19.2050, 72.8050]
-    ]
+      [
+        19.135,
+        72.795
+      ],
+      [
+        19.175,
+        72.802
+      ],
+      [
+        19.198,
+        72.805
+      ],
+      [
+        19.185,
+        72.838
+      ],
+      [
+        19.185,
+        72.868
+      ],
+      [
+        19.17,
+        72.88
+      ],
+      [
+        19.168,
+        72.835
+      ],
+      [
+        19.148,
+        72.831
+      ]
+    ],
+    "color": "#10B981",
+    "borderColor": "#047857",
+    "colorName": "Emerald"
   },
   {
     "wardCode": "R/S",
@@ -278,14 +771,49 @@
     "wardOfficeAddress": "Mahatma Gandhi Road, Kandivali (W), Mumbai - 400067",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.2175,
-    "centerLongitude": 72.8350,
+    "centerLatitude": 19.2016,
+    "centerLongitude": 72.8447,
     "assistantCommissioner": "Lalmani Verma",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.800, 19.205, 72.870, 19.230],
+    "bbox": [
+      72.8,
+      19.205,
+      72.87,
+      19.23
+    ],
     "polygon": [
-      [19.2050, 72.8000], [19.2050, 72.8700], [19.2300, 72.8700], [19.2300, 72.8000]
-    ]
+      [
+        19.198,
+        72.805
+      ],
+      [
+        19.208,
+        72.818
+      ],
+      [
+        19.215,
+        72.838
+      ],
+      [
+        19.215,
+        72.868
+      ],
+      [
+        19.205,
+        72.878
+      ],
+      [
+        19.185,
+        72.868
+      ],
+      [
+        19.185,
+        72.838
+      ]
+    ],
+    "color": "#EC4899",
+    "borderColor": "#BE185D",
+    "colorName": "Rose Pink"
   },
   {
     "wardCode": "R/C",
@@ -296,14 +824,53 @@
     "wardOfficeAddress": "Chandavarkar Road, Borivali (W), Mumbai - 400092",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.2425,
-    "centerLongitude": 72.8325,
+    "centerLatitude": 19.2219,
+    "centerLongitude": 72.824,
     "assistantCommissioner": "Sandhya Nandedkar",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.790, 19.230, 72.875, 19.255],
+    "bbox": [
+      72.79,
+      19.23,
+      72.875,
+      19.255
+    ],
     "polygon": [
-      [19.2300, 72.7900], [19.2300, 72.8750], [19.2550, 72.8750], [19.2550, 72.7900]
-    ]
+      [
+        19.225,
+        72.775
+      ],
+      [
+        19.235,
+        72.788
+      ],
+      [
+        19.232,
+        72.825
+      ],
+      [
+        19.23,
+        72.858
+      ],
+      [
+        19.225,
+        72.875
+      ],
+      [
+        19.215,
+        72.868
+      ],
+      [
+        19.208,
+        72.818
+      ],
+      [
+        19.205,
+        72.785
+      ]
+    ],
+    "color": "#3B82F6",
+    "borderColor": "#1D4ED8",
+    "colorName": "Royal Blue"
   },
   {
     "wardCode": "R/N",
@@ -314,14 +881,45 @@
     "wardOfficeAddress": "C.S. Complex, Dahisar (E), Mumbai - 400068",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.2675,
-    "centerLongitude": 72.8625,
+    "centerLatitude": 19.2483,
+    "centerLongitude": 72.8483,
     "assistantCommissioner": "Navnath Ghadge",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.835, 19.255, 72.890, 19.280],
+    "bbox": [
+      72.835,
+      19.255,
+      72.89,
+      19.28
+    ],
     "polygon": [
-      [19.2550, 72.8350], [19.2550, 72.8900], [19.2800, 72.8900], [19.2800, 72.8350]
-    ]
+      [
+        19.245,
+        72.825
+      ],
+      [
+        19.255,
+        72.835
+      ],
+      [
+        19.268,
+        72.865
+      ],
+      [
+        19.255,
+        72.88
+      ],
+      [
+        19.235,
+        72.86
+      ],
+      [
+        19.232,
+        72.825
+      ]
+    ],
+    "color": "#F97316",
+    "borderColor": "#C2410C",
+    "colorName": "Saffron Orange"
   },
   {
     "wardCode": "M/W",
@@ -332,14 +930,41 @@
     "wardOfficeAddress": "Sharad Bhau Acharya Marg, Chembur, Mumbai - 400071",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0575,
-    "centerLongitude": 72.8950,
+    "centerLatitude": 19.04,
+    "centerLongitude": 72.8966,
     "assistantCommissioner": "Vishwas Mote",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.880, 19.040, 72.910, 19.075],
+    "bbox": [
+      72.88,
+      19.04,
+      72.91,
+      19.075
+    ],
     "polygon": [
-      [19.0400, 72.8800], [19.0400, 72.9100], [19.0750, 72.9100], [19.0750, 72.8800]
-    ]
+      [
+        19.05,
+        72.88
+      ],
+      [
+        19.062,
+        72.9
+      ],
+      [
+        19.058,
+        72.918
+      ],
+      [
+        19.015,
+        72.905
+      ],
+      [
+        19.015,
+        72.88
+      ]
+    ],
+    "color": "#3B82F6",
+    "borderColor": "#1D4ED8",
+    "colorName": "Royal Blue"
   },
   {
     "wardCode": "M/E",
@@ -350,14 +975,45 @@
     "wardOfficeAddress": "Madhukar Kadam Marg, Govandi, Mumbai - 400043",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0500,
-    "centerLongitude": 72.9350,
+    "centerLatitude": 19.0422,
+    "centerLongitude": 72.9283,
     "assistantCommissioner": "Alka Sasane",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.910, 19.025, 72.960, 19.075],
+    "bbox": [
+      72.91,
+      19.025,
+      72.96,
+      19.075
+    ],
     "polygon": [
-      [19.0250, 72.9100], [19.0250, 72.9600], [19.0750, 72.9600], [19.0750, 72.9100]
-    ]
+      [
+        19.058,
+        72.918
+      ],
+      [
+        19.068,
+        72.932
+      ],
+      [
+        19.055,
+        72.942
+      ],
+      [
+        19.042,
+        72.948
+      ],
+      [
+        19.015,
+        72.925
+      ],
+      [
+        19.015,
+        72.905
+      ]
+    ],
+    "color": "#F97316",
+    "borderColor": "#C2410C",
+    "colorName": "Saffron Orange"
   },
   {
     "wardCode": "L",
@@ -368,14 +1024,49 @@
     "wardOfficeAddress": "L.B.S. Marg, Near Kurla Railway Station, Kurla (W), Mumbai - 400070",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0875,
-    "centerLongitude": 72.8850,
+    "centerLatitude": 19.077,
+    "centerLongitude": 72.8819,
     "assistantCommissioner": "Dhanaji Giri",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.865, 19.060, 72.905, 19.115],
+    "bbox": [
+      72.865,
+      19.06,
+      72.905,
+      19.115
+    ],
     "polygon": [
-      [19.0600, 72.8650], [19.0600, 72.9050], [19.1150, 72.9050], [19.1150, 72.8650]
-    ]
+      [
+        19.05,
+        72.854
+      ],
+      [
+        19.062,
+        72.872
+      ],
+      [
+        19.07,
+        72.888
+      ],
+      [
+        19.108,
+        72.888
+      ],
+      [
+        19.115,
+        72.898
+      ],
+      [
+        19.082,
+        72.898
+      ],
+      [
+        19.052,
+        72.875
+      ]
+    ],
+    "color": "#10B981",
+    "borderColor": "#047857",
+    "colorName": "Emerald"
   },
   {
     "wardCode": "N",
@@ -386,14 +1077,45 @@
     "wardOfficeAddress": "Jawahar Road, Ghatkopar (E), Mumbai - 400077",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.0950,
-    "centerLongitude": 72.9225,
+    "centerLatitude": 19.089,
+    "centerLongitude": 72.9172,
     "assistantCommissioner": "Sanjay Kurhade",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.905, 19.075, 72.940, 19.115],
+    "bbox": [
+      72.905,
+      19.075,
+      72.94,
+      19.115
+    ],
     "polygon": [
-      [19.0750, 72.9050], [19.0750, 72.9400], [19.1150, 72.9400], [19.1150, 72.9050]
-    ]
+      [
+        19.08,
+        72.898
+      ],
+      [
+        19.088,
+        72.912
+      ],
+      [
+        19.108,
+        72.925
+      ],
+      [
+        19.108,
+        72.942
+      ],
+      [
+        19.075,
+        72.928
+      ],
+      [
+        19.075,
+        72.898
+      ]
+    ],
+    "color": "#8B5CF6",
+    "borderColor": "#6D28D9",
+    "colorName": "Purple"
   },
   {
     "wardCode": "S",
@@ -404,14 +1126,53 @@
     "wardOfficeAddress": "L.B.S. Marg, Near Bhandup Railway Station, Bhandup (W), Mumbai - 400078",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1350,
-    "centerLongitude": 72.9200,
+    "centerLatitude": 19.1295,
+    "centerLongitude": 72.9263,
     "assistantCommissioner": "Ajitkumar Ambi",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.880, 19.115, 72.960, 19.155],
+    "bbox": [
+      72.88,
+      19.115,
+      72.96,
+      19.155
+    ],
     "polygon": [
-      [19.1150, 72.8800], [19.1150, 72.9600], [19.1550, 72.9600], [19.1550, 72.8800]
-    ]
+      [
+        19.115,
+        72.898
+      ],
+      [
+        19.128,
+        72.905
+      ],
+      [
+        19.145,
+        72.915
+      ],
+      [
+        19.135,
+        72.935
+      ],
+      [
+        19.152,
+        72.935
+      ],
+      [
+        19.145,
+        72.955
+      ],
+      [
+        19.108,
+        72.942
+      ],
+      [
+        19.108,
+        72.925
+      ]
+    ],
+    "color": "#06B6D4",
+    "borderColor": "#0E7490",
+    "colorName": "Cyan Teal"
   },
   {
     "wardCode": "T",
@@ -422,13 +1183,40 @@
     "wardOfficeAddress": "Lala Devidayal Marg, Mulund (W), Mumbai - 400080",
     "officialSourceUrl": "https://portal.mcgm.gov.in/irj/portal/anonymous/BMC-on-Map-Wards-Offices",
     "sourceLastVerified": "2026-09-20",
-    "centerLatitude": 19.1775,
-    "centerLongitude": 72.9525,
+    "centerLatitude": 19.166,
+    "centerLongitude": 72.952,
     "assistantCommissioner": "Chakrapani Alle",
     "assistantCommissionerSource": "BMC Official Portal Ward Directory",
-    "bbox": [72.925, 19.155, 72.980, 19.200],
+    "bbox": [
+      72.925,
+      19.155,
+      72.98,
+      19.2
+    ],
     "polygon": [
-      [19.1550, 72.9250], [19.1550, 72.9800], [19.2000, 72.9800], [19.2000, 72.9250]
-    ]
+      [
+        19.152,
+        72.935
+      ],
+      [
+        19.175,
+        72.93
+      ],
+      [
+        19.188,
+        72.965
+      ],
+      [
+        19.17,
+        72.975
+      ],
+      [
+        19.145,
+        72.955
+      ]
+    ],
+    "color": "#10B981",
+    "borderColor": "#047857",
+    "colorName": "Emerald"
   }
 ]

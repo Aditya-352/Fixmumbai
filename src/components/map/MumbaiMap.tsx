@@ -22,10 +22,14 @@ import {
   Trees,
   Info,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  Globe,
+  Layers,
+  Search
 } from 'lucide-react';
 
 import wardsData from '@/data/mumbai-wards.json';
+import mumbaiPlaces from '@/data/mumbai-places.json';
 import type { AirQualityResponse, AqiCategory } from '@/lib/air-quality/types';
 
 export interface ReportMarker {
@@ -200,10 +204,48 @@ export default function MumbaiMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // --- SINGLE ACTIVE LAYER STATE (AQI | WARDS | GREEN DENSITY) ---
-  const [activeLayer, setActiveLayer] = useState<ActiveLayerType>('wards');
-  const [prevLayer, setPrevLayer] = useState<ActiveLayerType>('wards');
+  const [activeLayer, setActiveLayer] = useState<ActiveLayerType>('aqi');
+  const [prevLayer, setPrevLayer] = useState<ActiveLayerType>('aqi');
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // --- SEARCHED AREA AQI STATE ---
+  interface SearchedAqiItem {
+    name: string;
+    lat: number;
+    lng: number;
+    wardCode?: string;
+    value: number;
+    category: string;
+    pollutant: string;
+    stationName?: string;
+    isLoading?: boolean;
+  }
+
+  const [searchedLocation, setSearchedLocation] = useState<SearchedAqiItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close search suggestions on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtered places for autocomplete search
+  const filteredPlaces = searchQuery.trim()
+    ? mumbaiPlaces.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.wardCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.region.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 8)
+    : mumbaiPlaces.slice(0, 6);
 
   // Active selected report drawer state
   const [activeReport, setActiveReport] = useState<ReportMarker | null>(null);
@@ -214,6 +256,8 @@ export default function MumbaiMap({
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
   const LAYER_KEYS: ActiveLayerType[] = ['aqi', 'wards', 'green'];
+
+  const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
 
   // Handle smooth direction-aware layer transition
   const handleSwitchLayer = (nextLayer: ActiveLayerType) => {
@@ -233,8 +277,103 @@ export default function MumbaiMap({
     }, 350);
   };
 
+  const getAqiAdvisory = (category: string) => {
+    switch (category) {
+      case 'Good':
+        return 'Air quality is clean and satisfactory. Ideal conditions for outdoor civic activities!';
+      case 'Satisfactory':
+        return 'Air quality is acceptable. Minor discomfort may occur in highly sensitive individuals.';
+      case 'Moderate':
+        return 'May cause breathing discomfort to people with asthma, heart ailments, or respiratory conditions.';
+      case 'Poor':
+        return 'Breathing discomfort to most people on prolonged exposure. Sensitive groups should wear masks.';
+      case 'Very Poor':
+        return 'Can cause respiratory illness on prolonged exposure. Avoid strenuous outdoor physical exertion.';
+      case 'Severe':
+        return 'Health emergency: impacts healthy people and seriously affects those with pre-existing conditions.';
+      default:
+        return 'Air quality monitored via CPCB / AQICN official monitoring stations.';
+    }
+  };
+
+  const handleSelectLocation = (place: { name: string; lat: number; lng: number; wardCode?: string }) => {
+    if (activeLayer !== 'aqi') {
+      setActiveLayer('aqi');
+    }
+
+    let nearest = aqiStations[0] || MMR_AQI_STATIONS[0];
+    let minDist = Infinity;
+    for (const st of aqiStations) {
+      const d = Math.hypot(st.lat - place.lat, st.lng - place.lng);
+      if (d < minDist) {
+        minDist = d;
+        nearest = st;
+      }
+    }
+
+    const initialItem: SearchedAqiItem = {
+      name: place.name,
+      lat: place.lat,
+      lng: place.lng,
+      wardCode: place.wardCode,
+      value: nearest.value,
+      category: nearest.category,
+      pollutant: nearest.pollutant || 'PM2.5',
+      stationName: nearest.name,
+      isLoading: true
+    };
+
+    setSearchedLocation(initialItem);
+    setSearchQuery(place.name.replace(/^Ward\s+[A-Z0-9\/]+\s*\((.*?)\)/, '$1').split('(')[0].trim());
+    setShowSuggestions(false);
+    setCurrentCenter([place.lat, place.lng]);
+    setCurrentZoom(14);
+
+    fetch(`/api/air-quality?lat=${place.lat}&lon=${place.lng}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.aqi) {
+          setSearchedLocation((prev) => prev ? {
+            ...prev,
+            value: data.data.aqi.value,
+            category: data.data.aqi.category,
+            pollutant: data.data.aqi.dominantPollutant || prev.pollutant,
+            stationName: data.data.station?.name || prev.stationName,
+            isLoading: false
+          } : null);
+        } else {
+          setSearchedLocation((prev) => prev ? { ...prev, isLoading: false } : null);
+        }
+      })
+      .catch(() => {
+        setSearchedLocation((prev) => prev ? { ...prev, isLoading: false } : null);
+      });
+  };
+
+  const handleClearSearch = () => {
+    setSearchedLocation(null);
+    setSearchQuery('');
+    setShowSuggestions(false);
+    setCurrentCenter(center);
+    setCurrentZoom(zoom);
+  };
+
+  const [aqiStations, setAqiStations] = useState(MMR_AQI_STATIONS);
+
   useEffect(() => {
     setMounted(true);
+    let isMounted = true;
+    fetch('/api/air-quality?stations=true')
+      .then((r) => r.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.stations) && data.stations.length > 0) {
+          setAqiStations(data.stations);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -282,7 +421,53 @@ export default function MumbaiMap({
 
   // Dynamic Leaflet Imports
   const L = require('leaflet');
-  const { MapContainer, TileLayer, Marker, Popup, Polygon, Circle, useMap } = require('react-leaflet');
+  const { MapContainer, TileLayer, Marker, Popup, Polygon, Circle, Pane, useMap, useMapEvents } = require('react-leaflet');
+
+  if (typeof window !== 'undefined') {
+    (window as any).L = L;
+    try {
+      require('leaflet.heat');
+    } catch (e) {}
+  }
+
+  function AqiHeatmapLayer({ stations }: { stations: any[] }) {
+    const map = useMap();
+
+    useEffect(() => {
+      if (!map || !stations || stations.length === 0) return;
+      if (!(L as any).heatLayer) return;
+
+      const points = stations.map((st: any) => [
+        st.lat,
+        st.lng,
+        Math.min(1.0, Math.max(0.12, (st.value || 50) / 320)),
+      ]);
+
+      const heat = (L as any).heatLayer(points, {
+        radius: 65,
+        blur: 45,
+        maxZoom: 16,
+        max: 1.0,
+        minOpacity: 0.35,
+        gradient: {
+          0.0: '#10B981',  // Green (Good)
+          0.2: '#84CC16',  // Light Green / Lime (Satisfactory)
+          0.4: '#FBBF24',  // Yellow / Amber (Moderate)
+          0.6: '#F97316',  // Orange (Poor)
+          0.8: '#EF4444',  // Red (Very Poor)
+          1.0: '#7F1D1D',  // Deep Maroon (Severe)
+        },
+      });
+
+      heat.addTo(map);
+
+      return () => {
+        map.removeLayer(heat);
+      };
+    }, [map, stations]);
+
+    return null;
+  }
 
   function MapViewController({ center, zoom }: { center: [number, number]; zoom: number }) {
     const map = useMap();
@@ -291,6 +476,35 @@ export default function MumbaiMap({
         map.flyTo(center, zoom, { duration: 1.0 });
       }
     }, [center, zoom, map]);
+    return null;
+  }
+
+  function MapClickHandler() {
+    useMapEvents({
+      click(e: any) {
+        if (activeLayer === 'aqi') {
+          let closestName = `Mumbai Area (${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)})`;
+          let closestWard = '';
+          let minDist = Infinity;
+          for (const p of mumbaiPlaces) {
+            const d = Math.hypot(p.lat - e.latlng.lat, p.lng - e.latlng.lng);
+            if (d < minDist) {
+              minDist = d;
+              if (d < 0.035) {
+                closestName = p.name;
+                closestWard = p.wardCode;
+              }
+            }
+          }
+          handleSelectLocation({
+            name: closestName,
+            lat: e.latlng.lat,
+            lng: e.latlng.lng,
+            wardCode: closestWard
+          });
+        }
+      }
+    });
     return null;
   }
 
@@ -348,25 +562,59 @@ export default function MumbaiMap({
     });
   };
 
-  // Ward Badge Icon
-  const createWardBadgeIcon = (wardCode: string, index: number) => {
-    const isRed = index % 3 === 0 || wardCode.includes('K') || wardCode.includes('H');
-    const bgColor = isRed ? '#DD3333' : '#EAB308';
-    const textColor = isRed ? '#FFFFFF' : '#0F172A';
-    const label = wardCode.charAt(0);
+  // Searched Location AQI Pin Icon
+  const createSearchedLocationIcon = (category: string, value: number, name: string) => {
+    const config = AQI_CATEGORY_COLORS[category] || AQI_CATEGORY_COLORS['Moderate'];
+    const shortName = name.replace(/^Ward\s+[A-Z0-9\/]+\s*\((.*?)\)/, '$1').split('(')[0].trim();
+    const html = `
+      <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; transform: translate(-50%, -100%);">
+        <!-- Radar Pulse Ring -->
+        <div style="position: absolute; top: 12px; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; border-radius: 50%; background: ${config.bg}44; animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; pointer-events: none;"></div>
+        
+        <!-- Location & AQI Pill -->
+        <div style="background: rgba(15, 23, 42, 0.95); color: #FFFFFF; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 800; white-space: nowrap; margin-bottom: 5px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 1.5px solid rgba(255,255,255,0.3); display: flex; align-items: center; gap: 6px; backdrop-filter: blur(4px);">
+          <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📍 ${shortName}</span>
+          <span style="background: ${config.bg}; color: ${config.text}; padding: 1.5px 7px; border-radius: 9999px; font-weight: 900; font-size: 10.5px;">${value} AQI</span>
+        </div>
+
+        <!-- Main circular badge -->
+        <div style="width: 48px; height: 48px; border-radius: 50%; background-color: ${config.bg}; color: ${config.text}; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3.5px solid #FFFFFF; box-shadow: 0 8px 24px rgba(0,0,0,0.45);">
+          <span style="font-weight: 950; font-size: 16px; line-height: 1;">${value}</span>
+          <span style="font-size: 8px; font-weight: 900; opacity: 0.95; text-transform: uppercase; letter-spacing: 0.5px;">${category}</span>
+        </div>
+
+        <!-- Pointer triangle -->
+        <div style="width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 8px solid #FFFFFF; margin-top: -1px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));"></div>
+      </div>
+    `;
+    return L.divIcon({
+      className: 'searched-aqi-marker',
+      html,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+      popupAnchor: [0, -60]
+    });
+  };
+
+  // State-Style Ward Territory Badge Icon
+  const createWardBadgeIcon = (wardCode: string, wardName: string, color?: string, strokeColor?: string) => {
+    const bg = color || '#3B82F6';
+    const stroke = strokeColor || '#1D4ED8';
+    const cleanName = wardName.replace(/^Ward\s+[A-Z0-9\/]+\s*\((.*?)\)/, '$1').split(',')[0].trim();
 
     const html = `
-      <div style="background-color: ${bgColor}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid #FFFFFF; box-shadow: 0 4px 12px rgba(0,0,0,0.3); color: ${textColor}; font-weight: 900; font-size: 13px; font-family: system-ui, sans-serif;">
-        ${label}
+      <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(4px); padding: 2px 7px 2px 4px; border-radius: 9999px; border: 1.5px solid ${stroke}; box-shadow: 0 3px 10px rgba(0,0,0,0.18); font-family: system-ui, sans-serif; cursor: pointer; white-space: nowrap; transform: translate(-50%, -50%);">
+        <span style="background: ${bg}; color: #FFFFFF; font-weight: 900; font-size: 10px; padding: 1.5px 5px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">${wardCode}</span>
+        <span style="font-weight: 800; font-size: 10.5px; color: #1E293B; letter-spacing: -0.2px;">${cleanName}</span>
       </div>
     `;
 
     return L.divIcon({
       className: 'custom-ward-badge',
       html,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-      popupAnchor: [0, -16]
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+      popupAnchor: [0, -10]
     });
   };
 
@@ -394,76 +642,175 @@ export default function MumbaiMap({
 
   return (
     <div className={containerClasses} style={{ height: isFullscreen ? '100vh' : height }}>
-      {/* 1. CLEAN & PROPORTIONAL TOP-RIGHT FLOATING SEGMENTED CONTROL TOOLBAR */}
-      <div className="absolute top-4 right-4 z-[400] flex items-center gap-2 max-w-[96vw]">
-        {/* Connected Equal-Width Grid Segmented Layer Selector Container */}
-        <div className="relative grid grid-cols-3 w-[295px] sm:w-[395px] bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 shadow-xl text-xs sm:text-xs">
-          {/* Sliding Active Pill Indicator */}
-          <div
-            className="absolute top-1.5 bottom-1.5 rounded-xl bg-red-600 shadow-md shadow-red-600/30 transition-all duration-300 ease-out"
-            style={{
-              left: `calc(${activeIndex * 33.333}% + 6px)`,
-              width: `calc(33.333% - 12px)`
-            }}
-          />
+      {/* 1. TOP-RIGHT CONTROLS CONTAINER (TOOLBAR & SEARCH BAR DIRECTLY BELOW) */}
+      <div className="absolute top-4 right-4 z-[400] flex flex-col items-end gap-2.5 max-w-[96vw]">
+        {/* Row of Toolbar Buttons: Layer Selector, GPS, Streets/Satellite, Fullscreen */}
+        <div className="flex items-center gap-2">
+          {/* Connected Equal-Width Grid Segmented Layer Selector Container */}
+          <div className="relative grid grid-cols-3 w-[280px] sm:w-[360px] bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 shadow-xl text-xs sm:text-xs">
+            {/* Sliding Active Pill Indicator */}
+            <div
+              className="absolute top-1.5 bottom-1.5 rounded-xl bg-red-600 shadow-md shadow-red-600/30 transition-all duration-300 ease-out"
+              style={{
+                left: `calc(${activeIndex * 33.333}% + 6px)`,
+                width: `calc(33.333% - 12px)`
+              }}
+            />
 
-          {/* AQI Button */}
+            {/* AQI Button */}
+            <button
+              type="button"
+              onClick={() => handleSwitchLayer('aqi')}
+              className={`relative z-10 py-2.5 rounded-xl font-black transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-center ${
+                activeLayer === 'aqi' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              <Wind className="w-4 h-4 shrink-0" />
+              <span>AQI</span>
+            </button>
+
+            {/* Wards Button */}
+            <button
+              type="button"
+              onClick={() => handleSwitchLayer('wards')}
+              className={`relative z-10 py-2.5 rounded-xl font-black transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-center ${
+                activeLayer === 'wards' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              <Building2 className="w-4 h-4 shrink-0" />
+              <span>Wards</span>
+            </button>
+
+            {/* Green Density Button */}
+            <button
+              type="button"
+              onClick={() => handleSwitchLayer('green')}
+              className={`relative z-10 py-2.5 rounded-xl font-black transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-center ${
+                activeLayer === 'green' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              <Trees className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Green Density</span>
+              <span className="sm:hidden">Green</span>
+            </button>
+          </div>
+
+          {/* GPS Locate Me Button */}
           <button
             type="button"
-            onClick={() => handleSwitchLayer('aqi')}
-            className={`relative z-10 py-2.5 rounded-xl font-black transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-center ${
-              activeLayer === 'aqi' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
-            }`}
+            onClick={handleLocateUser}
+            className="p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl text-slate-700 hover:text-red-600 transition hover:scale-105 active:scale-95 shrink-0"
+            title="Locate My GPS Position"
           >
-            <Wind className="w-4 h-4 shrink-0" />
-            <span>AQI</span>
+            <LocateFixed className="w-4 h-4" />
           </button>
 
-          {/* Wards Button */}
+          {/* Basemap Toggle Button (Satellite / Streets) */}
           <button
             type="button"
-            onClick={() => handleSwitchLayer('wards')}
-            className={`relative z-10 py-2.5 rounded-xl font-black transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-center ${
-              activeLayer === 'wards' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
-            }`}
+            onClick={() => setMapStyle(mapStyle === 'satellite' ? 'streets' : 'satellite')}
+            className="p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl text-slate-700 hover:text-blue-600 transition hover:scale-105 active:scale-95 shrink-0 flex items-center gap-1.5 text-xs font-bold"
+            title={mapStyle === 'satellite' ? 'Switch to Street Map' : 'Switch to Satellite Imagery'}
           >
-            <Building2 className="w-4 h-4 shrink-0" />
-            <span>Wards</span>
+            <Globe className="w-4 h-4 text-blue-600" />
+            <span className="hidden md:inline">{mapStyle === 'satellite' ? 'Satellite' : 'Streets'}</span>
           </button>
 
-          {/* Green Density Button */}
+          {/* Fullscreen Button */}
           <button
             type="button"
-            onClick={() => handleSwitchLayer('green')}
-            className={`relative z-10 py-2.5 rounded-xl font-black transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-center ${
-              activeLayer === 'green' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
-            }`}
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl text-slate-700 hover:text-slate-900 transition hidden sm:flex items-center justify-center hover:scale-105 active:scale-95 shrink-0"
+            title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
           >
-            <Trees className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Green Density</span>
-            <span className="sm:hidden">Green</span>
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* GPS Locate Me Button */}
-        <button
-          type="button"
-          onClick={handleLocateUser}
-          className="p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl text-slate-700 hover:text-red-600 transition hover:scale-105 active:scale-95 shrink-0"
-          title="Locate My GPS Position"
-        >
-          <LocateFixed className="w-4 h-4" />
-        </button>
+        {/* FLOATING AREA SEARCH BAR (BELOW THE BUTTONS OF STREET / TOOLBAR) */}
+        <div ref={searchContainerRef} className="w-full sm:w-[360px] md:w-[420px]">
+          <div className="relative">
+            <div className="flex items-center bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-xl px-3 py-2.5 gap-2 transition-all focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Search area for AQI (e.g. Bandra, Worli)..."
+                className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 transition shrink-0"
+                  title="Clear Search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
 
-        {/* Fullscreen Button */}
-        <button
-          type="button"
-          onClick={() => setIsFullscreen(!isFullscreen)}
-          className="p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl text-slate-700 hover:text-slate-900 transition hidden sm:flex items-center justify-center hover:scale-105 active:scale-95 shrink-0"
-          title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
-        >
-          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </button>
+            {/* Autocomplete Suggestions Dropdown */}
+            {showSuggestions && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white/98 backdrop-blur-md rounded-2xl border border-slate-200 shadow-2xl overflow-hidden max-h-72 overflow-y-auto z-50 divide-y divide-slate-100 text-xs">
+                {!searchQuery && (
+                  <div className="p-2.5 bg-slate-50/80 border-b border-slate-100">
+                    <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5 px-1">
+                      Popular Areas in Mumbai
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {['Bandra', 'Andheri', 'Colaba', 'Worli', 'Dharavi', 'BKC', 'Powai', 'Chembur', 'Borivali'].map((quick) => (
+                        <button
+                          key={quick}
+                          type="button"
+                          onClick={() => {
+                            const match = mumbaiPlaces.find((p) => p.name.toLowerCase().includes(quick.toLowerCase()));
+                            if (match) handleSelectLocation(match);
+                          }}
+                          className="px-2 py-1 bg-white hover:bg-red-50 hover:text-red-600 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 transition"
+                        >
+                          {quick}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {filteredPlaces.length === 0 ? (
+                  <div className="p-3 text-center text-slate-400 text-xs font-semibold">
+                    No matching Mumbai locality found
+                  </div>
+                ) : (
+                  filteredPlaces.map((place, idx) => (
+                    <button
+                      key={`${place.name}-${idx}`}
+                      type="button"
+                      onClick={() => handleSelectLocation(place)}
+                      className="w-full text-left p-2.5 hover:bg-red-50/80 transition flex items-center justify-between group"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold text-slate-900 group-hover:text-red-600 transition truncate">
+                          {place.name.split('(')[0].trim()}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          {place.region} • Ward {place.wardCode}
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase group-hover:text-red-600 shrink-0">
+                        View AQI →
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 2. SHARED FIXED LEAFLET MAP CONTAINER */}
@@ -474,12 +821,29 @@ export default function MumbaiMap({
         style={{ height: '100%', width: '100%', zIndex: 1 }}
       >
         <MapViewController center={currentCenter} zoom={currentZoom} />
+        <MapClickHandler />
 
-        {/* Clean Base Tile Map */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | FixMumbai'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {/* Basemap: Satellite with Boundaries OR Clean Streets */}
+        {mapStyle === 'satellite' ? (
+          <>
+            <TileLayer
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={18}
+            />
+            <TileLayer
+              attribution='&copy; Esri'
+              url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+              opacity={0.65}
+              maxZoom={18}
+            />
+          </>
+        ) : (
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | FixMumbai'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        )}
 
         {/* GPS User Location Marker */}
         {userLocation && (
@@ -490,80 +854,183 @@ export default function MumbaiMap({
           </Marker>
         )}
 
-        {/* LAYER A: AQI MONITORING STATIONS */}
-        {activeLayer === 'aqi' && MMR_AQI_STATIONS.map((st) => (
-          <Marker
-            key={st.id}
-            position={[st.lat, st.lng]}
-            icon={createAqiStationIcon(st.category, st.value)}
-          >
-            <Popup className="fixmumbai-leaflet-popup">
-              <div className="p-2 space-y-2 max-w-[240px] text-slate-900 font-sans">
-                <div className="flex items-center justify-between border-b pb-1.5 border-slate-100">
-                  <div>
-                    <div className="font-extrabold text-sm text-slate-900">{st.name}</div>
-                    <div className="text-[10px] text-slate-500 font-semibold">{st.area}</div>
-                  </div>
-                  <span
-                    className="text-xs font-black px-2.5 py-1 rounded-full text-white shadow-sm"
-                    style={{ backgroundColor: AQI_CATEGORY_COLORS[st.category]?.bg || '#EAB308' }}
-                  >
-                    {st.value}
-                  </span>
-                </div>
+        {/* LAYER A: AQI MONITORING STATIONS & CONTINUOUS ATMOSPHERE HEATMAP */}
+        {activeLayer === 'aqi' && (
+          <>
+            {/* Canvas Gaussian Interpolation Layer */}
+            <AqiHeatmapLayer stations={aqiStations} />
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-slate-600 bg-slate-50 p-2 rounded-xl">
-                  <div>
-                    <span className="text-[9px] text-slate-400 font-bold uppercase block">AQI CATEGORY</span>
-                    <span className="font-black text-slate-900">{st.category}</span>
+            {/* WAQI Live Regional Tile Layer */}
+            <TileLayer
+              url="https://tiles.waqi.info/tiles/usepa-aqi/{z}/{x}/{y}.png?token=ce2f660cae929992e09e31bf639a42e8d1dde4e4"
+              opacity={0.55}
+              zIndex={360}
+            />
+
+            {/* Gaussian Atmosphere Plume Discs per Station */}
+            <Pane name="aqi-heat" style={{ zIndex: 350 }}>
+              {aqiStations.map((st) => {
+                const color = AQI_CATEGORY_COLORS[st.category]?.bg || '#EAB308';
+                return (
+                  <React.Fragment key={`plume-${st.id}`}>
+                    <Circle
+                      center={[st.lat, st.lng]}
+                      radius={16000}
+                      pathOptions={{
+                        fillColor: color,
+                        fillOpacity: 0.22,
+                        stroke: false,
+                      }}
+                    />
+                    <Circle
+                      center={[st.lat, st.lng]}
+                      radius={8000}
+                      pathOptions={{
+                        fillColor: color,
+                        fillOpacity: 0.35,
+                        stroke: false,
+                      }}
+                    />
+                  </React.Fragment>
+                );
+              })}
+            </Pane>
+
+            {/* ONLY DISPLAY PIN FOR THE PARTICULAR SEARCHED AREA */}
+            {searchedLocation && (
+              <Marker
+                position={[searchedLocation.lat, searchedLocation.lng]}
+                icon={createSearchedLocationIcon(searchedLocation.category, searchedLocation.value, searchedLocation.name)}
+              >
+                <Popup className="fixmumbai-leaflet-popup" autoPan={true}>
+                  <div className="p-2 space-y-2 max-w-[250px] text-slate-900 font-sans">
+                    <div className="flex items-center justify-between border-b pb-1.5 border-slate-100">
+                      <div>
+                        <div className="font-extrabold text-sm text-slate-900">{searchedLocation.name}</div>
+                        {searchedLocation.wardCode && (
+                          <div className="text-[10px] text-slate-500 font-semibold">Ward {searchedLocation.wardCode}</div>
+                        )}
+                      </div>
+                      <span
+                        className="text-xs font-black px-2.5 py-1 rounded-full text-white shadow-sm"
+                        style={{ backgroundColor: AQI_CATEGORY_COLORS[searchedLocation.category]?.bg || '#EAB308' }}
+                      >
+                        {searchedLocation.value}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-slate-600 bg-slate-50 p-2 rounded-xl">
+                      <div>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase block">AQI CATEGORY</span>
+                        <span className="font-black text-slate-900">{searchedLocation.category}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase block">PRIMARY POLLUTANT</span>
+                        <span className="font-black text-slate-900">{searchedLocation.pollutant}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-600 bg-amber-50/70 p-2 rounded-lg font-medium">
+                      {getAqiAdvisory(searchedLocation.category)}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="w-full text-center py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-lg transition"
+                    >
+                      Clear Area Marker
+                    </button>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-slate-400 font-bold uppercase block">PRIMARY POLLUTANT</span>
-                    <span className="font-black text-slate-900">{st.pollutant}</span>
-                  </div>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+                </Popup>
+              </Marker>
+            )}
+          </>
+        )}
 
         {/* LAYER B: 24 BMC WARDS BOUNDARIES & CENTROID BADGES */}
-        {activeLayer === 'wards' && wardsData.map((w, idx) => (
-          <React.Fragment key={w.wardCode}>
-            <Polygon
-              positions={w.polygon || [[w.bbox[1], w.bbox[0]], [w.bbox[3], w.bbox[0]], [w.bbox[3], w.bbox[2]], [w.bbox[1], w.bbox[2]]]}
-              pathOptions={{
-                color: '#DD3333',
-                weight: 2,
-                opacity: 0.85,
-                fillColor: '#EF4444',
-                fillOpacity: 0.05
-              }}
-            >
-              <Popup className="fixmumbai-leaflet-popup">
-                <div className="p-2 space-y-1 font-sans text-xs max-w-[240px]">
-                  <div className="text-[10px] font-black text-red-600 uppercase tracking-wider">{w.regionZone} • BMC WARD {w.wardCode}</div>
-                  <div className="font-extrabold text-sm text-slate-900 leading-tight">{w.wardName}</div>
-                  <div className="text-slate-600 text-[11px] font-semibold pt-1">Assistant Commissioner:</div>
-                  <div className="text-slate-900 font-bold text-xs">{w.assistantCommissioner}</div>
-                  <div className="text-slate-400 text-[10px] border-t border-slate-100 pt-1 mt-1 truncate">{w.wardOfficeName}</div>
-                </div>
-              </Popup>
-            </Polygon>
+        {activeLayer === 'wards' && wardsData.map((w: any) => {
+          const wardFill = w.color || '#3B82F6';
+          const wardStroke = w.borderColor || '#1D4ED8';
 
-            <Marker
-              position={[w.centerLatitude, w.centerLongitude]}
-              icon={createWardBadgeIcon(w.wardCode, idx)}
-            >
-              <Popup className="fixmumbai-leaflet-popup">
-                <div className="p-1 text-center font-sans text-xs">
-                  <div className="font-black text-red-600 uppercase">BMC WARD {w.wardCode}</div>
-                  <div className="font-bold text-slate-900">{w.wardName}</div>
-                </div>
-              </Popup>
-            </Marker>
-          </React.Fragment>
-        ))}
+          return (
+            <React.Fragment key={w.wardCode}>
+              <Polygon
+                positions={w.polygon || [[w.bbox[1], w.bbox[0]], [w.bbox[3], w.bbox[0]], [w.bbox[3], w.bbox[2]], [w.bbox[1], w.bbox[2]]]}
+                pathOptions={{
+                  color: wardStroke,
+                  weight: 2.5,
+                  opacity: 0.95,
+                  fillColor: wardFill,
+                  fillOpacity: 0.22,
+                  dashArray: '5, 3'
+                }}
+                eventHandlers={{
+                  mouseover: (e: any) => {
+                    const layer = e.target;
+                    layer.setStyle({
+                      fillOpacity: 0.45,
+                      weight: 4,
+                      color: '#0F172A',
+                      dashArray: ''
+                    });
+                  },
+                  mouseout: (e: any) => {
+                    const layer = e.target;
+                    layer.setStyle({
+                      fillOpacity: 0.22,
+                      weight: 2.5,
+                      color: wardStroke,
+                      dashArray: '5, 3'
+                    });
+                  },
+                  click: () => {
+                    setCurrentCenter([w.centerLatitude, w.centerLongitude]);
+                    setCurrentZoom(13);
+                  }
+                }}
+              >
+                <Popup className="fixmumbai-leaflet-popup">
+                  <div className="p-2 space-y-1.5 font-sans text-xs max-w-[260px]">
+                    <div className="flex items-center justify-between border-b pb-1 border-slate-100">
+                      <span
+                        className="text-[10px] font-black uppercase px-2 py-0.5 rounded text-white shadow-xs"
+                        style={{ backgroundColor: wardStroke }}
+                      >
+                        {w.regionZone} • WARD {w.wardCode}
+                      </span>
+                    </div>
+                    <div className="font-black text-sm text-slate-900 leading-tight pt-0.5">{w.wardName}</div>
+                    <div className="text-slate-600 text-[11px] pt-0.5">
+                      <span className="font-semibold text-slate-500">Asst. Commissioner: </span>
+                      <span className="font-bold text-slate-800">{w.assistantCommissioner}</span>
+                    </div>
+                    <div className="text-slate-400 text-[10px] border-t border-slate-100 pt-1 mt-1 truncate">
+                      🏢 {w.wardOfficeName}
+                    </div>
+                  </div>
+                </Popup>
+              </Polygon>
+
+              <Marker
+                position={[w.centerLatitude, w.centerLongitude]}
+                icon={createWardBadgeIcon(w.wardCode, w.wardName, wardFill, wardStroke)}
+              >
+                <Popup className="fixmumbai-leaflet-popup">
+                  <div className="p-1.5 text-center font-sans text-xs">
+                    <span
+                      className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded text-white mb-1"
+                      style={{ backgroundColor: wardStroke }}
+                    >
+                      BMC WARD {w.wardCode}
+                    </span>
+                    <div className="font-bold text-slate-900">{w.wardName}</div>
+                  </div>
+                </Popup>
+              </Marker>
+            </React.Fragment>
+          );
+        })}
 
         {/* LAYER C: GREEN DENSITY CANOPY POLYGONS & ZONE MARKERS */}
         {activeLayer === 'green' && GREEN_DENSITY_ZONES.map((zone) => (
@@ -673,13 +1140,34 @@ export default function MumbaiMap({
       <div className="absolute bottom-6 left-6 z-[400] max-w-[280px] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-2xl p-3.5 space-y-2 transition-all duration-300">
         {/* AQI LEGEND */}
         {activeLayer === 'aqi' && (
-          <div className="space-y-2 animate-fadeIn text-xs">
+          <div className="space-y-2.5 animate-fadeIn text-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <span className="font-black text-slate-900 flex items-center gap-1.5">
-                <Wind className="w-4 h-4 text-emerald-600" /> CPCB AQI Scale
+                <Wind className="w-4 h-4 text-emerald-600" /> Air Quality Atmosphere
               </span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">MMR Region</span>
+              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Live Heatmap
+              </span>
             </div>
+
+            {/* Continuous Color Gradient Bar (Google Maps AQI Style) */}
+            <div className="space-y-1">
+              <div
+                className="h-3 w-full rounded-full shadow-inner border border-black/10"
+                style={{
+                  background: 'linear-gradient(to right, #10B981 0%, #84CC16 18%, #EAB308 36%, #F97316 60%, #EF4444 80%, #7F1D1D 100%)'
+                }}
+              />
+              <div className="flex justify-between text-[9px] font-extrabold text-slate-500 px-0.5">
+                <span>0 (Good)</span>
+                <span>100</span>
+                <span>200</span>
+                <span>300</span>
+                <span>400</span>
+                <span>500+</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
               {Object.entries(AQI_CATEGORY_COLORS).map(([cat, config]) => (
                 <div key={cat} className="flex items-center gap-1.5 p-1 rounded-lg bg-slate-50">
@@ -696,13 +1184,26 @@ export default function MumbaiMap({
           <div className="space-y-2 animate-fadeIn text-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <span className="font-black text-slate-900 flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-red-600" /> BMC Ward Outlines
+                <Building2 className="w-4 h-4 text-blue-600" /> Administrative Wards
               </span>
-              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">24 Wards</span>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                24 Territories
+              </span>
             </div>
             <p className="text-[11px] text-slate-600 leading-snug font-medium">
-              Polygons demarcate Mumbai&apos;s 24 Administrative Wards (A to T) with centroid ward commissioner codes.
+              Political atlas division of Mumbai into 24 BMC administrative territories with distinct state-style borders.
             </p>
+            <div className="grid grid-cols-3 gap-1 pt-0.5 text-[10px] font-bold text-center">
+              <div className="bg-blue-50 text-blue-800 p-1 rounded-lg border border-blue-100">
+                Island City<br/><span className="text-[9px] font-normal text-blue-600">A to G</span>
+              </div>
+              <div className="bg-purple-50 text-purple-800 p-1 rounded-lg border border-purple-100">
+                Western<br/><span className="text-[9px] font-normal text-purple-600">H/W to R/N</span>
+              </div>
+              <div className="bg-emerald-50 text-emerald-800 p-1 rounded-lg border border-emerald-100">
+                Eastern<br/><span className="text-[9px] font-normal text-emerald-600">L to T</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -773,6 +1274,72 @@ export default function MumbaiMap({
               VIEW COMPLAINT FILE
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* 5. SEARCHED LOCATION AQI DETAIL FLOATING CARD */}
+      {searchedLocation && !activeReport && (
+        <div className="absolute bottom-6 right-6 z-[450] sm:max-w-sm w-[90vw] sm:w-[360px] bg-white/98 backdrop-blur-md rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-5 space-y-3 animate-slideUp">
+          <div className="flex items-start justify-between border-b border-slate-100 pb-2.5">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-red-600 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-100">
+                  Searched Area AQI
+                </span>
+                {searchedLocation.wardCode && (
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                    Ward {searchedLocation.wardCode}
+                  </span>
+                )}
+              </div>
+              <h3 className="text-base font-black text-slate-900 leading-snug">{searchedLocation.name}</h3>
+            </div>
+            <button
+              onClick={handleClearSearch}
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              title="Clear Search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+            <div
+              className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center text-white shrink-0 shadow-md"
+              style={{ backgroundColor: AQI_CATEGORY_COLORS[searchedLocation.category]?.bg || '#EAB308' }}
+            >
+              <span className="text-xl font-black leading-none">{searchedLocation.value}</span>
+              <span className="text-[8.5px] font-extrabold uppercase mt-0.5 tracking-wider">AQI</span>
+            </div>
+            <div className="space-y-0.5">
+              <div
+                className="text-xs font-black uppercase tracking-wide"
+                style={{ color: AQI_CATEGORY_COLORS[searchedLocation.category]?.bg || '#EAB308' }}
+              >
+                {searchedLocation.category}
+              </div>
+              <p className="text-[11px] text-slate-600 font-medium">
+                Primary Pollutant: <span className="font-bold text-slate-800">{searchedLocation.pollutant || 'PM2.5'}</span>
+              </p>
+              {searchedLocation.stationName && (
+                <p className="text-[10px] text-slate-400 truncate max-w-[200px]">
+                  Sensor: {searchedLocation.stationName}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-600 bg-amber-50/70 border border-amber-100/70 p-2.5 rounded-xl font-medium leading-relaxed">
+            {getAqiAdvisory(searchedLocation.category)}
+          </p>
+
+          <button
+            type="button"
+            onClick={handleClearSearch}
+            className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition text-center shadow-sm"
+          >
+            Clear Pin & Return to Mumbai Overview
+          </button>
         </div>
       )}
     </div>
