@@ -195,6 +195,8 @@ model ResolutionEvidence {
   actorRole       String
   latitude        Float?
   longitude       Float?
+  distanceMeters  Float?
+  locationMismatch Boolean @default(false)
 }
 
 model CitizenVerification {
@@ -205,6 +207,9 @@ model CitizenVerification {
   rating            Int?
   comments          String?
   evidencePhotoPath String?
+  citizenLatitude   Float?
+  citizenLongitude  Float?
+  distanceMeters    Float?
   timestamp         DateTime @default(now())
 }
 

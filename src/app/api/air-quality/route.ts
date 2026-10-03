@@ -1,23 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAirQualityForLocation } from '@/lib/air-quality/normalizer';
+import { getAirQualityForLocation, getLiveAqiStationsForMap } from '@/lib/air-quality/normalizer';
 import { AirQualityServiceError } from '@/lib/air-quality/types';
 
 /**
  * GET /api/air-quality?lat=<latitude>&lon=<longitude>
+ * or
+ * GET /api/air-quality?stations=true
  *
  * Returns the best available air quality information near the given point,
- * scoped strictly to the Mumbai service area for this phase. CPCB (via
- * data.gov.in) is treated as the primary, authoritative source; OpenAQ is
- * supplementary. The two are never averaged or merged into one number.
+ * or live monitoring stations across Mumbai/MMR.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  const stationsOnly = searchParams.get('stations') === 'true';
+
+  if (stationsOnly) {
+    try {
+      const stations = await getLiveAqiStationsForMap();
+      return NextResponse.json(
+        { success: true, stations },
+        { headers: { 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300' } }
+      );
+    } catch (err) {
+      console.error('[air-quality] Error loading live stations:', err);
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch live monitoring stations' },
+        { status: 500 }
+      );
+    }
+  }
+
   const lat = searchParams.get('lat');
   const lon = searchParams.get('lon');
 
   if (lat === null || lon === null) {
     return NextResponse.json(
-      { success: false, error: 'Both lat and lon query parameters are required.' },
+      { success: false, error: 'Both lat and lon query parameters are required, or pass ?stations=true' },
       { status: 400 }
     );
   }
