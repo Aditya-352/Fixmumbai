@@ -25,7 +25,9 @@ import {
   ShieldAlert,
   Globe,
   Layers,
-  Search
+  Search,
+  HeartPulse,
+  ChevronDown
 } from 'lucide-react';
 
 import wardsData from '@/data/mumbai-wards.json';
@@ -255,6 +257,17 @@ export default function MumbaiMap({
   const [currentZoom, setCurrentZoom] = useState<number>(zoom);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
+  interface UserLocationAqi {
+    value: number;
+    category: string;
+    dominantPollutant?: string;
+    stationName?: string;
+    isLoading?: boolean;
+  }
+  const [userAqi, setUserAqi] = useState<UserLocationAqi | null>(null);
+  const [showHealthImpact, setShowHealthImpact] = useState(false);
+  const userMarkerRef = useRef<any>(null);
+
   const LAYER_KEYS: ActiveLayerType[] = ['aqi', 'wards', 'green'];
 
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
@@ -280,6 +293,18 @@ export default function MumbaiMap({
     setPrevLayer(activeLayer);
     setActiveLayer(nextLayer);
 
+    if (nextLayer === 'aqi') {
+      if (userLocation) {
+        setTimeout(() => {
+          if (userMarkerRef.current) {
+            userMarkerRef.current.openPopup();
+          }
+        }, 300);
+      } else {
+        requestLocationAndProvideAqi(false);
+      }
+    }
+
     setTimeout(() => {
       setIsTransitioning(false);
     }, 350);
@@ -301,6 +326,75 @@ export default function MumbaiMap({
         return 'Health emergency: impacts healthy people and seriously affects those with pre-existing conditions.';
       default:
         return 'Air quality monitored via CPCB / AQICN official monitoring stations.';
+    }
+  };
+
+  const getAqiHealthImpact = (category: string) => {
+    switch (category) {
+      case 'Good':
+        return {
+          summary: 'Minimal health impact. Air quality is clean and satisfactory, posing virtually no threat to respiratory health.',
+          whoIsAtRisk: 'None. Safe for all demographic groups including children and elderly.',
+          recommendations: [
+            'Ideal conditions for outdoor runs, cycling, and sports.',
+            'Keep home windows open for natural fresh ventilation.'
+          ]
+        };
+      case 'Satisfactory':
+        return {
+          summary: 'Minor breathing discomfort to sensitive individuals on prolonged exposure.',
+          whoIsAtRisk: 'People with unusually sensitive lungs or chronic bronchial conditions.',
+          recommendations: [
+            'Safe for most outdoor civic routines and commutes.',
+            'Unusually sensitive individuals should monitor any throat dryness.'
+          ]
+        };
+      case 'Moderate':
+        return {
+          summary: 'May cause breathing discomfort to people with asthma, heart ailments, or respiratory conditions.',
+          whoIsAtRisk: 'Children, seniors, and citizens with asthma or cardiovascular conditions.',
+          recommendations: [
+            'Sensitive individuals should reduce prolonged heavy outdoor exertion.',
+            'Keep prescribed rescue inhalers accessible.',
+            'Consider wearing a light protective mask near congested traffic corridors.'
+          ]
+        };
+      case 'Poor':
+        return {
+          summary: 'Breathing discomfort to most people on prolonged exposure; severe impact on sensitive groups.',
+          whoIsAtRisk: 'General public, pregnant women, young children, and elderly citizens.',
+          recommendations: [
+            'Wear an N95/N99 anti-pollution mask when stepping outside.',
+            'Avoid heavy morning jogs along congested highways and arterial roads.',
+            'Keep windows and doors closed during peak traffic hours.'
+          ]
+        };
+      case 'Very Poor':
+        return {
+          summary: 'Can cause respiratory illness on prolonged exposure. Significant risk to public health.',
+          whoIsAtRisk: 'Everyone, especially those with preexisting asthma, bronchitis, or COPD.',
+          recommendations: [
+            'Avoid all strenuous outdoor physical exercises and sports.',
+            'Wear certified particulate respirators (N95) whenever outside.',
+            'Run indoor air purifiers and seal draft gaps.'
+          ]
+        };
+      case 'Severe':
+        return {
+          summary: 'Health emergency. Triggers serious respiratory and cardiovascular distress even in healthy people.',
+          whoIsAtRisk: 'Entire population is at severe health risk.',
+          recommendations: [
+            'Remain strictly indoors with windows tightly sealed.',
+            'Avoid all unnecessary outdoor travel.',
+            'Consult a physician immediately if experiencing shortness of breath.'
+          ]
+        };
+      default:
+        return {
+          summary: 'Air quality monitored via CPCB/OpenWeather atmospheric sensors.',
+          whoIsAtRisk: 'General public.',
+          recommendations: ['Follow local public health advisories.']
+        };
     }
   };
 
@@ -395,21 +489,90 @@ export default function MumbaiMap({
     }
   }, [selectedReportId, reports]);
 
-  const handleLocateUser = () => {
-    if (!('geolocation' in navigator)) return;
+  // Shared Geolocation & Live AQI Resolver
+  const requestLocationAndProvideAqi = (showPromptOnError: boolean = false) => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      if (showPromptOnError) {
+        alert('GPS Geolocation is not supported by your browser.');
+      }
+      return;
+    }
+
+    if (activeLayer !== 'aqi') {
+      handleSwitchLayer('aqi');
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
         setUserLocation(coords);
         setCurrentCenter(coords);
         setCurrentZoom(14);
+
+        // Instant nearest station estimate
+        const currentStations = aqiStations.length > 0 ? aqiStations : MMR_AQI_STATIONS;
+        let nearest = currentStations[0];
+        let minDist = Infinity;
+        for (const st of currentStations) {
+          const d = Math.hypot(st.lat - coords[0], st.lng - coords[1]);
+          if (d < minDist) {
+            minDist = d;
+            nearest = st;
+          }
+        }
+
+        setUserAqi({
+          value: nearest.value,
+          category: nearest.category,
+          dominantPollutant: nearest.pollutant || 'PM2.5',
+          stationName: nearest.name,
+          isLoading: true
+        });
+
+        // Fetch real-time OpenWeather / AQICN atmospheric coordinates endpoint
+        fetch(`/api/air-quality?lat=${coords[0]}&lon=${coords[1]}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success && data.data?.aqi) {
+              setUserAqi({
+                value: data.data.aqi.value,
+                category: data.data.aqi.category,
+                dominantPollutant: data.data.aqi.dominantPollutant || 'PM2.5',
+                stationName: data.data.station?.name,
+                isLoading: false
+              });
+            } else {
+              setUserAqi((prev) => prev ? { ...prev, isLoading: false } : null);
+            }
+          })
+          .catch(() => {
+            setUserAqi((prev) => prev ? { ...prev, isLoading: false } : null);
+          });
       },
-      () => {
-        alert('Could not determine GPS location.');
+      (err) => {
+        if (showPromptOnError) {
+          alert('Could not determine GPS location: ' + err.message);
+        } else {
+          console.info('Auto-geolocation on AQI map open:', err.message);
+        }
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
+
+  const handleLocateUser = () => {
+    requestLocationAndProvideAqi(true);
+  };
+
+  // Auto-ask location when AQI map opens
+  const hasAutoRequestedLocation = useRef(false);
+
+  useEffect(() => {
+    if (mounted && activeLayer === 'aqi' && !hasAutoRequestedLocation.current) {
+      hasAutoRequestedLocation.current = true;
+      requestLocationAndProvideAqi(false);
+    }
+  }, [mounted, activeLayer]);
 
   if (!mounted) {
     return (
@@ -526,6 +689,18 @@ export default function MumbaiMap({
     return null;
   }
 
+  function UserPopupAutoOpener({ markerRef, trigger }: { markerRef: any; trigger: any }) {
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        if (markerRef.current) {
+          markerRef.current.openPopup();
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    }, [trigger, markerRef]);
+    return null;
+  }
+
   // Marker Icon Generator for Reports
   const createReportIcon = (status: string, isSelected: boolean = false) => {
     const isResolved = status === 'VERIFIED' || status === 'RESOLUTION_SUBMITTED';
@@ -634,19 +809,21 @@ export default function MumbaiMap({
     });
   };
 
-  // User Location Pulsing Dot Icon
-  const createUserLocationIcon = () => {
+  // User Location Pulsing Dot Icon with AQI Color
+  const createUserLocationIcon = (category?: string) => {
+    const config = (category && AQI_CATEGORY_COLORS[category]) ? AQI_CATEGORY_COLORS[category] : { bg: '#2563EB', text: '#FFFFFF', range: '' };
     const html = `
-      <div style="position: relative; width: 24px; height: 24px;">
-        <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: rgba(59, 130, 246, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-        <div style="position: relative; width: 16px; height: 16px; top: 4px; left: 4px; border-radius: 50%; background-color: #2563EB; border: 3px solid #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+      <div style="position: relative; width: 28px; height: 28px;">
+        <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background-color: ${config.bg}55; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+        <div style="position: relative; width: 18px; height: 18px; top: 5px; left: 5px; border-radius: 50%; background-color: ${config.bg}; border: 3px solid #FFFFFF; box-shadow: 0 3px 10px rgba(0,0,0,0.35);"></div>
       </div>
     `;
     return L.divIcon({
       className: 'user-location-marker',
       html,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -16]
     });
   };
 
@@ -841,6 +1018,7 @@ export default function MumbaiMap({
         <MapViewController center={currentCenter} zoom={currentZoom} />
         <MapClickHandler />
         <LayerTransitionController layer={activeLayer} />
+        {activeLayer === 'aqi' && userLocation && <UserPopupAutoOpener markerRef={userMarkerRef} trigger={userAqi} />}
 
         {/* Basemap: Satellite with Boundaries OR Clean Streets */}
         {mapStyle === 'satellite' ? (
@@ -864,11 +1042,186 @@ export default function MumbaiMap({
           />
         )}
 
-        {/* GPS User Location Marker */}
+        {/* GPS User Location Marker with Live AQI & Good/Bad Scale */}
         {userLocation && (
-          <Marker position={userLocation} icon={createUserLocationIcon()}>
-            <Popup className="fixmumbai-leaflet-popup">
-              <div className="p-1 font-bold text-xs text-blue-700">Your GPS Location</div>
+          <Marker
+            ref={userMarkerRef}
+            position={userLocation}
+            icon={createUserLocationIcon(activeLayer === 'aqi' ? userAqi?.category : undefined)}
+          >
+            <Popup className="fixmumbai-leaflet-popup" autoPan={true} maxWidth={320}>
+              <div className="p-1 space-y-2.5 text-slate-900 font-sans min-w-[245px] max-w-[290px]">
+                {/* Header with GPS indicator */}
+                <div className="flex items-center justify-between border-b pb-1.5 border-slate-100">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <LocateFixed className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                    <span>Your GPS Location</span>
+                  </div>
+                  {activeLayer === 'aqi' && userAqi?.isLoading && (
+                    <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full animate-pulse">
+                      Updating...
+                    </span>
+                  )}
+                </div>
+
+                {/* AQI Score, Category, Scale & Health guidance - ONLY shown on AQI layer */}
+                {activeLayer === 'aqi' ? (
+                  (() => {
+                    const val = userAqi?.value ?? 140;
+                    const cat = userAqi?.category ?? (val > 200 ? 'Poor' : val > 100 ? 'Moderate' : 'Good');
+                    const col = AQI_CATEGORY_COLORS[cat] || { bg: '#F97316', text: '#FFFFFF', range: '' };
+                    const healthInfo = getAqiHealthImpact(cat);
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between gap-3 bg-slate-50/90 p-2.5 rounded-2xl border border-slate-100">
+                          <div className="space-y-0.5">
+                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                              Live Reading
+                            </div>
+                            <div className="text-sm font-black text-slate-900">
+                              Air quality: <span style={{ color: col.bg }}>{cat}</span>
+                            </div>
+                            {userAqi?.dominantPollutant && (
+                              <div className="text-[10px] text-slate-500 font-semibold">
+                                Primary: <span className="font-bold text-slate-700">{userAqi.dominantPollutant}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div
+                            className="px-3.5 py-1.5 rounded-2xl flex flex-col items-center justify-center font-black text-white shadow-md shrink-0"
+                            style={{ backgroundColor: col.bg }}
+                          >
+                            <span className="text-xl leading-none font-black">{val}</span>
+                            <span className="text-[8px] font-extrabold tracking-wider uppercase opacity-95">AQI</span>
+                          </div>
+                        </div>
+
+                        {/* Scale which is good and bad */}
+                        <div className="space-y-1 pt-1 border-t border-slate-100">
+                          <div className="flex items-center justify-between text-[10px] font-black">
+                            <span className="text-emerald-600 font-extrabold flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Good
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-slate-400">Scale</span>
+                            <span className="text-red-700 font-extrabold flex items-center gap-1">
+                              Bad <span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span>
+                            </span>
+                          </div>
+
+                          {/* Continuous spectrum bar */}
+                          <div className="relative py-1">
+                            <div
+                              className="h-2.5 w-full rounded-full shadow-inner border border-black/10"
+                              style={{
+                                background: 'linear-gradient(to right, #10B981 0%, #84CC16 20%, #F59E0B 40%, #F97316 60%, #DC2626 80%, #7F1D1D 100%)'
+                              }}
+                            />
+                            {/* Dynamic indicator marker for user's AQI */}
+                            <div
+                              className="absolute top-0 -ml-2 transition-all duration-500 pointer-events-none"
+                              style={{
+                                left: `${Math.min(96, Math.max(4, (val / 450) * 100))}%`
+                              }}
+                            >
+                              <div
+                                className="w-4 h-4 rounded-full border-2 border-white shadow-lg flex items-center justify-center"
+                                style={{ backgroundColor: col.bg }}
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between text-[8px] font-extrabold text-slate-400 px-0.5">
+                            <span>0 (Good)</span>
+                            <span>100</span>
+                            <span>200</span>
+                            <span>300</span>
+                            <span>400</span>
+                            <span>500+ (Bad)</span>
+                          </div>
+                        </div>
+
+                        {/* Footer: understand impact on your health */}
+                        <div className="border-t border-slate-100 pt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setShowHealthImpact((prev) => !prev)}
+                            className="w-full text-left py-2 px-2.5 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 text-red-700 font-black text-[11px] flex items-center justify-between transition group border border-red-200/70 shadow-2xs"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <HeartPulse className="w-3.5 h-3.5 text-red-600 shrink-0 group-hover:scale-110 transition-transform" />
+                              <span>understand impact on your health</span>
+                            </span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 text-red-600 transition-transform duration-200 ${
+                                showHealthImpact ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+
+                          {/* Collapsible Health Impact Guidance */}
+                          {showHealthImpact && (
+                            <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[10.5px] text-slate-700 animate-fadeIn font-medium">
+                              <div>
+                                <span className="font-extrabold text-slate-900 block text-[11px] mb-0.5">
+                                  Health Summary
+                                </span>
+                                <p className="leading-snug text-slate-600">
+                                  {healthInfo.summary}
+                                </p>
+                              </div>
+
+                              <div className="pt-1.5 border-t border-slate-200/80">
+                                <span className="font-extrabold text-amber-800 block text-[10px] uppercase tracking-wider mb-0.5">
+                                  Who is at risk:
+                                </span>
+                                <p className="leading-snug text-slate-600">
+                                  {healthInfo.whoIsAtRisk}
+                                </p>
+                              </div>
+
+                              <div className="pt-1.5 border-t border-slate-200/80">
+                                <span className="font-extrabold text-blue-800 block text-[10px] uppercase tracking-wider mb-1">
+                                  Recommended Precautions:
+                                </span>
+                                <ul className="space-y-1 font-medium text-slate-600">
+                                  {healthInfo.recommendations.map((rec: string, i: number) => (
+                                    <li key={i} className="flex items-start gap-1.5">
+                                      <span className="text-red-500 font-black shrink-0">•</span>
+                                      <span>{rec}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()
+                ) : (
+                  /* WARDS / GREEN LAYER: Clean GPS Location without ANY AQI Score */
+                  <div className="space-y-1.5 pt-1">
+                    {(() => {
+                      const userWard = wardsData.find((w: any) => {
+                        const [minLng, minLat, maxLng, maxLat] = w.bbox;
+                        return userLocation[0] >= minLat && userLocation[0] <= maxLat && userLocation[1] >= minLng && userLocation[1] <= maxLng;
+                      });
+                      return userWard ? (
+                        <div className="text-[11px] text-slate-700 font-semibold bg-blue-50/80 p-2 rounded-xl border border-blue-100 flex items-center justify-between">
+                          <span className="text-slate-500 text-[10px] uppercase font-bold">Territory:</span>
+                          <span className="font-black text-blue-700">BMC Ward {userWard.wardCode}</span>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-500 font-medium">GPS Active</p>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
             </Popup>
           </Marker>
         )}
@@ -914,6 +1267,111 @@ export default function MumbaiMap({
                 );
               })}
             </Pane>
+
+            {/* AREA OF USER'S LOCATION COLORED ACCORDING TO ITS AQI */}
+            {userLocation && userAqi && (() => {
+              const val = userAqi.value ?? 140;
+              const cat = userAqi.category ?? (val > 200 ? 'Poor' : val > 100 ? 'Moderate' : 'Good');
+              const userColor = AQI_CATEGORY_COLORS[cat]?.bg || '#F97316';
+              const userWard = wardsData.find((w: any) => {
+                const [minLng, minLat, maxLng, maxLat] = w.bbox;
+                return userLocation[0] >= minLat && userLocation[0] <= maxLat && userLocation[1] >= minLng && userLocation[1] <= maxLng;
+              });
+
+              return (
+                <React.Fragment key="user-aqi-area-color">
+                  {userWard?.polygon && (
+                    <Polygon
+                      positions={userWard.polygon}
+                      pathOptions={{
+                        color: userColor,
+                        weight: 3.5,
+                        opacity: 0.9,
+                        fillColor: userColor,
+                        fillOpacity: 0.38,
+                        dashArray: '5, 4'
+                      }}
+                    />
+                  )}
+                  {/* Concentric atmospheric aura discs in AQI color */}
+                  <Circle
+                    center={userLocation}
+                    radius={2200}
+                    pathOptions={{
+                      color: userColor,
+                      weight: 2,
+                      opacity: 0.85,
+                      fillColor: userColor,
+                      fillOpacity: 0.28
+                    }}
+                  />
+                  <Circle
+                    center={userLocation}
+                    radius={1000}
+                    pathOptions={{
+                      color: userColor,
+                      weight: 2.5,
+                      opacity: 0.95,
+                      fillColor: userColor,
+                      fillOpacity: 0.42
+                    }}
+                  />
+                </React.Fragment>
+              );
+            })()}
+
+            {/* AREA OF THE SEARCHED PLACE COLORED ACCORDING TO ITS AQI */}
+            {searchedLocation && (() => {
+              const searchedColor = AQI_CATEGORY_COLORS[searchedLocation.category]?.bg || '#EAB308';
+              const searchedWard = wardsData.find((w: any) => {
+                if (searchedLocation.wardCode && (w.wardCode.toLowerCase() === searchedLocation.wardCode.toLowerCase() || w.wardCode.replace(/\s+/g, '').toLowerCase() === searchedLocation.wardCode.replace(/\s+/g, '').toLowerCase())) {
+                  return true;
+                }
+                const [minLng, minLat, maxLng, maxLat] = w.bbox;
+                return searchedLocation.lat >= minLat && searchedLocation.lat <= maxLat && searchedLocation.lng >= minLng && searchedLocation.lng <= maxLng;
+              });
+
+              return (
+                <React.Fragment key="searched-aqi-area-color">
+                  {searchedWard?.polygon && (
+                    <Polygon
+                      positions={searchedWard.polygon}
+                      pathOptions={{
+                        color: searchedColor,
+                        weight: 3.5,
+                        opacity: 0.9,
+                        fillColor: searchedColor,
+                        fillOpacity: 0.38,
+                        dashArray: '5, 4'
+                      }}
+                    />
+                  )}
+                  {/* Concentric atmospheric aura discs in AQI color */}
+                  <Circle
+                    center={[searchedLocation.lat, searchedLocation.lng]}
+                    radius={2200}
+                    pathOptions={{
+                      color: searchedColor,
+                      weight: 2,
+                      opacity: 0.85,
+                      fillColor: searchedColor,
+                      fillOpacity: 0.28
+                    }}
+                  />
+                  <Circle
+                    center={[searchedLocation.lat, searchedLocation.lng]}
+                    radius={1000}
+                    pathOptions={{
+                      color: searchedColor,
+                      weight: 2.5,
+                      opacity: 0.95,
+                      fillColor: searchedColor,
+                      fillOpacity: 0.42
+                    }}
+                  />
+                </React.Fragment>
+              );
+            })()}
 
             {/* ONLY DISPLAY PIN FOR THE PARTICULAR SEARCHED AREA */}
             {searchedLocation && (
