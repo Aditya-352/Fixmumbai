@@ -1,6 +1,7 @@
 import { calculateAqi, categoryForAqi } from './aqi-calculator';
 import { getAqicnStationsForLocation, getAqicnStationsForMumbai } from './aqicn-client';
 import { getCpcbStationsForMumbai } from './cpcb-client';
+import { getOpenWeatherAirQualityForLocation } from './openweather-client';
 import { getOpenAqStationsNear } from './openaq-client';
 import { isLocationInIndia, isLocationInMumbai, rankStationsByDistance } from './station-resolver';
 import type {
@@ -120,16 +121,19 @@ export async function getAirQualityForLocation(
   }
 
   const inMumbai = isLocationInMumbai(lat, lon);
+  const hasOpenWeather = Boolean(process.env.OPENWEATHER_API_KEY);
   const hasAqicn = Boolean(process.env.AQICN_API_TOKEN || process.env.AQICN_API_KEY);
   const hasCpcb = Boolean(process.env.CPCB_API_KEY);
   const hasOpenAq = Boolean(process.env.OPENAQ_API_KEY);
 
-  const [aqicnResult, cpcbResult, openAqResult] = await Promise.allSettled([
+  const [openWeatherResult, aqicnResult, cpcbResult, openAqResult] = await Promise.allSettled([
+    hasOpenWeather ? getOpenWeatherAirQualityForLocation(lat, lon) : Promise.resolve(null),
     hasAqicn ? getAqicnStationsForLocation(lat, lon) : Promise.resolve([]),
     hasCpcb && inMumbai ? getCpcbStationsForMumbai(lat, lon) : Promise.resolve([]),
     hasOpenAq ? getOpenAqStationsNear(lat, lon) : Promise.resolve([]),
   ]);
 
+  const openWeatherStation = openWeatherResult.status === 'fulfilled' ? openWeatherResult.value : null;
   const aqicnStationsRaw = aqicnResult.status === 'fulfilled' ? aqicnResult.value : [];
   const cpcbStationsRaw = cpcbResult.status === 'fulfilled' ? cpcbResult.value : [];
   const openAqStationsRaw = openAqResult.status === 'fulfilled' ? openAqResult.value : [];
@@ -139,6 +143,15 @@ export async function getAirQualityForLocation(
   const openAqStations = rankStationsByDistance(openAqStationsRaw, lat, lon, OPENAQ_MAX_DISTANCE_KM);
 
   const sources: AirQualityResponse['sources'] = [];
+
+  if (hasOpenWeather) {
+    sources.push({
+      name: 'OPENWEATHER',
+      stationsFound: openWeatherStation ? 1 : 0,
+      available: Boolean(openWeatherStation),
+      ...(openWeatherResult.status === 'rejected' ? { error: String(openWeatherResult.reason) } : {}),
+    });
+  }
 
   if (hasAqicn) {
     sources.push({
@@ -167,7 +180,7 @@ export async function getAirQualityForLocation(
     });
   }
 
-  if (aqicnStations.length === 0 && cpcbStations.length === 0 && openAqStations.length === 0) {
+  if (!openWeatherStation && aqicnStations.length === 0 && cpcbStations.length === 0 && openAqStations.length === 0) {
     throw new AirQualityServiceError(
       'No air quality monitoring stations with usable data were found near this location in India.',
       'NO_DATA_AVAILABLE',
@@ -185,8 +198,21 @@ export async function getAirQualityForLocation(
   } | null = null;
   let primarySource: AqiSource | null = null;
 
-  // 1. Try AQICN (Priority - Real-time network)
-  if (aqicnStations.length > 0) {
+  // 1. Try OpenWeather (Direct Coordinate Atmospheric Simulation)
+  if (openWeatherStation && openWeatherStation.pollutants.length > 0) {
+    const calc = calculateAqi(toPollutantMap(openWeatherStation.pollutants));
+    primaryStation = openWeatherStation;
+    primarySource = 'OPENWEATHER';
+    primaryAqi = {
+      value: calc?.value ?? openWeatherStation.measuredAqi ?? 50,
+      category: calc?.category ?? categoryForAqi(openWeatherStation.measuredAqi ?? 50),
+      dominantPollutant: calc?.dominantPollutant ?? openWeatherStation.dominantPollutant ?? 'PM2.5',
+      valueType: calc ? 'calculated' : 'measured',
+    };
+  }
+
+  // 2. Try AQICN (Priority Ground Station Network)
+  if (!primaryStation && aqicnStations.length > 0) {
     for (const station of aqicnStations) {
       if (typeof station.measuredAqi === 'number' && station.measuredAqi > 0) {
         primaryStation = station;
@@ -214,7 +240,7 @@ export async function getAirQualityForLocation(
     }
   }
 
-  // 2. Fall back to CPCB if AQICN not matched (for Mumbai)
+  // 3. Fall back to CPCB if AQICN not matched (for Mumbai)
   if (!primaryStation && cpcbStations.length > 0) {
     for (const station of cpcbStations) {
       const calc = calculateAqi(toPollutantMap(station.pollutants));
@@ -265,9 +291,13 @@ export async function getAirQualityForLocation(
   const isStale = dataAgeMinutes !== null && dataAgeMinutes > STALE_DATA_THRESHOLD_MINUTES;
 
   const noteParts = [
-    'This value reflects the nearest available monitoring station, not a sensor at your exact GPS coordinate.',
+    primarySource === 'OPENWEATHER'
+      ? 'Air quality observations calculated via OpenWeather real-time atmospheric model for your exact GPS coordinates.'
+      : 'This value reflects the nearest available monitoring station, not a sensor at your exact GPS coordinate.',
   ];
-  if (primarySource === 'AQICN') {
+  if (primarySource === 'OPENWEATHER') {
+    noteParts.push('Calibrated to National CPCB Air Quality Index breakpoint standards.');
+  } else if (primarySource === 'AQICN') {
     noteParts.push('Air quality observations provided via AQICN real-time monitoring network.');
   } else if (primarySource === 'OPENAQ') {
     noteParts.push('No primary station was available nearby, so this is an OpenAQ-derived indicative AQI.');

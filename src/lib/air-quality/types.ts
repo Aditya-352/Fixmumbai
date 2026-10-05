@@ -11,7 +11,7 @@
  *   shapes.
  */
 
-export type AqiSource = 'CPCB' | 'OPENAQ' | 'AQICN';
+export type AqiSource = 'CPCB' | 'OPENAQ' | 'AQICN' | 'OPENWEATHER';
 
 /** Standard CPCB National AQI category buckets. */
 export type AqiCategory =
