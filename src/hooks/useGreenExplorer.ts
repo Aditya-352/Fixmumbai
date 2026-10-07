@@ -97,9 +97,9 @@ const DEFAULT_FILTERS: ExplorerFilters = {
   ndviLayers: { HIGH: true, MEDIUM: true, LOW: true },
   layerVisibility: {
     basemap: 'light',
-    ndvi: true,
+    ndvi: false,            // Removed from UI — kept off
     hexGrid: false,         // OFF by default — enable via Map Layers & Grid
-    greenSpaces: true,
+    greenSpaces: true,      // Always on — toggle removed from UI but markers always visible
     nurseries: true,
   },
 };

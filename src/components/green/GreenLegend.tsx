@@ -35,45 +35,6 @@ export default function GreenLegend({ isNdviProcessed = false }: GreenLegendProp
       {/* Legend body */}
       {open && (
         <div id="green-legend-body" className="px-3.5 pb-3.5 space-y-2.5 min-w-[230px]">
-          {/* Section: NDVI classes */}
-          <div>
-            <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-              Sentinel-2 NDVI Scale
-            </span>
-            <div className="space-y-1">
-              {/* Smooth NDVI gradient swatch */}
-              <div className="flex items-center gap-2 mb-1.5">
-                <div
-                  className="h-2.5 rounded-sm flex-shrink-0"
-                  style={{
-                    width: '80px',
-                    background: 'linear-gradient(to right, #F5B02E, #A8E66B, #2E6B34)',
-                  }}
-                />
-                <span className="text-[9px] text-slate-400 font-medium">Low → High NDVI</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-3.5 rounded-xs flex-shrink-0" style={{ backgroundColor: '#2E6B34' }} />
-                <span className="text-slate-700 font-semibold text-[11px]">
-                  High Vegetation <span className="text-slate-400 font-normal">(≥0.55)</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-3.5 rounded-xs flex-shrink-0" style={{ backgroundColor: '#A8E66B' }} />
-                <span className="text-slate-700 font-semibold text-[11px]">
-                  Medium Vegetation <span className="text-slate-400 font-normal">(0.25–0.55)</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-3.5 rounded-xs flex-shrink-0" style={{ backgroundColor: '#F5B02E' }} />
-                <span className="text-slate-700 font-semibold text-[11px]">
-                  Low Vegetation <span className="text-slate-400 font-normal">(0.10–0.25)</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100" />
 
           {/* Section: 100m Hexagonal Grid */}
           <div>
