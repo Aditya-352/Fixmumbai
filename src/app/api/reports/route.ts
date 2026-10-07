@@ -68,28 +68,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { categoryId, description, latitude, longitude, photoPath, reporterName, reporterEmail, reporterPhone, severity } = body;
 
-    if (!categoryId || latitude === undefined || longitude === undefined) {
+    if (!categoryId || !latitude || !longitude) {
       return NextResponse.json({ success: false, error: 'Category, latitude, and longitude are required' }, { status: 400 });
     }
 
-    const latNum = parseFloat(latitude);
-    const lngNum = parseFloat(longitude);
-
-    if (isNaN(latNum) || isNaN(lngNum)) {
-      return NextResponse.json({ success: false, error: 'Invalid latitude or longitude format' }, { status: 400 });
-    }
-
-    // 1. Perform automatic GIS spatial boundary lookup (maps nearest BMC ward if outside Mumbai boundary)
-    const gisInfo = mapCoordinatesToCivicBoundary(latNum, lngNum);
-
-    // Resolve valid Category from database (by ID, by name match, or fallback)
-    let categoryRecord = null;
-    if (categoryId) {
-      try {
-        categoryRecord = await db.category.findUnique({ where: { id: categoryId } });
-      } catch (e) {}
-    }
-
+    // Resolve valid Category from database (by ID, by name match, or first category fallback)
+    let categoryRecord = await db.category.findUnique({ where: { id: categoryId } });
     if (!categoryRecord) {
       categoryRecord = await db.category.findFirst({
         where: {
@@ -109,45 +93,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Category database entry not found' }, { status: 400 });
     }
 
-    // 2. Auto-classify BMC Ward, AC, PC from backend GIS
-    let wardObj = await db.bmcWard.findUnique({ where: { wardCode: gisInfo.wardCode } });
-    if (!wardObj) {
-      wardObj = await db.bmcWard.findFirst({
-        where: {
-          OR: [
-            { wardCode: gisInfo.wardCode },
-            { wardCode: gisInfo.wardCode.replace('/', ' ') },
-            { wardCode: gisInfo.wardCode.replace(' ', '/') }
-          ]
-        }
-      });
-    }
-    if (!wardObj) {
-      wardObj = await db.bmcWard.findFirst();
+    // 1. Perform automatic GIS spatial boundary lookup and Mumbai boundary check
+    const gisInfo = mapCoordinatesToCivicBoundary(latitude, longitude);
+
+    if (!gisInfo.isWithinMumbai) {
+      return NextResponse.json({
+        success: false,
+        error: 'Location restricted: FixMumbai only accepts civic reports located within Mumbai (24 BMC Wards).'
+      }, { status: 400 });
     }
 
-    let acObj = await db.assemblyConstituency.findUnique({ where: { acNumber: gisInfo.acNumber } });
-    if (!acObj) {
-      acObj = await db.assemblyConstituency.findFirst({ where: { acNumber: gisInfo.acNumber } });
-    }
+    // 2. Fetch matched Ward, AC, PC from DB
+    const wardObj = await db.bmcWard.findUnique({ where: { wardCode: gisInfo.wardCode } });
+    const acObj = await db.assemblyConstituency.findUnique({ where: { acNumber: gisInfo.acNumber } });
+    const pcObj = await db.parliamentaryConstituency.findUnique({ where: { pcNumber: gisInfo.pcNumber } });
 
-    let pcObj = await db.parliamentaryConstituency.findUnique({ where: { pcNumber: gisInfo.pcNumber } });
-    if (!pcObj) {
-      pcObj = await db.parliamentaryConstituency.findFirst({ where: { pcNumber: gisInfo.pcNumber } });
-    }
-
-    // 3. Generate collision-free publicReportId (e.g. MUM-000188)
+    // 3. Generate human-friendly report ID (e.g. MUM-000188)
     const reportCount = await db.report.count();
-    let seq = reportCount + 188;
-    let publicReportId = generatePublicReportId(seq);
-    let existing = await db.report.findUnique({ where: { publicReportId } });
-    while (existing) {
-      seq++;
-      publicReportId = generatePublicReportId(seq);
-      existing = await db.report.findUnique({ where: { publicReportId } });
-    }
-
-    const reportLocality = body.locality || gisInfo.locality;
+    const publicReportId = generatePublicReportId(reportCount + 188);
 
     // 4. Create database report
     const newReport = await db.report.create({
@@ -155,17 +118,17 @@ export async function POST(req: NextRequest) {
         publicReportId,
         categoryId: categoryRecord.id,
         description: description || 'No detailed description provided.',
-        latitude: latNum,
-        longitude: lngNum,
-        locality: reportLocality,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        locality: gisInfo.locality,
         bmcWardId: wardObj?.id,
         assemblyConstituencyId: acObj?.id,
         parliamentaryConstituencyId: pcObj?.id,
         severity: severity || 'MEDIUM',
         status: 'SUBMITTED',
-        reporterName: reporterName || 'Anonymous Citizen',
-        reporterEmail: reporterEmail || undefined,
-        reporterPhone: reporterPhone || undefined,
+        reporterName,
+        reporterEmail,
+        reporterPhone,
         photos: photoPath ? {
           create: {
             storagePath: photoPath,
@@ -177,7 +140,7 @@ export async function POST(req: NextRequest) {
           create: {
             eventType: 'SUBMITTED',
             actorType: 'CITIZEN',
-            description: `Report ${publicReportId} submitted successfully at ${reportLocality}`
+            description: `Report ${publicReportId} submitted successfully at ${gisInfo.locality}`
           }
         }
       },
@@ -189,16 +152,11 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 5. Trigger automatic duplicate detection safely
-    try {
-      await detectAndLinkDuplicate(newReport.id, categoryRecord.id, latNum, lngNum);
-    } catch (dupErr) {
-      console.error('Duplicate detection warning:', dupErr);
-    }
+    // 5. Trigger automatic duplicate detection
+    await detectAndLinkDuplicate(newReport.id, categoryId, latitude, longitude);
 
     return NextResponse.json({ success: true, data: newReport });
   } catch (error: any) {
-    console.error('POST /api/reports submission error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Failed to submit report' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

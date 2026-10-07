@@ -136,24 +136,26 @@ export default function PublicReportDetailPage() {
           &quot;{report.description}&quot;
         </p>
 
-        {/* Citizen Ground Resolution Feedback Callout */}
-        <div className="p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-          <div className="space-y-1">
-            <div className="text-xs font-extrabold text-emerald-900 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              Citizen Ground Resolution Feedback
+        {/* Verification Alert Callout */}
+        {['RESOLUTION_SUBMITTED', 'IN_PROGRESS'].includes(report.status) && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Citizen Ground Verification Active
+              </div>
+              <p className="text-[11px] text-slate-600 font-medium">
+                Were you at this location? Confirm if the cleanup was actually completed.
+              </p>
             </div>
-            <p className="text-xs text-slate-700 font-medium">
-              Were you at this location? Submit whether this issue is solved or not by snapping a live camera photo of the exact spot.
-            </p>
+            <button
+              onClick={() => setShowVerificationModal(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-full shrink-0 shadow-md"
+            >
+              Verify Ground Resolution
+            </button>
           </div>
-          <button
-            onClick={() => setShowVerificationModal(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-5 py-3 rounded-full shrink-0 shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition active:scale-95"
-          >
-            Submit Ground Resolution Feedback
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Photo Evidence & Resolution Slider */}
@@ -259,8 +261,6 @@ export default function PublicReportDetailPage() {
         <VerificationModal
           reportId={report.id}
           publicReportId={report.publicReportId}
-          reportLatitude={report.latitude}
-          reportLongitude={report.longitude}
           onClose={() => setShowVerificationModal(false)}
           onSuccess={() => {
             setShowVerificationModal(false);

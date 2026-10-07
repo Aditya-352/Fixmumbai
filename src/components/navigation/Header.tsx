@@ -3,15 +3,16 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlusCircle, MapPin, Info, Menu, X, Shield } from 'lucide-react';
+import { PlusCircle, MapPin, Info, Menu, X, Shield, Trees } from 'lucide-react';
 
 export default function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Exact 3 Simple Navigation Items as requested
+  // Navigation Items
   const navItems = [
     { href: '/map', label: 'Map', icon: MapPin },
+    { href: '/green', label: '🌿 Green Density', icon: Trees },
     { href: '/report', label: 'Report', icon: PlusCircle },
     { href: '/about', label: 'About', icon: Info },
   ];

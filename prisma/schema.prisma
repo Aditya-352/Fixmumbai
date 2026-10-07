@@ -195,8 +195,6 @@ model ResolutionEvidence {
   actorRole       String
   latitude        Float?
   longitude       Float?
-  distanceMeters  Float?
-  locationMismatch Boolean @default(false)
 }
 
 model CitizenVerification {
@@ -207,9 +205,6 @@ model CitizenVerification {
   rating            Int?
   comments          String?
   evidencePhotoPath String?
-  citizenLatitude   Float?
-  citizenLongitude  Float?
-  distanceMeters    Float?
   timestamp         DateTime @default(now())
 }
 
@@ -259,4 +254,106 @@ model AuditLog {
   afterState  String?  // JSON string
   ipAddress   String?
   user        User?    @relation(fields: [actorId], references: [id])
+}
+
+model GreenSpace {
+  id                     String                       @id @default(cuid())
+  osmType                String
+  osmId                  String
+  osmVersion             Int                          @default(0)
+  name                   String
+  category               String
+  tags                   String                       // JSON string
+  geometryJson           String?                      // GeoJSON string
+  centroidLat            Float
+  centroidLon            Float
+  areaM2                 Float?
+  accessStatus           String                       @default("UNKNOWN")
+  walkClass              String                       @default("UNKNOWN")
+  accessEvidence         String                       @default("[]") // JSON string
+  pathCount              Int                          @default(0)
+  totalPathLengthM       Float                        @default(0)
+  entrances              String?                      @default("[]") // JSON string
+  source                 String                       @default("OSM_OVERPASS")
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  vegetationObservations GreenVegetationObservation[]
+  images                 GreenSpaceImage[]
+  greeneryPhotos         GreeneryPhoto[]
+
+  @@unique([osmType, osmId])
+  @@index([centroidLat, centroidLon])
+  @@index([category])
+  @@index([walkClass])
+}
+
+model GreenVegetationObservation {
+  id               String      @id @default(cuid())
+  greenSpaceId     String?
+  greenSpace       GreenSpace? @relation(fields: [greenSpaceId], references: [id], onDelete: Cascade)
+  ndviMean         Float?
+  ndviMin          Float?
+  ndviMax          Float?
+  pixelCount       Int?
+  densityClass     String?     // HIGH, MEDIUM, LOW, WATER_BARREN, UNAVAILABLE
+  confidence       Float?
+  compositeType    String?     // MEDIAN_COMPOSITE, SINGLE_SCENE, SYNTHETIC
+  observationStart DateTime?
+  observationEnd   DateTime?
+  imageCount       Int?
+  cloudCoverage    Float?
+  satelliteSource  String?     // COPERNICUS_SENTINEL_2, GOOGLE_EARTH_ENGINE, SYNTHETIC
+  processedAt      DateTime    @default(now())
+
+  @@index([greenSpaceId])
+  @@index([densityClass])
+}
+
+model GreenSpaceImage {
+  id               String      @id @default(cuid())
+  greenSpaceId     String?
+  greenSpace       GreenSpace? @relation(fields: [greenSpaceId], references: [id], onDelete: Cascade)
+  imageUrl         String
+  thumbUrl         String?
+  sourceUrl        String
+  attribution      String
+  licence          String
+  verificationTier String      // TIER_1_VERIFIED, TIER_2_COMMONS, TIER_3_UNVERIFIED
+  source           String      // WIKIMEDIA_COMMONS, WIKIPEDIA, OSM
+  caption          String?
+  createdAt        DateTime    @default(now())
+
+  @@index([greenSpaceId])
+}
+// Citizen-contributed greenery photographs.
+// Moderation: PENDING_REVIEW (default) | APPROVED | REJECTED | NEEDS_LOCATION
+// Storage: storagePath = relative path under /uploads/greenery/
+// EXIF GPS metadata is stripped before saving; only user-confirmed coords stored.
+model GreeneryPhoto {
+  id               String      @id @default(cuid())
+  greenSpaceId     String?
+  greenSpace       GreenSpace? @relation(fields: [greenSpaceId], references: [id], onDelete: SetNull)
+  userId           String?
+  storagePath      String
+  imageUrl         String
+  thumbUrl         String?
+  mimeType         String
+  fileSize         Int
+  width            Int?
+  height           Int?
+  description      String      @default("")
+  category         String      @default("OTHER")
+  latitude         Float?
+  longitude        Float?
+  locationSource   String      @default("USER_SELECTED")
+  moderationStatus String      @default("PENDING_REVIEW")
+  moderationNote   String?
+  consentGiven     Boolean     @default(false)
+  sourceType       String      @default("CITIZEN_UPLOAD")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([greenSpaceId])
+  @@index([moderationStatus])
+  @@index([latitude, longitude])
 }

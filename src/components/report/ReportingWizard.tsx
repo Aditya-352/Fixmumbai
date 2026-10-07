@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, CheckCircle, ArrowRight, ArrowLeft, AlertCircle, Sparkles, X, Search, Building, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { isLocationInMumbai, searchMumbaiPlaces, searchGlobalPlaces, SearchPlaceResult, mapCoordinatesToCivicBoundary, MumbaiPlaceItem } from '@/lib/gis';
+import { isLocationInMumbai, searchMumbaiPlaces, mapCoordinatesToCivicBoundary, MumbaiPlaceItem } from '@/lib/gis';
 import wardsData from '@/data/mumbai-wards.json';
 
 const categories = [
@@ -142,49 +142,33 @@ export default function ReportingWizard() {
     reader.readAsDataURL(file);
   };
 
-  // Location, Autocomplete & Geofence State
+  // Mumbai Autocomplete & Geofence State
   const [areaSearchQuery, setAreaSearchQuery] = useState<string>('');
   const [showPlaceDropdown, setShowPlaceDropdown] = useState<boolean>(false);
-  const [globalSuggestions, setGlobalSuggestions] = useState<SearchPlaceResult[]>([]);
-  const [isSearchingPlaces, setIsSearchingPlaces] = useState<boolean>(false);
+  const [placeSuggestions, setPlaceSuggestions] = useState<MumbaiPlaceItem[]>([]);
   const [selectedWardCode, setSelectedWardCode] = useState<string>('K West');
-  const [outsideWardName, setOutsideWardName] = useState<string>('');
 
   const isWithinMumbai = isLocationInMumbai(latitude, longitude);
 
-  // Debounced global location search (Mumbai + Bangalore + Worldwide)
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (areaSearchQuery.trim().length > 0) {
-        setIsSearchingPlaces(true);
-        const results = await searchGlobalPlaces(areaSearchQuery);
-        setGlobalSuggestions(results);
-        setIsSearchingPlaces(false);
-        setShowPlaceDropdown(true);
-      } else {
-        setGlobalSuggestions([]);
-        setShowPlaceDropdown(false);
-      }
-    }, 300);
+  const handleAreaSearchChange = (query: string) => {
+    setAreaSearchQuery(query);
+    if (query.trim().length > 0) {
+      const results = searchMumbaiPlaces(query);
+      setPlaceSuggestions(results);
+      setShowPlaceDropdown(true);
+    } else {
+      setPlaceSuggestions([]);
+      setShowPlaceDropdown(false);
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, [areaSearchQuery]);
-
-  const handleSelectGlobalPlace = (place: SearchPlaceResult) => {
+  const handleSelectPlace = (place: MumbaiPlaceItem) => {
     setLatitude(place.lat);
     setLongitude(place.lng);
-    setLocality(place.fullName || place.name);
+    setLocality(`${place.name}`);
+    setSelectedWardCode(place.wardCode);
     setAreaSearchQuery(place.name);
     setShowPlaceDropdown(false);
-
-    if (place.isMumbai) {
-      const mapping = mapCoordinatesToCivicBoundary(place.lat, place.lng);
-      setSelectedWardCode(mapping.wardCode);
-      setOutsideWardName('');
-    } else {
-      setSelectedWardCode('Outside Ward');
-      setOutsideWardName('');
-    }
     setLocationStatus('SUCCESS');
     setError(null);
   };
@@ -192,10 +176,9 @@ export default function ReportingWizard() {
   const handleSelectWard = (ward: typeof wardsData[0]) => {
     setLatitude(ward.centerLatitude);
     setLongitude(ward.centerLongitude);
-    setLocality(ward.wardName);
+    setLocality(`${ward.wardName}`);
     setSelectedWardCode(ward.wardCode);
     setAreaSearchQuery(ward.wardName);
-    setOutsideWardName('');
     setLocationStatus('SUCCESS');
     setError(null);
   };
@@ -204,54 +187,28 @@ export default function ReportingWizard() {
     setLocationStatus('DETECTING');
     if (!navigator.geolocation) {
       setLocationStatus('DENIED');
-      setError('Geolocation is not supported by your browser.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setLatitude(lat);
         setLongitude(lng);
 
-        const inMumbai = isLocationInMumbai(lat, lng);
-        if (inMumbai) {
-          const mapping = mapCoordinatesToCivicBoundary(lat, lng);
-          setSelectedWardCode(mapping.wardCode);
-          setOutsideWardName('');
+        if (!isLocationInMumbai(lat, lng)) {
+          setLocationStatus('DENIED');
+          setError('GPS location detected outside Mumbai. FixMumbai is strictly for Mumbai civic reporting (24 BMC Wards). Please select a Mumbai locality below.');
         } else {
-          setSelectedWardCode('Outside Ward');
-          setOutsideWardName('');
-        }
-        setLocationStatus('SUCCESS');
-        setError(null);
-
-        // Fetch reverse geocode address name
-        try {
-          const res = await fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.data?.addressName) {
-              setLocality(json.data.addressName);
-              setAreaSearchQuery(json.data.addressName);
-              return;
-            }
-          }
-        } catch (e) {}
-
-        if (inMumbai) {
           const mapping = mapCoordinatesToCivicBoundary(lat, lng);
           setLocality(mapping.locality);
-          setAreaSearchQuery(mapping.locality);
-        } else {
-          setLocality('GPS Location (Outside Mumbai)');
-          setAreaSearchQuery('GPS Location (Outside Mumbai)');
+          setSelectedWardCode(mapping.wardCode);
+          setLocationStatus('SUCCESS');
+          setError(null);
         }
       },
-      (err) => {
-        console.warn('Geolocation error:', err);
+      () => {
         setLocationStatus('DENIED');
-        setError('Could not fetch GPS location. Search your location above.');
       },
       { timeout: 8000 }
     );
@@ -260,10 +217,6 @@ export default function ReportingWizard() {
   const handleSubmit = async () => {
     setLoading(true);
     setError(null);
-
-    const reportLocality = !isWithinMumbai && outsideWardName
-      ? `${locality} [${outsideWardName}]`
-      : locality;
 
     try {
       const res = await fetch('/civic/api/reports', {
@@ -274,7 +227,6 @@ export default function ReportingWizard() {
           description: description || `Reported ${selectedCategory} issue.`,
           latitude,
           longitude,
-          locality: reportLocality,
           photoPath: photoUrl,
           severity,
           reporterName: reporterName || 'Anonymous Citizen',
@@ -474,12 +426,23 @@ export default function ReportingWizard() {
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-red-600" />
-              Location & Ward Auto-Classification
+              Confirm Location & BMC Ward
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Search any location or apartment worldwide (e.g. Bangalore, Mumbai, Pune, Delhi). Civic ward is automatically classified.
+              Civic reporting is strictly restricted to Mumbai. Search your area or select your 24 BMC Ward.
             </p>
           </div>
+
+          {/* Mumbai Boundary Geofence Warning */}
+          {!isWithinMumbai && (
+            <div className="p-3.5 bg-red-50 border-2 border-red-200 rounded-2xl text-xs text-red-700 flex items-start gap-2.5 font-semibold">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-extrabold block text-sm">Location Outside Mumbai Boundary</span>
+                FixMumbai is restricted strictly to Mumbai municipal limits (24 BMC Wards). Please search your Mumbai area or pick a BMC Ward below to proceed.
+              </div>
+            </div>
+          )}
 
           <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
             {/* GPS Detection Button */}
@@ -490,38 +453,34 @@ export default function ReportingWizard() {
               className="w-full bg-white hover:bg-slate-100 text-red-600 font-extrabold text-xs py-3 px-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center gap-2 transition active:scale-95"
             >
               <MapPin className="w-4 h-4 text-red-600" />
-              {locationStatus === 'DETECTING' ? 'Detecting Device GPS...' : 'Use Device GPS Location'}
+              {locationStatus === 'DETECTING' ? 'Detecting Mumbai GPS...' : 'Use Device GPS Location'}
             </button>
 
-            {/* Global Search Input & Autocomplete */}
+            {locationStatus === 'SUCCESS' && isWithinMumbai && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600" /> Location inside Mumbai verified (BMC Ward {selectedWardCode})
+              </div>
+            )}
+
+            {/* Mumbai Place Search Autocomplete */}
             <div className="space-y-1.5 relative">
-              <label className="text-xs font-extrabold text-slate-800 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Search className="w-3.5 h-3.5 text-red-600" />
-                  Search Any Location / Apartment (Global Search):
-                </span>
-                <span className="text-[10px] text-slate-500 font-normal">e.g. Bangalore apartments, Andheri, Bandra...</span>
+              <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-red-600" />
+                Type Place / Landmark in Mumbai (Auto-Fill Details)
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search apartment, area, or landmark (e.g. Bangalore, Indiranagar, Andheri West...)"
-                  value={areaSearchQuery}
-                  onChange={(e) => setAreaSearchQuery(e.target.value)}
-                  onFocus={async () => {
-                    if (!areaSearchQuery) {
-                      const initial = await searchGlobalPlaces('');
-                      setGlobalSuggestions(initial);
-                    }
+                  placeholder="e.g. Andheri West, Bandra, Colaba, Borivali, Powai..."
+                  value={areaSearchQuery || locality}
+                  onChange={(e) => handleAreaSearchChange(e.target.value)}
+                  onFocus={() => {
+                    if (!areaSearchQuery) setPlaceSuggestions(searchMumbaiPlaces(''));
                     setShowPlaceDropdown(true);
                   }}
                   className="w-full bg-white border-2 border-slate-200 rounded-xl px-3.5 py-3 text-sm text-slate-900 focus:outline-none focus:border-red-600 font-bold placeholder:font-normal"
                 />
-                {isSearchingPlaces ? (
-                  <div className="absolute right-3 top-3 text-slate-400 text-xs font-bold animate-pulse">
-                    Searching...
-                  </div>
-                ) : areaSearchQuery ? (
+                {areaSearchQuery && (
                   <button
                     type="button"
                     onClick={() => {
@@ -532,28 +491,24 @@ export default function ReportingWizard() {
                   >
                     <X className="w-4 h-4" />
                   </button>
-                ) : null}
+                )}
               </div>
 
-              {/* Dropdown Suggestions */}
-              {showPlaceDropdown && globalSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-64 overflow-y-auto divide-y divide-slate-100">
-                  {globalSuggestions.map((place, idx) => (
+              {/* Autocomplete Dropdown List */}
+              {showPlaceDropdown && placeSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                  {placeSuggestions.map((place, idx) => (
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handleSelectGlobalPlace(place)}
+                      onClick={() => handleSelectPlace(place)}
                       className="w-full text-left p-3 hover:bg-red-50 flex items-center justify-between gap-2 transition"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-extrabold text-slate-900 truncate">{place.name}</div>
-                        <div className="text-[10px] text-slate-500 font-medium truncate">{place.fullName}</div>
-                        <div className="text-[10px] text-emerald-600 font-bold mt-0.5 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
-                          {place.isMumbai ? `Mumbai • Ward ${place.wardCode || 'Auto'}` : `Global Location • Mapped to Ward ${place.wardCode || 'Auto'}`}
-                        </div>
+                      <div>
+                        <div className="text-xs font-extrabold text-slate-900">{place.name}</div>
+                        <div className="text-[10px] text-slate-500 font-semibold">{place.region} • BMC Ward {place.wardCode}</div>
                       </div>
-                      <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-md shrink-0">
+                      <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-md">
                         {place.lat.toFixed(3)}, {place.lng.toFixed(3)}
                       </span>
                     </button>
@@ -562,85 +517,11 @@ export default function ReportingWizard() {
               )}
             </div>
 
-            {/* Auto-Classified Ward & Location Indicator */}
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-semibold flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                <div>
-                  <span className="font-extrabold text-emerald-900 block">✓ Selected Location: {locality}</span>
-                  <span className="text-[11px] text-emerald-700">
-                    {isWithinMumbai
-                      ? `BMC Ward Auto-Classified: Ward ${selectedWardCode}`
-                      : `Location Outside Mumbai: ${outsideWardName || 'Mention Ward Name below'}`}
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md shrink-0">
-                {isWithinMumbai ? 'AUTO-GIS' : 'OUTSIDE'}
-              </span>
-            </div>
-
-            {/* Mention Ward Name for Outside Mumbai Locations */}
-            {!isWithinMumbai && (
-              <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 space-y-2.5 font-semibold animate-fadeIn">
-                <div className="flex items-center gap-2">
-                  <Building className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="font-extrabold text-xs text-amber-900">
-                    Mention Local Ward Name (Outside Mumbai):
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
-                  Since this location is outside Mumbai, please mention your local municipality ward name or number below:
-                </p>
-                <input
-                  type="text"
-                  placeholder="e.g. BBMP Ward 80 - Indiranagar, Ward 14, Municipal Ward 5..."
-                  value={outsideWardName}
-                  onChange={(e) => setOutsideWardName(e.target.value)}
-                  className="w-full bg-white border-2 border-amber-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-600 placeholder:font-normal"
-                />
-              </div>
-            )}
-
-            {/* Live Embedded Map Pin Preview */}
-            {latitude && longitude && (
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between text-xs font-extrabold text-slate-800">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-red-600" />
-                    Selected Location Pin Preview:
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono font-bold">
-                    {latitude.toFixed(4)}° N, {longitude.toFixed(4)}° E
-                  </span>
-                </div>
-                <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 shadow-inner h-48 bg-slate-100">
-                  <iframe
-                    key={`${latitude}-${longitude}`}
-                    title="Location Pin Map Preview"
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    scrolling="no"
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.008},${latitude - 0.008},${longitude + 0.008},${latitude + 0.008}&layer=mapnik&marker=${latitude},${longitude}`}
-                    className="w-full h-full border-0"
-                  />
-                  <div className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-extrabold text-slate-900 border border-slate-200 shadow-md flex items-center gap-1.5">
-                    <MapPin className="w-3 h-3 text-red-600" /> Pin Location
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Coordinates Readout */}
+            {/* Coordinates detail readout */}
             <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
               <div className="p-2.5 bg-white rounded-xl border border-slate-200">
-                <span className="text-slate-400 text-[9px] font-bold block">
-                  {isWithinMumbai ? 'BMC WARD' : 'LOCAL WARD'}
-                </span>
-                <span className="font-mono text-red-600 font-black text-sm truncate block">
-                  {isWithinMumbai ? `Ward ${selectedWardCode}` : (outsideWardName || 'Outside Ward')}
-                </span>
+                <span className="text-slate-400 text-[9px] font-bold block">BMC WARD</span>
+                <span className="font-mono text-red-600 font-black text-sm">Ward {selectedWardCode}</span>
               </div>
               <div className="p-2.5 bg-white rounded-xl border border-slate-200">
                 <span className="text-slate-400 text-[9px] font-bold block">LATITUDE</span>
@@ -653,11 +534,11 @@ export default function ReportingWizard() {
             </div>
           </div>
 
-          {/* Quick Jump to Mumbai BMC Wards */}
+          {/* 24 BMC Wards Quick Division Selector */}
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
               <Building className="w-3.5 h-3.5 text-red-600" />
-              Quick Jump to 24 BMC Administrative Wards:
+              Or Select directly from 24 BMC Administrative Wards:
             </span>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-44 overflow-y-auto pr-1">
               {wardsData.map((w) => (
@@ -687,12 +568,15 @@ export default function ReportingWizard() {
             </button>
             <button
               onClick={() => {
-                setError(null);
+                if (!isWithinMumbai) {
+                  setError('Please select a location within Mumbai to proceed.');
+                  return;
+                }
                 setStep(3);
               }}
-              disabled={!latitude || !longitude}
+              disabled={!isWithinMumbai}
               className={`w-2/3 font-extrabold py-3.5 rounded-full shadow-md flex items-center justify-center gap-2 transition ${
-                latitude && longitude
+                isWithinMumbai
                   ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/25'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
