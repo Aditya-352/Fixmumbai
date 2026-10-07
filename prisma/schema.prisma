@@ -279,6 +279,7 @@ model GreenSpace {
   updatedAt              DateTime                     @updatedAt
   vegetationObservations GreenVegetationObservation[]
   images                 GreenSpaceImage[]
+  greeneryPhotos         GreeneryPhoto[]
 
   @@unique([osmType, osmId])
   @@index([centroidLat, centroidLon])
@@ -324,4 +325,35 @@ model GreenSpaceImage {
 
   @@index([greenSpaceId])
 }
+// Citizen-contributed greenery photographs.
+// Moderation: PENDING_REVIEW (default) | APPROVED | REJECTED | NEEDS_LOCATION
+// Storage: storagePath = relative path under /uploads/greenery/
+// EXIF GPS metadata is stripped before saving; only user-confirmed coords stored.
+model GreeneryPhoto {
+  id               String      @id @default(cuid())
+  greenSpaceId     String?
+  greenSpace       GreenSpace? @relation(fields: [greenSpaceId], references: [id], onDelete: SetNull)
+  userId           String?
+  storagePath      String
+  imageUrl         String
+  thumbUrl         String?
+  mimeType         String
+  fileSize         Int
+  width            Int?
+  height           Int?
+  description      String      @default("")
+  category         String      @default("OTHER")
+  latitude         Float?
+  longitude        Float?
+  locationSource   String      @default("USER_SELECTED")
+  moderationStatus String      @default("PENDING_REVIEW")
+  moderationNote   String?
+  consentGiven     Boolean     @default(false)
+  sourceType       String      @default("CITIZEN_UPLOAD")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
+  @@index([greenSpaceId])
+  @@index([moderationStatus])
+  @@index([latitude, longitude])
+}

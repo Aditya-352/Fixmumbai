@@ -2,17 +2,27 @@
  * Green space DB query service.
  *
  * Reads from the local SQLite database (ingested by osm-ingest.ts).
- * Computes straight-line distances using Turf.js (PostGIS fallback when PostGIS unavailable).
+ * Computes NEAREST-BOUNDARY distances using our pure-JS spatial library
+ * (boundary-distance.ts). This replaces the centroid-distance bug.
+ *
+ * Distance calculation strategy:
+ *  - Polygon / MultiPolygon: shortest distance from user to polygon boundary.
+ *    Returns 0 m when the user is inside the polygon.
+ *  - Point geometry (e.g. nursery records): point-to-point haversine, labelled
+ *    as "approximate location-based distance".
+ *  - No geometry: haversine to centroid, labelled as centroid estimate.
+ *
  * Never calls Overpass per user request.
  */
 
 import type { GreenSpaceSummary, GreenSpaceDetail, FilterType, AccessStatus, WalkClass } from '@/lib/green/types';
 import { ACTIVE_CITY, WALK_SPEED_KMH } from '@/lib/green/config';
 import { recommendationScore } from './classifier';
+import { nearestBoundaryDistance } from './boundary-distance';
 
 const R = 6371000; // Earth radius in metres
 
-/** Haversine distance (metres) between two lat/lon points */
+/** Haversine distance (metres) between two lat/lon points — used only for bbox pre-filter */
 function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -36,10 +46,11 @@ interface NearbyOptions {
   type?: FilterType;
   verifiedOnly?: boolean;
   limit?: number;
+  allCity?: boolean;
 }
 
 export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSpaceSummary[]> {
-  const { lat, lon, radiusM, type = 'all', verifiedOnly = false, limit = 50 } = opts;
+  const { lat, lon, radiusM, type = 'all', verifiedOnly = false, limit = 50, allCity = false } = opts;
 
   let db: any;
   try {
@@ -66,9 +77,19 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
     const centroidLat: number = space.centroidLat;
     const centroidLon: number = space.centroidLon;
 
-    // Filter by radius
-    const distM = haversineM(lat, lon, centroidLat, centroidLon);
-    if (distM > radiusM) continue;
+    // Pre-filter: use centroid haversine as a quick bbox check before computing
+    // the more expensive polygon-boundary distance. We expand by 20% to avoid
+    // missing large polygons whose centroid is farther than the boundary.
+    const centroidDistM = haversineM(lat, lon, centroidLat, centroidLon);
+    if (!allCity && centroidDistM > radiusM * 1.2) continue;
+
+    // Accurate nearest-boundary distance (replaces centroid-only bug)
+    const geometry = tryParseJson(space.geometryJson, null);
+    const bdResult = nearestBoundaryDistance(lat, lon, geometry, centroidLat, centroidLon);
+    const distM = bdResult.distanceM;
+
+    // Apply radius filter to the accurate boundary distance
+    if (!allCity && distM > radiusM) continue;
 
     const tags: Record<string, string> = tryParseJson(space.tags, {});
     const accessEvidence = tryParseJson(space.accessEvidence, []);
@@ -151,7 +172,7 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
       osmId: space.osmId,
       name: space.name,
       category: space.category,
-      geometry: tryParseJson(space.geometryJson, null),
+      geometry,
       centroid: { lat: centroidLat, lon: centroidLon },
       areaM2: space.areaM2,
       tags,
@@ -161,7 +182,11 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
       ndvi,
       image,
       distanceM: distM,
-      walkMinutes: estimatedWalkMin(distM),
+      distanceLabel: bdResult.distanceLabel,
+      distanceMethod: bdResult.distanceMethod,
+      nearestBoundaryPoint: bdResult.nearestPoint,
+      isInsidePolygon: bdResult.isInside,
+      walkMinutes: distM === 0 ? 0 : estimatedWalkMin(distM),
       walkMinutesEstimated: true, // straight-line estimate until ORS is called
       source: space.source,
       updatedAt: space.updatedAt?.toISOString?.() ?? new Date().toISOString(),
@@ -204,7 +229,14 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
   const entrances = tryParseJson(space.entrances, []);
   const geometry = tryParseJson(space.geometryJson, null);
 
-  const distanceM = haversineM(fromLat, fromLon, space.centroidLat, space.centroidLon);
+  // Accurate boundary distance for the detail view
+  const geometryForDetail = tryParseJson(space.geometryJson, null);
+  const bdDetail = nearestBoundaryDistance(
+    fromLat, fromLon,
+    geometryForDetail,
+    space.centroidLat, space.centroidLon
+  );
+  const distanceM = bdDetail.distanceM;
 
   let ndviFull: GreenSpaceDetail['ndviFull'] = null;
   try {
@@ -249,7 +281,8 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
     }));
   } catch { /* no images */ }
 
-  const osmUrl = `https://www.openstreetmap.org/${space.osmType}/${space.osmId}`;
+  // Build verified OSM URL — use coordinate fallback when IDs are synthetic/missing
+  const osmUrl = buildOsmUrl(space.osmType, space.osmId, space.centroidLat, space.centroidLon);
 
   return {
     id: space.id,
@@ -270,7 +303,11 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
     image: images[0] ?? null,
     images,
     distanceM,
-    walkMinutes: estimatedWalkMin(distanceM),
+    distanceLabel: bdDetail.distanceLabel,
+    distanceMethod: bdDetail.distanceMethod,
+    nearestBoundaryPoint: bdDetail.nearestPoint,
+    isInsidePolygon: bdDetail.isInside,
+    walkMinutes: distanceM === 0 ? 0 : estimatedWalkMin(distanceM),
     walkMinutesEstimated: true,
     pathCount: space.pathCount ?? 0,
     totalPathLengthM: space.totalPathLengthM ?? 0,
@@ -287,4 +324,34 @@ function tryParseJson<T>(val: any, fallback: T): T {
   if (val === null || val === undefined) return fallback;
   if (typeof val === 'object') return val as T;
   try { return JSON.parse(val) as T; } catch { return fallback; }
+}
+
+/**
+ * Build a verified OpenStreetMap URL for a green space.
+ *
+ * Strategy:
+ *  1. If osmType ∈ {node, way, relation} and osmId is a valid numeric string,
+ *     use the canonical feature URL: openstreetmap.org/{type}/{id}
+ *  2. Otherwise (synthetic IDs, nursery records without OSM ID, etc.),
+ *     use coordinate-based URL with a zoom-17 pin.
+ *
+ * Never returns a URL pointing to a random location or the city centre.
+ */
+export function buildOsmUrl(
+  osmType: string,
+  osmId: string,
+  lat: number,
+  lon: number
+): string {
+  const validTypes = ['node', 'way', 'relation'];
+  const isValidOsmId = /^[1-9][0-9]{0,15}$/.test(osmId ?? '');
+
+  if (validTypes.includes(osmType) && isValidOsmId) {
+    return `https://www.openstreetmap.org/${osmType}/${osmId}`;
+  }
+
+  // Coordinate-based fallback — zoom 17 shows individual park features clearly
+  const latF = lat.toFixed(6);
+  const lonF = lon.toFixed(6);
+  return `https://www.openstreetmap.org/?mlat=${latF}&mlon=${lonF}#map=17/${latF}/${lonF}`;
 }

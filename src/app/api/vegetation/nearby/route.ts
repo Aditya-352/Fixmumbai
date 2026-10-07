@@ -19,6 +19,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const radiusRaw = searchParams.get('radius') ?? '5000';
   const type = (searchParams.get('type') ?? 'all') as any;
   const verifiedOnly = searchParams.get('verifiedOnly') === 'true';
+  const allCity = searchParams.get('allCity') === 'true';
 
   if (latRaw === null || lonRaw === null) {
     const err: ApiResponse<null> = {
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let partial = false;
 
   try {
-    spaces = await getNearbyGreenSpaces({ lat, lon, radiusM, type, verifiedOnly });
+    spaces = await getNearbyGreenSpaces({ lat, lon, radiusM, type, verifiedOnly, allCity });
   } catch (err: any) {
     partial = true;
     warnings.push(`Space query failed: ${err.message}`);

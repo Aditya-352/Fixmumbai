@@ -100,15 +100,24 @@ export interface GreenSpaceSummary {
   geometry: GeoJSON.Geometry | null;
   centroid: { lat: number; lon: number };
   areaM2: number | null;
+  areaHectares?: number;
   tags: Record<string, string>;
   accessStatus: AccessStatus;
   walkClass: WalkClass;
   accessEvidence: AccessEvidence[];
   ndvi: NdviSummary | null;
   image: GreenSpaceImage | null;
-  /** Straight-line from search centre to nearest boundary/centroid (m) */
+  /** Shortest distance from search centre to nearest polygon boundary (m). 0 if inside. */
   distanceM: number;
-  /** Walking minutes via ORS/OSRM; null if unavailable */
+  /** Human-readable distance label e.g. "2.0 km to nearest boundary" */
+  distanceLabel?: string;
+  /** How distanceM was calculated */
+  distanceMethod?: string;
+  /** Nearest point on the polygon boundary */
+  nearestBoundaryPoint?: { lat: number; lon: number } | null;
+  /** True when the user's selected location is inside the polygon */
+  isInsidePolygon?: boolean;
+  /** Walking minutes via ORS/OSRM pedestrian router; null if unavailable */
   walkMinutes: number | null;
   walkMinutesEstimated: boolean;
   source: string;
@@ -133,11 +142,14 @@ export interface GeocodeResult {
   lat: number;
   lon: number;
   displayName: string;
-  source: 'photon' | 'nominatim' | 'local';
+  category?: 'LOCALITY' | 'PARK' | 'FOREST' | 'NATURE_RESERVE' | 'WARD' | 'LANDMARK' | 'STREET';
+  ward?: string;
+  source: 'photon' | 'nominatim' | 'local' | 'green_space';
 }
 
 // ── Tile layer ────────────────────────────────────────────────────────────────
 export interface TileLayerInfo {
+  /** Same-origin proxy template. Never a provider URL containing an API key. */
   urlTemplate: string;
   densityClass: DensityClass;
   label: string;
@@ -146,12 +158,72 @@ export interface TileLayerInfo {
   expiresAt: string;
 }
 
+/**
+ * Numerical NDVI statistics as reported by the provider's statistics endpoint.
+ * Distinct from the rendered display tiles, which are colour images.
+ */
+export interface NumericalNdvi {
+  mean: number;
+  median: number;
+  min: number;
+  max: number;
+  std: number;
+  p25: number;
+  p75: number;
+  /** Valid (unmasked) pixels contributing to the statistics. */
+  validPixelCount: number;
+}
+
+export interface NdviAoiCoverage {
+  name: string;
+  polygonId: string;
+  bounds: [number, number, number, number];
+  /** True when this AOI alone does not cover the whole study area. */
+  partialStudyArea: boolean;
+}
+
+/** Full provenance for a satellite observation, for transparency in the UI. */
+export interface TileProvenance {
+  providerStatus: string;
+  providerMessage: string;
+  provider: string;
+  dataset: string | null;
+  sceneId: string | null;
+  satelliteType: string | null;
+  acquisitionDateUtc: string | null;
+  sceneCloudCoveragePct: number | null;
+  cloudThresholdPct: number;
+  selectionReason: string | null;
+  spatialResolutionM: number | null;
+  searchWindowDays: number;
+  scenesExamined: number;
+  scenesPassingCloudFilter: number;
+  aoi: NdviAoiCoverage[];
+  coverageIsPartial: boolean;
+  studyAreaName: string;
+  numerical: NumericalNdvi | null;
+  /** Always true: display tiles are colour renders, not raw measurements. */
+  displayTilesAreColourRenders: boolean;
+  disclaimer: string;
+}
+
 export interface TilesResponse {
   layers: TileLayerInfo[];
+  /**
+   * Bounding box the provider actually holds imagery for.
+   * [minLon, minLat, maxLon, maxLat]. Null when coverage is unbounded.
+   */
+  coverageBounds?: [number, number, number, number] | null;
+  polygonName?: string;
+  provider?: string;
   observationStart: string | null;
   observationEnd: string | null;
-  compositeType: CompositeType | null;
   isMonsoon: boolean;
+  /** True when NDVI exists only inside the registered polygon, not city-wide. */
+  coverageLimitedToPolygon?: boolean;
+  /** Measured numerical NDVI for the AOI, when the provider exposes it. */
+  numerical?: NumericalNdvi | null;
+  provenance?: TileProvenance;
   warnings: string[];
 }
 
@@ -176,9 +248,38 @@ export interface SearchCentre {
 
 export type FilterType = 'all' | 'parks' | 'walkable' | 'trails';
 
+export type RightPanelTab = 'METRICS' | 'SPACES' | 'NURSERIES' | 'HEXAGON';
+
+export type InfrastructureCategory =
+  | 'Park'
+  | 'Public Garden'
+  | 'Mangrove'
+  | 'Wetland'
+  | 'Community Garden'
+  | 'Botanical Garden'
+  | 'Nursery'
+  | 'Green Corridor'
+  | 'Meadow'
+  | 'Rooftop Garden'
+  | 'Vertical Garden'
+  | 'Nature Reserve'
+  | 'Forest';
+
+export interface LayerVisibilityState {
+  basemap: 'light' | 'satellite';
+  ndvi: boolean;
+  hexGrid: boolean;
+  greenSpaces: boolean;
+  nurseries: boolean;
+}
+
 export interface ExplorerFilters {
   type: FilterType;
+  categoryFilter?: string;
+  nurseryWard?: string;
   verifiedOnly: boolean;
   radiusM: number;
   ndviLayers: { HIGH: boolean; MEDIUM: boolean; LOW: boolean };
+  layerVisibility: LayerVisibilityState;
 }
+
