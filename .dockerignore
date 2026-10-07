@@ -1,0 +1,44 @@
+# Dependencies must NOT be copied into the image.
+# Without this, the builder stage runs:
+#     COPY --from=deps /app/node_modules ./node_modules
+#     COPY . .            <-- would overwrite Linux node_modules with the HOST's
+#                            (macOS) ones, breaking native modules such as
+#                            Prisma engines / better-sqlite3 in the container.
+node_modules
+**/node_modules
+
+# Build artefacts (rebuilt inside the image)
+.next
+**/.next
+out
+dist
+tsconfig.tsbuildinfo
+
+# SECRETS: never bake credentials into an image layer.
+# Runtime configuration must come from the environment / orchestrator.
+.env
+.env.*
+!.env.example
+
+# VCS / editor / OS noise
+.git
+.gitignore
+.github
+.vscode
+.idea
+**/.DS_Store
+*.swp
+
+# Logs / coverage / test output
+*.log
+npm-debug.log*
+coverage
+.nyc_output
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Runtime user uploads (created at runtime by the API route)
+public/uploads

@@ -65,16 +65,6 @@ export interface MumbaiPlaceItem {
   region: string;
 }
 
-export interface SearchPlaceResult {
-  name: string;
-  fullName: string;
-  lat: number;
-  lng: number;
-  isMumbai: boolean;
-  wardCode?: string;
-  source: 'LOCAL' | 'GLOBAL';
-}
-
 /**
  * Search places within Mumbai for instant autocomplete & detail filling.
  */
@@ -86,39 +76,7 @@ export function searchMumbaiPlaces(query: string): MumbaiPlaceItem[] {
     .slice(0, 10);
 }
 
-/**
- * Global location search (Mumbai + worldwide via OpenStreetMap Nominatim API route).
- */
-export async function searchGlobalPlaces(query: string): Promise<SearchPlaceResult[]> {
-  try {
-    const res = await fetch(`/api/search-places?q=${encodeURIComponent(query)}`);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        return json.data;
-      }
-    }
-  } catch (err) {
-    console.warn('searchGlobalPlaces error:', err);
-  }
-
-  const q = query.toLowerCase().trim();
-  return (
-    !q
-      ? mumbaiPlaces.slice(0, 6)
-      : mumbaiPlaces.filter(p => p.name.toLowerCase().includes(q) || p.wardCode.toLowerCase().includes(q) || p.region.toLowerCase().includes(q)).slice(0, 5)
-  ).map(p => ({
-    name: p.name,
-    fullName: `${p.name}, ${p.region}, Mumbai`,
-    lat: p.lat,
-    lng: p.lng,
-    isMumbai: isLocationInMumbai(p.lat, p.lng),
-    wardCode: p.wardCode,
-    source: 'LOCAL'
-  }));
-}
-
-export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
@@ -130,33 +88,11 @@ export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lo
   return R * c;
 }
 
-export function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  return calculateDistanceKm(lat1, lon1, lat2, lon2) * 1000;
-}
-
 /**
  * Maps GPS coordinates (lat, lng) to closest Ward, Assembly Constituency, and Parliamentary Constituency.
  */
 export function mapCoordinatesToCivicBoundary(lat: number, lng: number): GeographicMappingResult {
-  const isWithin = isLocationInMumbai(lat, lng);
-
-  if (!isWithin) {
-    return {
-      locality: 'Outside Mumbai',
-      wardCode: 'Outside Ward',
-      wardName: 'Outside Mumbai Ward',
-      acNumber: 0,
-      acName: 'Outside Mumbai',
-      pcNumber: 0,
-      pcName: 'Outside Mumbai',
-      representative: 'N/A',
-      party: 'N/A',
-      confidence: 'APPROXIMATE',
-      isWithinMumbai: false
-    };
-  }
-
-  // 1. Find matching or closest Ward for Mumbai
+  // 1. Find matching or closest Ward
   let matchedWard = wardsData.find(w => {
     const [minLng, minLat, maxLng, maxLat] = w.bbox;
     return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
@@ -212,6 +148,6 @@ export function mapCoordinatesToCivicBoundary(lat: number, lng: number): Geograp
     representative: matchedAc.representative,
     party: matchedAc.party,
     confidence: 'HIGH',
-    isWithinMumbai: true
+    isWithinMumbai: isLocationInMumbai(lat, lng)
   };
 }
