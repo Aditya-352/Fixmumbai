@@ -127,20 +127,6 @@ export default function MapLayerControl({
               </p>
               <div className="space-y-0.5">
                 <ToggleRow
-                  dot="#22c55e"
-                  label="NDVI Vegetation"
-                  sublabel="Sentinel-2 raster • AgroMonitoring"
-                  checked={layerVisibility.ndvi}
-                  onChange={() => onToggleLayer('ndvi')}
-                />
-                <ToggleRow
-                  dot="#1F6B3A"
-                  label="Parks & Nature"
-                  sublabel="OSM green-space polygons"
-                  checked={layerVisibility.greenSpaces}
-                  onChange={() => onToggleLayer('greenSpaces')}
-                />
-                <ToggleRow
                   dot="#d97706"
                   label="BMC Nurseries"
                   sublabel="All 27 • Handbook verified"

@@ -144,7 +144,6 @@ export default function GreenRightPanel({
   const setTab = onTabChange || setLocalTab;
 
   const [nurserySearch, setNurserySearch] = useState('');
-  const [showNdviProvenance, setShowNdviProvenance] = useState(false);
   const [showHandbookModal, setShowHandbookModal] = useState(false);
 
   // HUGSI Metrics Interactive State
@@ -266,64 +265,6 @@ export default function GreenRightPanel({
            list, leaving no scrollbar. */
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 
-          {/* ── Satellite observation provenance ───────────────────────────
-              Only the COMPACT summary row is fixed. The expanded detail is
-              rendered inside the scroll container below, so expanding can never
-              crush the list back to zero height (the original bug). */}
-          <div className="flex-shrink-0 px-3.5 pt-2.5 pb-2 border-b border-slate-100 bg-slate-50">
-            <div className="rounded-xl border border-slate-200 bg-white">
-              <button
-                type="button"
-                onClick={() => setShowNdviProvenance((v) => !v)}
-                aria-expanded={showNdviProvenance}
-                className="w-full flex items-center gap-2 px-2.5 py-2 text-left"
-              >
-                {showNdviProvenance ? (
-                  <ChevronUp className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                )}
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex-shrink-0">
-                  Satellite NDVI
-                </span>
-                <span className="text-[10px] font-mono text-slate-500 truncate flex-1">
-                  {tiles?.provenance
-                    ? `${tiles.provenance.acquisitionDateUtc?.slice(0, 10) ?? 'no date'} · ${
-                        tiles.provenance.satelliteType ?? 'unknown'
-                      }${
-                        typeof tiles.provenance.sceneCloudCoveragePct === 'number'
-                          ? ` · ${tiles.provenance.sceneCloudCoveragePct.toFixed(1)}% cloud`
-                          : ''
-                      }${tiles.numerical ? ` · mean ${tiles.numerical.mean.toFixed(3)}` : ' · n/a'}`
-                    : 'no observation metadata'}
-                </span>
-                {(() => {
-                  const st = tiles?.provenance?.providerStatus;
-                  const ok = st === 'IMAGERY_AVAILABLE' || st === 'PARTIAL_COVERAGE';
-                  const label =
-                    st === 'PARTIAL_COVERAGE' ? 'Partial AOI'
-                    : st === 'IMAGERY_AVAILABLE' ? 'Available'
-                    : st === 'IMAGERY_UNAVAILABLE' ? 'No imagery'
-                    : st === 'AUTHENTICATION_FAILED' ? 'Auth failed'
-                    : st === 'AUTHENTICATED' ? 'No AOI'
-                    : st === 'NOT_CONFIGURED' ? 'Not configured'
-                    : 'Unavailable';
-                  return (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border flex-shrink-0 ${
-                      ok
-                        ? st === 'PARTIAL_COVERAGE'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        : 'bg-slate-100 text-slate-600 border-slate-200'
-                    }`}>
-                      {label}
-                    </span>
-                  );
-                })()}
-              </button>
-            </div>
-          </div>
-
           {/* Nearest Walkable Chip */}
           {nearestVerified && (
             <div className="flex-shrink-0 px-3.5 pt-3 pb-2 border-b border-slate-100 bg-white">
@@ -403,88 +344,8 @@ export default function GreenRightPanel({
             </div>
           </div>
 
-          {/* Spaces Card List — expanded provenance scrolls with this list */}
+          {/* Spaces Card List */}
           <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-2 space-y-2">
-            {showNdviProvenance && (
-              <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-                <div className="px-2.5 pb-2.5 pt-1 border-t border-slate-100 space-y-2">
-                  {tiles?.provenance ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10.5px] text-slate-600">
-                        <span>Acquired (UTC)</span>
-                        <span className="font-mono text-slate-900 text-right">
-                          {tiles.provenance.acquisitionDateUtc?.slice(0, 10) ?? 'unknown'}
-                        </span>
-                        <span>Satellite</span>
-                        <span className="font-mono text-slate-900 text-right">
-                          {tiles.provenance.satelliteType ?? 'unknown'}
-                        </span>
-                        <span>Scene cloud cover</span>
-                        <span className="font-mono text-slate-900 text-right">
-                          {typeof tiles.provenance.sceneCloudCoveragePct === 'number'
-                            ? `${tiles.provenance.sceneCloudCoveragePct.toFixed(2)}%`
-                            : 'unknown'}
-                        </span>
-                        <span>Resolution</span>
-                        <span className="font-mono text-slate-900 text-right">
-                          {tiles.provenance.spatialResolutionM
-                            ? `${tiles.provenance.spatialResolutionM} m`
-                            : 'unverified'}
-                        </span>
-                      </div>
-
-                      {tiles.numerical ? (
-                        <div className="pt-2 border-t border-slate-100">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                            Measured NDVI (AOI statistics)
-                          </p>
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10.5px] text-slate-600">
-                            <span>Mean</span>
-                            <span className="font-mono font-bold text-slate-900 text-right">{tiles.numerical.mean.toFixed(3)}</span>
-                            <span>Median</span>
-                            <span className="font-mono font-bold text-slate-900 text-right">{tiles.numerical.median.toFixed(3)}</span>
-                            <span>Range</span>
-                            <span className="font-mono text-slate-900 text-right">
-                              {tiles.numerical.min.toFixed(2)} – {tiles.numerical.max.toFixed(2)}
-                            </span>
-                            <span>Valid pixels</span>
-                            <span className="font-mono text-slate-900 text-right">
-                              {tiles.numerical.validPixelCount.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 pt-2 border-t border-slate-100">
-                          Numerical NDVI unavailable from the provider for this observation. The
-                          displayed vegetation is a colour-rendered tile, not a measurement.
-                        </p>
-                      )}
-
-                      <p className="text-[9.5px] text-slate-400 leading-snug pt-1.5 border-t border-slate-100">
-                        {tiles.provenance.selectionReason}
-                      </p>
-
-                      {tiles.provenance.coverageIsPartial && (
-                        <p className="text-[9.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 leading-snug">
-                          Coverage is limited to{' '}
-                          {tiles.provenance.aoi.map((a) => a.name).join(', ')} and does not span the
-                          full Mumbai study area. Areas outside are shown without vegetation data, not
-                          as zero vegetation.
-                        </p>
-                      )}
-
-                      <p className="text-[9px] text-slate-400 leading-snug">
-                        NDVI is a spectral vegetation-response index from Sentinel-2 surface
-                        reflectance, not a measurement of tree count, canopy cover or biodiversity.
-                        Mapped green-space coverage shown below is a separate, independent metric.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-[10.5px] text-slate-500">No observation metadata.</p>
-                  )}
-                </div>
-              </div>
-            )}
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1">
               <span>MAPPED GREEN AREAS</span>
               <span>{filteredSpaces.length} locations</span>
