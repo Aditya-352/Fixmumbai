@@ -29,3 +29,6 @@ next-env.d.ts
 
 # SQLite database (if needed to exclude dev runtime DB changes)
 # *.db
+
+# User uploaded photos - never commit
+public/uploads/
