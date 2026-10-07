@@ -58,14 +58,14 @@ export default async function MapPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 bg-white text-slate-900">
-      {/* NAMMAKASA FLOATING HEADER & STATS BAR */}
+      {/* FLOATING HEADER & STATS BAR */}
       <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="space-y-2 z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 border border-red-500/30 text-red-400 text-xs font-black uppercase tracking-wider">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-            NammaKasa Style Civic GIS Map
+            Live Civic GIS Map
           </div>
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
             Mumbai Civic Garbage & Blackspot Map

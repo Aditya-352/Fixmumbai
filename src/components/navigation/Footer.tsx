@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ExternalLink, ShieldCheck, Database, Info } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Database, Info, Wind } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -35,6 +35,11 @@ export default function Footer() {
               <li><Link href="/wards" className="hover:text-red-400 transition">24 BMC Ward Directory</Link></li>
               <li><Link href="/representatives" className="hover:text-red-400 transition">Elected Representatives (2024)</Link></li>
               <li><Link href="/accountability" className="hover:text-red-400 transition">Public Accountability Dashboard</Link></li>
+              <li>
+                <Link href="/air-quality" className="inline-flex items-center gap-1 hover:text-red-400 transition text-red-300 font-medium">
+                  <Wind className="w-3 h-3" /> Air Quality & Health Checklist
+                </Link>
+              </li>
             </ul>
           </div>
 
