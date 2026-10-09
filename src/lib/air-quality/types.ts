@@ -11,7 +11,7 @@
  *   shapes.
  */
 
-export type AqiSource = 'CPCB' | 'OPENAQ';
+export type AqiSource = 'CPCB' | 'OPENAQ' | 'AQICN' | 'OPENWEATHER';
 
 /** Standard CPCB National AQI category buckets. */
 export type AqiCategory =
@@ -54,6 +54,10 @@ export interface RawStationReading {
   /** ISO 8601 timestamp of the last observation update reported upstream. */
   lastUpdated: string | null;
   pollutants: PollutantReading[];
+  /** Precomputed AQI from the source, when the upstream feed reports one. */
+  measuredAqi?: number | null;
+  /** Dominant pollutant reported or inferred by the source, when available. */
+  dominantPollutant?: PollutantId | null;
   /**
    * Distance in km from the requested location to this station.
    * Populated by the station resolver once the location is known.
