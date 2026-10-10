@@ -20,6 +20,17 @@ export type DensityClass = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNAVAILABLE';
 
 export type NdviConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
+/**
+ * Provenance of an NDVI figure. This is the single field the UI must branch on.
+ *
+ *  MEASURED          — computed from real satellite pixels (Sentinel-2 B8/B4).
+ *  SYNTHETIC_ESTIMATE — a hand-authored / illustrative number. NOT a measurement.
+ *                       Never present an acquisition date, pixel count, cloud
+ *                       coverage or confidence alongside one of these.
+ *  UNAVAILABLE       — no value at all.
+ */
+export type NdviProvenance = 'MEASURED' | 'SYNTHETIC_ESTIMATE' | 'UNAVAILABLE';
+
 export type ImageVerificationTier =
   | 'VERIFIED'
   | 'VERIFIED_NAME_MATCH'
@@ -28,7 +39,17 @@ export type ImageVerificationTier =
   | 'SATELLITE'
   | 'NONE';
 
-export type CompositeType = 'TRAILING_90D' | 'DRY_SEASON';
+/**
+ * Composite product used to build the observation.
+ * SYNTHETIC is the documented marker for non-measurement values (see the
+ * GreenVegetationObservation model in prisma/schema.prisma).
+ */
+export type CompositeType =
+  | 'TRAILING_90D'
+  | 'DRY_SEASON'
+  | 'MEDIAN_COMPOSITE'
+  | 'SINGLE_SCENE'
+  | 'SYNTHETIC';
 
 // ── API response envelope ────────────────────────────────────────────────────
 export interface ApiMeta {
@@ -80,7 +101,14 @@ export interface NdviSummary {
   imageCount: number | null;
   cloudCoverage: number | null;
   satelliteSource: string | null;
-  reason?: string; // 'SATELLITE_UNAVAILABLE' etc.
+  /**
+   * Whether these numbers came from real satellite pixels. Consumers MUST use
+   * this to decide whether it is legitimate to show an observation window,
+   * pixel count, cloud coverage or confidence. Defaults to UNAVAILABLE so a
+   * missing value fails closed rather than being assumed genuine.
+   */
+  provenance: NdviProvenance;
+  reason?: string; // 'SATELLITE_UNAVAILABLE', 'SYNTHETIC_ESTIMATE_NOT_SATELLITE' etc.
 }
 
 export interface AccessEvidence {

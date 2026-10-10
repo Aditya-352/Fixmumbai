@@ -68,11 +68,16 @@ export const DEFAULT_RADIUS_M = Number(process.env.GREEN_EXPLORER_DEFAULT_RADIUS
 
 // ── Mumbai city config ───────────────────────────────────────────────────────
 export const MUMBAI: CityConfig = {
-  name: 'Bandra West, Mumbai',
+  // City-wide label. This is the DEFAULT centre shown before/without GPS, so it
+  // must never name a single locality — a visitor in another city would
+  // otherwise be told they are in Bandra West.
+  name: 'Mumbai, India',
   country: 'India',
   // Mumbai island [[18.88, 72.76], [19.29, 72.99]] (Colaba to Dahisar, creek on the east)
   bbox: [18.88, 72.76, 19.29, 72.99],
-  centre: [19.0596, 72.8295],
+  // Geographic centroid of the island (near Fort) — the neutral fallback point
+  // used for distance references and out-of-coverage queries.
+  centre: [19.076, 72.8777],
   defaultZoom: 12,
   // Jun(5) Jul(6) Aug(7) Sep(8) — monsoon months
   monsoonMonths: [5, 6, 7, 8],

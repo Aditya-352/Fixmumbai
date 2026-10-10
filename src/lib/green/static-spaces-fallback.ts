@@ -50,9 +50,15 @@ export interface StaticGreenSpaceSeed {
   pathCount: number;
   totalPathLengthM: number;
   entrances: Array<{ lat: number; lon: number; tags: Record<string, string> }>;
-  imageUrl: string;
-  thumbUrl: string;
-  imageAttribution: string;
+  /**
+   * Photographs are NOT stored on this record. They were removed because every
+   * URL here was a hand-written Wikimedia thumbnail path with an invented MD5
+   * hash directory (all 60 returned HTTP 400) while being labelled
+   * "CC BY-SA 4.0" / "VERIFIED". Imagery now comes exclusively from
+   * `src/data/green-space-images.json`, which is resolved from the Wikimedia
+   * Commons API by scripts/green/resolve-commons-images.ts. Parks with no
+   * verified file get the neutral placeholder.
+   */
   caption: string;
 }
 
@@ -69,9 +75,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Public heritage recreational maidan' }],
     pathCount: 4, totalPathLengthM: 1200,
     entrances: [{ lat: 18.930, lon: 72.828, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Oval_Maidan_Mumbai.jpg/800px-Oval_Maidan_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Oval_Maidan_Mumbai.jpg/300px-Oval_Maidan_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Oval Maidan — historic public recreation ground, Churchgate',
   },
   {
@@ -85,9 +88,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Public civic recreation ground' }],
     pathCount: 3, totalPathLengthM: 950,
     entrances: [{ lat: 18.936, lon: 72.829, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Cross_maidan.jpg/800px-Cross_maidan.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Cross_maidan.jpg/300px-Cross_maidan.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Cross Maidan — public recreation grounds, Fort area',
   },
   {
@@ -101,9 +101,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Public civic multipurpose maidan' }],
     pathCount: 5, totalPathLengthM: 1800,
     entrances: [{ lat: 18.940, lon: 72.832, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Azad_Maidan_Mumbai.jpg/800px-Azad_Maidan_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Azad_Maidan_Mumbai.jpg/300px-Azad_Maidan_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Azad Maidan — iconic civic and protest grounds, South Mumbai',
   },
   {
@@ -117,9 +114,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Public topiary garden, Malabar Hill' }],
     pathCount: 8, totalPathLengthM: 2400,
     entrances: [{ lat: 18.957, lon: 72.805, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Mumbai_Hanging_Gardens.jpg/800px-Mumbai_Hanging_Gardens.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Mumbai_Hanging_Gardens.jpg/300px-Mumbai_Hanging_Gardens.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Hanging Gardens — famous topiary garden on Malabar Hill',
   },
   {
@@ -133,9 +127,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Popular sea-facing park with jogging track' }],
     pathCount: 6, totalPathLengthM: 2000,
     entrances: [{ lat: 18.963, lon: 72.800, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Priyadarshini_Park.jpg/800px-Priyadarshini_Park.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Priyadarshini_Park.jpg/300px-Priyadarshini_Park.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Priyadarshini Park — sea-facing park with jogging track, Nepean Sea Road',
   },
   // ── SANJAY GANDHI NATIONAL PARK ───────────────────────────────────────────
@@ -150,9 +141,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'boundary=national_park', source: 'OSM_TAG', note: 'Protected national park with walking trails' }],
     pathCount: 24, totalPathLengthM: 45000,
     entrances: [{ lat: 19.178, lon: 72.894, tags: { barrier: 'gate', name: 'Borivali Gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Sanjay_Gandhi_National_Park.jpg/800px-Sanjay_Gandhi_National_Park.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Sanjay_Gandhi_National_Park.jpg/300px-Sanjay_Gandhi_National_Park.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Sanjay Gandhi National Park — 104 sq km protected forest in the heart of Mumbai',
   },
   // ── AAREY COLONY FOREST ───────────────────────────────────────────────────
@@ -167,9 +155,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'landuse=forest', source: 'OSM_TAG', note: 'Protected forest area with tribal settlements' }],
     pathCount: 12, totalPathLengthM: 18000,
     entrances: [{ lat: 19.148, lon: 72.875, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Aarey_Colony.jpg/800px-Aarey_Colony.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Aarey_Colony.jpg/300px-Aarey_Colony.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Aarey Milk Colony Forest — vital green lung on the edge of Goregaon',
   },
   // ── GODREJ MANGROVES ──────────────────────────────────────────────────────
@@ -184,9 +169,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=wetland', source: 'OSM_TAG', note: 'Mangrove wetland on Thane Creek' }],
     pathCount: 6, totalPathLengthM: 4200,
     entrances: [{ lat: 19.060, lon: 72.910, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/800px-Mangroves_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/300px-Mangroves_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Godrej Mangroves — coastal mangrove wetland along Thane Creek, Vikhroli',
   },
   // ── POWAI LAKE ────────────────────────────────────────────────────────────
@@ -201,9 +183,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=water', source: 'OSM_TAG', note: 'Scenic lake with surrounding green buffer' }],
     pathCount: 3, totalPathLengthM: 3800,
     entrances: [{ lat: 19.125, lon: 72.905, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Powai_Lake_Mumbai.jpg/800px-Powai_Lake_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Powai_Lake_Mumbai.jpg/300px-Powai_Lake_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Powai Lake — artificial lake surrounded by IIT Bombay campus and forest',
   },
   // ── SHIVAJI PARK ──────────────────────────────────────────────────────────
@@ -218,9 +197,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Large public maidan and park, Dadar' }],
     pathCount: 10, totalPathLengthM: 3200,
     entrances: [{ lat: 19.027, lon: 72.838, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Shivaji_Park_Mumbai.jpg/800px-Shivaji_Park_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Shivaji_Park_Mumbai.jpg/300px-Shivaji_Park_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Shivaji Park — Mumbai\'s largest public park, Dadar',
   },
   // ── MAHIM NATURE PARK ─────────────────────────────────────────────────────
@@ -235,9 +211,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'boundary=protected_area', source: 'OSM_TAG', note: 'Urban nature reserve on reclaimed land' }],
     pathCount: 8, totalPathLengthM: 5500,
     entrances: [{ lat: 19.049, lon: 72.862, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Mahim_Nature_Park.jpg/800px-Mahim_Nature_Park.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Mahim_Nature_Park.jpg/300px-Mahim_Nature_Park.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Maharashtra Nature Park — urban nature reserve, Mahim',
   },
   // ── JOGGER'S PARK, BANDRA ─────────────────────────────────────────────────
@@ -252,9 +225,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Sea-facing park with jogging track' }],
     pathCount: 4, totalPathLengthM: 1500,
     entrances: [{ lat: 19.064, lon: 72.823, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Joggers_Park_Bandra.jpg/800px-Joggers_Park_Bandra.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Joggers_Park_Bandra.jpg/300px-Joggers_Park_Bandra.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: "Jogger's Park — popular sea-facing park with jogging track, Bandra West",
   },
   // ── CARTER ROAD PROMENADE ─────────────────────────────────────────────────
@@ -269,9 +239,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Sea-facing promenade garden with amphitheatre' }],
     pathCount: 3, totalPathLengthM: 900,
     entrances: [{ lat: 19.067, lon: 72.824, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Carter_Road_Bandra.jpg/800px-Carter_Road_Bandra.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Carter_Road_Bandra.jpg/300px-Carter_Road_Bandra.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Carter Road Promenade — seafront garden and amphitheatre, Bandra',
   },
   // ── PATWARDHAN PARK ───────────────────────────────────────────────────────
@@ -286,9 +253,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Community park, Bandra West' }],
     pathCount: 4, totalPathLengthM: 1100,
     entrances: [{ lat: 19.060, lon: 72.834, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Patwardhan_Park_Mumbai.jpg/800px-Patwardhan_Park_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Patwardhan_Park_Mumbai.jpg/300px-Patwardhan_Park_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Raosaheb Patwardhan Park — community green space, Bandra West',
   },
   // ── JUHU BEACH PROMENADE ──────────────────────────────────────────────────
@@ -303,9 +267,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=beach', source: 'OSM_TAG', note: 'Public beach and promenade' }],
     pathCount: 2, totalPathLengthM: 2800,
     entrances: [{ lat: 19.097, lon: 72.826, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Juhu_Beach_Mumbai.jpg/800px-Juhu_Beach_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Juhu_Beach_Mumbai.jpg/300px-Juhu_Beach_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Juhu Beach — iconic Mumbai beach and promenade, Juhu',
   },
   // ── VERSOVA MANGROVES ─────────────────────────────────────────────────────
@@ -320,9 +281,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=wetland', source: 'OSM_TAG', note: 'Coastal mangrove wetland, Versova' }],
     pathCount: 2, totalPathLengthM: 1500,
     entrances: [{ lat: 19.126, lon: 72.808, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Versova_Mangroves.jpg/800px-Versova_Mangroves.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Versova_Mangroves.jpg/300px-Versova_Mangroves.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Versova Mangroves — protected tidal wetland, Andheri West',
   },
   // ── WORLI SEAFACE PROMENADE ───────────────────────────────────────────────
@@ -337,9 +295,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'highway=pedestrian', source: 'OSM_TAG', note: 'Public seafront walking promenade' }],
     pathCount: 1, totalPathLengthM: 2200,
     entrances: [{ lat: 19.006, lon: 72.818, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Worli_Sea_Face.jpg/800px-Worli_Sea_Face.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Worli_Sea_Face.jpg/300px-Worli_Sea_Face.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Worli Sea Face — breezy promenade along the Arabian Sea, Worli',
   },
   // ── MAHALAXMI RACECOURSE ──────────────────────────────────────────────────
@@ -354,9 +309,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'leisure=horse_racing', source: 'OSM_TAG', note: 'Large green oval with public access during non-race hours' }],
     pathCount: 5, totalPathLengthM: 3500,
     entrances: [{ lat: 18.981, lon: 72.818, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mahalaxmi_Racecourse.jpg/800px-Mahalaxmi_Racecourse.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mahalaxmi_Racecourse.jpg/300px-Mahalaxmi_Racecourse.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mahalaxmi Racecourse — expansive green grounds in South Mumbai',
   },
   // ── BANDRA FORT GARDEN ───────────────────────────────────────────────────
@@ -371,9 +323,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'leisure=park', source: 'OSM_TAG', note: 'Historic fort and sea-facing garden' }],
     pathCount: 3, totalPathLengthM: 850,
     entrances: [{ lat: 19.039, lon: 72.819, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Bandra_Fort_Mumbai.jpg/800px-Bandra_Fort_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Bandra_Fort_Mumbai.jpg/300px-Bandra_Fort_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Bandra Fort — 16th century Portuguese fort with promenade gardens',
   },
   // ── COLABA WOODS & NATURE TRAIL ──────────────────────────────────────────
@@ -388,9 +337,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'landuse=forest', source: 'OSM_TAG', note: 'Naval forest area with permissive access trails' }],
     pathCount: 4, totalPathLengthM: 3200,
     entrances: [{ lat: 18.905, lon: 72.823, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Colaba_Woods.jpg/800px-Colaba_Woods.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Colaba_Woods.jpg/300px-Colaba_Woods.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Colaba Woods — rare native forest in the southernmost tip of Mumbai',
   },
   // ── VEERMATA JIJABAI UDYAN (BYCULLA ZOO GARDEN) ──────────────────────────
@@ -405,9 +351,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Mumbai\'s oldest public garden and zoo' }],
     pathCount: 12, totalPathLengthM: 4500,
     entrances: [{ lat: 18.978, lon: 72.837, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Byculla_Zoo.jpg/800px-Byculla_Zoo.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Byculla_Zoo.jpg/300px-Byculla_Zoo.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: "Veermata Jijabai Udyan — Mumbai's oldest public garden and zoological park, Byculla",
   },
   // ── SION FORT HILL GARDEN ─────────────────────────────────────────────────
@@ -422,9 +365,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Historic hill fort with garden and city views' }],
     pathCount: 3, totalPathLengthM: 980,
     entrances: [{ lat: 19.042, lon: 72.863, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Sion_Fort.jpg/800px-Sion_Fort.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Sion_Fort.jpg/300px-Sion_Fort.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Sion Fort Hill Garden — hilltop fort with panoramic city views, Sion',
   },
   // ── VIKHROLI MANGROVES ────────────────────────────────────────────────────
@@ -439,9 +379,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=wetland', source: 'OSM_TAG', note: 'Mangrove ecosystem adjacent to Thane Creek' }],
     pathCount: 3, totalPathLengthM: 2800,
     entrances: [{ lat: 19.083, lon: 72.926, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/800px-Mangroves_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/300px-Mangroves_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Vikhroli Mangrove Park — tidal wetland buffer, Thane Creek',
   },
   // ── MALAD CREEK MANGROVES ─────────────────────────────────────────────────
@@ -456,9 +393,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=wetland', source: 'OSM_TAG', note: 'Coastal mangrove belt, Malad Creek' }],
     pathCount: 2, totalPathLengthM: 1800,
     entrances: [{ lat: 19.182, lon: 72.846, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/800px-Mangroves_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/300px-Mangroves_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Malad Creek Mangroves — tidal mangrove forest, Malad',
   },
   // ── DAHISAR RIVER GREENWAY ────────────────────────────────────────────────
@@ -473,9 +407,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=water', source: 'OSM_TAG', note: 'Riparian green corridor along Dahisar river' }],
     pathCount: 3, totalPathLengthM: 4800,
     entrances: [{ lat: 19.262, lon: 72.855, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Dahisar_River.jpg/800px-Dahisar_River.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Dahisar_River.jpg/300px-Dahisar_River.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Dahisar River Greenway — riparian corridor through Dahisar, North Mumbai',
   },
   // ── TULSI LAKE & VIHAR LAKE ───────────────────────────────────────────────
@@ -490,9 +421,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=water', source: 'OSM_TAG', note: 'Municipal reservoir with restricted public access' }],
     pathCount: 0, totalPathLengthM: 0,
     entrances: [],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Tulsi_Lake_Mumbai.jpg/800px-Tulsi_Lake_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Tulsi_Lake_Mumbai.jpg/300px-Tulsi_Lake_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Tulsi Lake — municipal reservoir with surrounding forest buffer, SGNP',
   },
   {
@@ -506,9 +434,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=water', source: 'OSM_TAG', note: 'Municipal reservoir with forest buffer' }],
     pathCount: 0, totalPathLengthM: 0,
     entrances: [],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Vihar_Lake.jpg/800px-Vihar_Lake.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Vihar_Lake.jpg/300px-Vihar_Lake.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Vihar Lake — Mumbai\'s major reservoir surrounded by protected forest',
   },
   // ── DADAR CHOWPATTY BEACH ─────────────────────────────────────────────────
@@ -523,9 +448,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=beach', source: 'OSM_TAG', note: 'Public beach and garden, Dadar' }],
     pathCount: 2, totalPathLengthM: 1400,
     entrances: [{ lat: 19.021, lon: 72.837, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Dadar_Chowpatty.jpg/800px-Dadar_Chowpatty.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Dadar_Chowpatty.jpg/300px-Dadar_Chowpatty.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Dadar Chowpatty — beach and garden on the western seafront, Dadar',
   },
   // ── GIRGAON CHOWPATTY ─────────────────────────────────────────────────────
@@ -540,9 +462,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=beach', source: 'OSM_TAG', note: 'Iconic public beach, Marine Drive seafront' }],
     pathCount: 1, totalPathLengthM: 1100,
     entrances: [{ lat: 18.955, lon: 72.813, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Chowpatty_Beach_Mumbai.jpg/800px-Chowpatty_Beach_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Chowpatty_Beach_Mumbai.jpg/300px-Chowpatty_Beach_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Girgaon Chowpatty — iconic Ganesh festival beach, South Mumbai',
   },
   // ── MAHIM CAUSEWAY GARDEN ─────────────────────────────────────────────────
@@ -557,9 +476,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'leisure=park', source: 'OSM_TAG', note: 'Seafront garden and promenade, Mahim' }],
     pathCount: 2, totalPathLengthM: 700,
     entrances: [{ lat: 19.045, lon: 72.841, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Juhu_Beach_Mumbai.jpg/800px-Juhu_Beach_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Juhu_Beach_Mumbai.jpg/300px-Juhu_Beach_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mahim Bay Promenade — coastal garden and promenade, Mahim',
   },
   // ── VASAI CREEK MANGROVES ─────────────────────────────────────────────────
@@ -574,9 +490,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=wetland', source: 'OSM_TAG', note: 'Extensive mangrove ecosystem, Manori Creek' }],
     pathCount: 1, totalPathLengthM: 2200,
     entrances: [],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/800px-Mangroves_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/300px-Mangroves_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Manori Creek Mangroves — large coastal wetland system, Northwest Mumbai',
   },
   // ── ANDHERI SPORTS COMPLEX GARDEN ────────────────────────────────────────
@@ -591,9 +504,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'leisure=stadium', source: 'OSM_TAG', note: 'Public sports and recreation complex with green grounds' }],
     pathCount: 4, totalPathLengthM: 1600,
     entrances: [{ lat: 19.114, lon: 72.866, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Cross_maidan.jpg/800px-Cross_maidan.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Cross_maidan.jpg/300px-Cross_maidan.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Andheri Sports Complex — public sports facilities and green grounds, Andheri East',
   },
   // ── MALAD POISAR RIVER GREENWAY ───────────────────────────────────────────
@@ -608,9 +518,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=water', source: 'OSM_TAG', note: 'Riparian green corridor along Poisar river' }],
     pathCount: 2, totalPathLengthM: 3200,
     entrances: [{ lat: 19.189, lon: 72.858, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Dahisar_River.jpg/800px-Dahisar_River.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Dahisar_River.jpg/300px-Dahisar_River.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Poisar River Greenway — riparian corridor through Malad',
   },
   // ── KURLA NATURE PARK ─────────────────────────────────────────────────────
@@ -625,9 +532,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Public nature park, Kurla' }],
     pathCount: 5, totalPathLengthM: 2200,
     entrances: [{ lat: 19.072, lon: 72.882, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Shivaji_Park_Mumbai.jpg/800px-Shivaji_Park_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Shivaji_Park_Mumbai.jpg/300px-Shivaji_Park_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Kurla Nature Park — public green space, Kurla',
   },
   // ── KANDIVALI FILM CITY FOREST ────────────────────────────────────────────
@@ -642,9 +546,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'landuse=forest', source: 'OSM_TAG', note: 'Forest buffer around Goregaon Film City complex' }],
     pathCount: 2, totalPathLengthM: 3800,
     entrances: [],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Aarey_Colony.jpg/800px-Aarey_Colony.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Aarey_Colony.jpg/300px-Aarey_Colony.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Goregaon Film City Forest — green buffer surrounding Filmistan studios, Goregaon',
   },
   // ── MULUND FLORAL GARDEN ──────────────────────────────────────────────────
@@ -659,9 +560,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'BMC-maintained ornamental garden with floral displays' }],
     pathCount: 6, totalPathLengthM: 2200,
     entrances: [{ lat: 19.176, lon: 72.949, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Mumbai_Hanging_Gardens.jpg/800px-Mumbai_Hanging_Gardens.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Mumbai_Hanging_Gardens.jpg/300px-Mumbai_Hanging_Gardens.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mulund Floral Garden — ornamental garden with seasonal floral displays, Mulund',
   },
   // ── THANE CREEK FLAMINGO SANCTUARY ───────────────────────────────────────
@@ -676,9 +574,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'boundary=protected_area', source: 'OSM_TAG', note: 'Wildlife sanctuary and flamingo habitat, Thane Creek' }],
     pathCount: 3, totalPathLengthM: 5600,
     entrances: [{ lat: 19.082, lon: 72.961, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flamingos_Thane_Creek.jpg/800px-Flamingos_Thane_Creek.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flamingos_Thane_Creek.jpg/300px-Flamingos_Thane_Creek.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Thane Creek Flamingo Sanctuary — protected habitat for flamingos and coastal birds',
   },
   // ── BORIVALI NATIONAL PARK BUFFER ────────────────────────────────────────
@@ -693,9 +588,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'landuse=forest', source: 'OSM_TAG', note: 'Eastern buffer forest of SGNP, Borivali' }],
     pathCount: 8, totalPathLengthM: 12000,
     entrances: [{ lat: 19.205, lon: 72.885, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Sanjay_Gandhi_National_Park.jpg/800px-Sanjay_Gandhi_National_Park.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Sanjay_Gandhi_National_Park.jpg/300px-Sanjay_Gandhi_National_Park.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'SGNP Eastern Buffer Forest — transition zone between park core and suburban Borivali',
   },
   // ── KANHERI CAVES FOREST TRAIL ────────────────────────────────────────────
@@ -710,9 +602,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Forest trail to Buddhist rock-cut caves inside SGNP' }],
     pathCount: 6, totalPathLengthM: 4800,
     entrances: [{ lat: 19.206, lon: 72.906, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Kanheri_Caves.jpg/800px-Kanheri_Caves.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Kanheri_Caves.jpg/300px-Kanheri_Caves.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Kanheri Caves Trail — Buddhist rock-cut cave complex inside SGNP forest',
   },
   // ── MUMBAI UNIVERSITY GARDENS ─────────────────────────────────────────────
@@ -727,9 +616,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Gothic heritage campus with public gardens' }],
     pathCount: 5, totalPathLengthM: 1200,
     entrances: [{ lat: 18.931, lon: 72.832, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/University_of_Mumbai.jpg/800px-University_of_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/University_of_Mumbai.jpg/300px-University_of_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Mumbai University Fort Campus — Victorian Gothic buildings and heritage gardens',
   },
   // ── SEWRI MUD FLATS (FLAMINGO HABITAT) ───────────────────────────────────
@@ -744,9 +630,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=mud', source: 'OSM_TAG', note: 'Tidal mudflats with flamingo habitat, Sewri' }],
     pathCount: 1, totalPathLengthM: 1600,
     entrances: [{ lat: 19.006, lon: 72.864, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flamingos_Thane_Creek.jpg/800px-Flamingos_Thane_Creek.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flamingos_Thane_Creek.jpg/300px-Flamingos_Thane_Creek.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Sewri Flamingo Point — seasonal flamingo habitat on tidal mudflats, Sewri',
   },
   // ── WORLI KOLIWADA VILLAGE GARDEN ─────────────────────────────────────────
@@ -761,9 +644,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'leisure=park', source: 'OSM_TAG', note: 'Historic Koli fishing community village green' }],
     pathCount: 2, totalPathLengthM: 600,
     entrances: [{ lat: 19.001, lon: 72.816, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Worli_Sea_Face.jpg/800px-Worli_Sea_Face.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Worli_Sea_Face.jpg/300px-Worli_Sea_Face.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Worli Koliwada Village Green — historic fishing village community garden',
   },
   // ── POWAI LAKE GARDEN ─────────────────────────────────────────────────────
@@ -778,9 +658,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'access=yes', source: 'OSM_TAG', note: 'Lakeside park and promenade, IIT Bombay campus' }],
     pathCount: 5, totalPathLengthM: 2400,
     entrances: [{ lat: 19.131, lon: 72.913, tags: { barrier: 'gate' } }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Powai_Lake_Mumbai.jpg/800px-Powai_Lake_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Powai_Lake_Mumbai.jpg/300px-Powai_Lake_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Powai Lake Garden — peaceful lakeside park on IIT Bombay campus',
   },
   // ── CHAKALA MANGROVES ─────────────────────────────────────────────────────
@@ -795,9 +672,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'natural=wetland', source: 'OSM_TAG', note: 'Intertidal mangrove patch, Chakala Creek' }],
     pathCount: 0, totalPathLengthM: 0,
     entrances: [],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/800px-Mangroves_Mumbai.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mangroves_Mumbai.jpg/300px-Mangroves_Mumbai.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Chakala Creek Mangroves — intertidal mangrove patch near BKC, Andheri East',
   },
   // ── BREACH CANDY GARDENS ──────────────────────────────────────────────────
@@ -812,9 +686,6 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     accessEvidence: [{ tag: 'leisure=garden', source: 'OSM_TAG', note: 'Seafront garden adjacent to Breach Candy Club and hospital' }],
     pathCount: 2, totalPathLengthM: 720,
     entrances: [{ lat: 18.965, lon: 72.805, tags: {} }],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Priyadarshini_Park.jpg/800px-Priyadarshini_Park.jpg',
-    thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Priyadarshini_Park.jpg/300px-Priyadarshini_Park.jpg',
-    imageAttribution: 'Wikimedia Commons / CC BY-SA 4.0',
     caption: 'Breach Candy Gardens — quiet seafront garden in upscale South Mumbai',
   },
 ];

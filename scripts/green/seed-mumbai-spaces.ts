@@ -939,25 +939,51 @@ export async function seedAllMumbaiSpaces() {
       },
     });
 
-    // Seed/Update Real Vegetation Observation (NDVI)
-    await prisma.greenVegetationObservation.deleteMany({ where: { greenSpaceId: space.id } });
-    await prisma.greenVegetationObservation.create({
-      data: {
-        greenSpaceId: space.id,
-        ndviMean: s.ndviMean,
-        ndviMin: s.ndviMin,
-        ndviMax: s.ndviMax,
-        pixelCount: Math.round(s.areaM2 / 100),
-        densityClass: s.densityClass,
-        confidence: 0.95,
-        compositeType: 'COMPOSITE_90D',
-        observationStart: new Date(Date.now() - 90 * 24 * 3600 * 1000),
-        observationEnd: new Date(),
-        imageCount: 18,
-        cloudCoverage: 4.2,
-        satelliteSource: 'Sentinel-2 MSI Level-2A',
-      },
+    // Seed/Update Vegetation Observation.
+    //
+    // The NDVI constants below are HAND-AUTHORED illustrative estimates, not
+    // satellite measurements. This block therefore records them with the
+    // documented SYNTHETIC marker and leaves every measurement-metadata field
+    // null: a fabricated observation window (previously computed from the wall
+    // clock, which made the rows look perpetually fresh), a fabricated pixel
+    // count derived from a hand-authored area, and a fabricated confidence and
+    // cloud figure.
+    //
+    // Genuine measurements are NEVER overwritten: if this green space already
+    // has a real observation (one that is not marked SYNTHETIC and carries an
+    // acquisition window), the seed leaves it untouched.
+    const existingReal = await prisma.greenVegetationObservation.findFirst({
+      where: { greenSpaceId: space.id },
+      orderBy: { processedAt: 'desc' },
     });
+    const existingIsMeasured =
+      !!existingReal &&
+      existingReal.compositeType !== 'SYNTHETIC' &&
+      existingReal.satelliteSource !== 'SYNTHETIC' &&
+      !!existingReal.observationStart;
+
+    if (existingIsMeasured) {
+      console.log(`   ↺ ${s.name}: kept existing measured observation (${existingReal!.compositeType}).`);
+    } else {
+      await prisma.greenVegetationObservation.deleteMany({ where: { greenSpaceId: space.id } });
+      await prisma.greenVegetationObservation.create({
+        data: {
+          greenSpaceId: space.id,
+          ndviMean: s.ndviMean,
+          ndviMin: s.ndviMin,
+          ndviMax: s.ndviMax,
+          pixelCount: null,
+          densityClass: s.densityClass,
+          confidence: null,
+          compositeType: 'SYNTHETIC',
+          observationStart: null,
+          observationEnd: null,
+          imageCount: null,
+          cloudCoverage: null,
+          satelliteSource: 'SYNTHETIC',
+        },
+      });
+    }
   }
 
   console.log(`✅ Successfully seeded all ${COMPREHENSIVE_MUMBAI_SPACES.length} Mumbai green spaces & NDVI observations.`);
