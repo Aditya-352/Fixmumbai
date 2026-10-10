@@ -25,6 +25,8 @@ function buildDescription(tags: Record<string, string>, category: string): strin
 
 export default function GreenSpaceCard({ space, onClick, isSelected }: GreenSpaceCardProps) {
   const density = space.ndvi?.densityClass ?? 'UNAVAILABLE';
+  // A synthetic estimate must never be coloured as if it were a measurement.
+  const ndviMeasured = space.ndvi?.provenance === 'MEASURED';
   const densityMeta = DENSITY_META[density];
   const distKm = (space.distanceM / 1000).toFixed(2);
 
@@ -72,10 +74,18 @@ export default function GreenSpaceCard({ space, onClick, isSelected }: GreenSpac
           </h3>
           {density !== 'UNAVAILABLE' && (
             <span
-              className="flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold text-white"
-              style={{ background: densityMeta.colour }}
+              className={`flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
+                ndviMeasured ? 'text-white' : 'text-slate-600 bg-slate-200 border border-slate-300'
+              }`}
+              style={ndviMeasured ? { background: densityMeta.colour } : undefined}
+              title={
+                ndviMeasured
+                  ? 'Measured from Sentinel-2 pixels'
+                  : 'Illustrative estimate — not a satellite measurement'
+              }
             >
               {densityMeta.label}
+              {ndviMeasured ? '' : ' (est.)'}
             </span>
           )}
         </div>

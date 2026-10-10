@@ -54,6 +54,10 @@ export interface RawStationReading {
   /** ISO 8601 timestamp of the last observation update reported upstream. */
   lastUpdated: string | null;
   pollutants: PollutantReading[];
+  /** Precomputed AQI from the source, when the upstream feed reports one. */
+  measuredAqi?: number | null;
+  /** Dominant pollutant reported or inferred by the source, when available. */
+  dominantPollutant?: PollutantId | null;
   /**
    * Distance in km from the requested location to this station.
    * Populated by the station resolver once the location is known.
@@ -65,8 +69,6 @@ export interface RawStationReading {
    * CPCB's real-time resource, which does not include station lat/lon).
    */
   coordinatesResolvedFrom?: 'upstream' | 'reference-table' | 'unknown';
-  measuredAqi?: number | null;
-  dominantPollutant?: PollutantId | null;
 }
 
 export interface CalculatedAqi {
@@ -99,9 +101,10 @@ export interface AirQualityResponse {
     longitude: number;
   };
   /**
-   * The headline AQI. Always CPCB when a valid CPCB-derived AQI exists for a
-   * nearby station; falls back to an OpenAQ-derived indicative AQI only when
-   * no CPCB station is available. `null` when neither source has enough data.
+   * The headline AQI. OpenWeather is primary so the AQI and pollutant list
+   * come from coordinate-level OpenWeather Air Pollution data when available.
+   * Falls back to CPCB/OpenAQ/AQICN only when OpenWeather has no usable data.
+   * `null` when no source has enough data.
    */
   aqi: {
     value: number;

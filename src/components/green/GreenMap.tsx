@@ -36,7 +36,8 @@ import {
 import { generate100mHexGrid, type HexCellMetric } from '@/lib/green/hex-grid-service';
 import { BMC_NURSERIES, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import MapLayerControl from './MapLayerControl';
-import { Locate, Plus, Minus } from 'lucide-react';
+import { Locate, Plus, Minus, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import type { GeoNotice } from '@/hooks/useGreenExplorer';
 
 interface GreenMapProps {
   centre: SearchCentre;
@@ -54,6 +55,9 @@ interface GreenMapProps {
   onToggleLayerVisibility: (layer: keyof LayerVisibilityState) => void;
   onSetBasemap: (mode: 'light' | 'satellite') => void;
   geoError?: string | null;
+  geoNotice?: GeoNotice | null;
+  geoLoading?: boolean;
+  onDismissGeoNotice?: () => void;
   /** GeoJSON feature for the active pedestrian route (from directions API) */
   activeRoute?: GeoJSON.Feature | null;
   /** Route origin coordinates and label */
@@ -100,6 +104,9 @@ export default function GreenMap({
   onToggleLayerVisibility,
   onSetBasemap,
   geoError,
+  geoNotice = null,
+  geoLoading = false,
+  onDismissGeoNotice,
   activeRoute = null,
   routeOrigin = null,
   routeDestination = null,
@@ -556,6 +563,10 @@ export default function GreenMap({
     }
 
     if (!filters.layerVisibility.hexGrid) return;
+    // The grid is a Mumbai-coverage analysis layer, so it only makes sense in
+    // focus mode (a centre inside the city). A visitor elsewhere keeps the
+    // city-wide view without a stray grid anchored on their own coordinates.
+    if (!hasChosenCentre) return;
     // Only render hex grid at zoom >= 13 to avoid overwhelming the full-city view
     if (zoomLevel < 13) return;
 
@@ -644,6 +655,8 @@ export default function GreenMap({
     centre,
     spaces,
     filters.layerVisibility.hexGrid,
+    hasChosenCentre,
+    zoomLevel,
     selectedHexId,
     mapReady,
     onSelectHex,
@@ -975,11 +988,47 @@ export default function GreenMap({
         </div>
       </div>
 
-      {/* Geolocation error toast */}
-      {geoError && (
-        <div className="absolute top-16 left-4 z-[1000] bg-amber-50 border border-amber-300 text-amber-800 text-xs px-3.5 py-2 rounded-xl shadow-lg flex items-center gap-2 max-w-xs">
-          <span>⚠️</span>
-          <span>{geoError}</span>
+      {/* Geolocation Loading Indicator */}
+      {geoLoading && (
+        <div className="absolute top-16 left-4 z-[1000] bg-white/95 backdrop-blur-md border border-blue-200 text-blue-900 text-xs px-3.5 py-2 rounded-xl shadow-lg flex items-center gap-2">
+          <Locate className="w-4 h-4 text-blue-600 animate-pulse" />
+          <span className="font-semibold">Detecting your location in Mumbai…</span>
+        </div>
+      )}
+
+      {/* Geolocation Notice / Outside Diameter Alert Toast */}
+      {geoNotice && (
+        <div
+          className={`absolute top-16 left-4 z-[1000] text-xs px-3.5 py-2.5 rounded-2xl shadow-xl flex items-start gap-2.5 max-w-sm border backdrop-blur-md transition-all ${
+            geoNotice.type === 'OUTSIDE_MUMBAI'
+              ? 'bg-amber-600/95 text-white border-amber-500 shadow-amber-900/20'
+              : geoNotice.type === 'INSIDE_MUMBAI'
+              ? 'bg-emerald-600/95 text-white border-emerald-500 shadow-emerald-900/20'
+              : 'bg-slate-800/95 text-white border-slate-700'
+          }`}
+        >
+          <span className="text-base shrink-0 mt-0.5">
+            {geoNotice.type === 'OUTSIDE_MUMBAI' ? '⚠️' : geoNotice.type === 'INSIDE_MUMBAI' ? '📍' : 'ℹ️'}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold leading-tight">
+              {geoNotice.type === 'OUTSIDE_MUMBAI'
+                ? 'Outside Coverage Diameter'
+                : geoNotice.type === 'INSIDE_MUMBAI'
+                ? 'Mumbai GPS Active'
+                : 'Notice'}
+            </p>
+            <p className="text-[11px] opacity-90 mt-0.5 leading-snug">{geoNotice.message}</p>
+          </div>
+          {onDismissGeoNotice && (
+            <button
+              onClick={onDismissGeoNotice}
+              className="p-1 hover:bg-white/20 rounded-lg text-white shrink-0 -mr-1"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       )}
 
