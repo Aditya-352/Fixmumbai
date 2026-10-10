@@ -25,6 +25,8 @@ import type { GreenSpaceSummary, GreenSpaceDetail, FilterType, AccessStatus, Wal
 import { ACTIVE_CITY, WALK_SPEED_KMH } from '@/lib/green/config';
 import { recommendationScore } from './classifier';
 import { nearestBoundaryDistance } from './boundary-distance';
+import { normaliseNdvi, unavailableNdvi } from './ndvi-provenance';
+import { verifiedImageFor, GREEN_SPACE_IMAGE_PLACEHOLDER } from '@/data/verified-green-space-images';
 import { STATIC_GREEN_SPACES_FALLBACK } from './static-spaces-fallback';
 
 const R = 6371000; // Earth radius in metres
@@ -59,12 +61,22 @@ interface NearbyOptions {
 /**
  * Convert a static fallback record into the DB-shaped object the loop below
  * expects. Keeps the normalization logic in one place.
+ *
+ * IMAGES: the inline `imageUrl` / `thumbUrl` fields that used to live on these
+ * records were hand-written Wikimedia thumbnail paths whose MD5 hash
+ * directories were invented — all 60 returned HTTP 400, and every row was
+ * labelled `CC BY-SA 4.0` / `VERIFIED` regardless of the real file. They are
+ * now ignored entirely. An image is attached only when
+ * `src/data/green-space-images.json` contains a record resolved from the
+ * Commons API for this `${osmType}/${osmId}`; otherwise the image is null and
+ * the UI shows the neutral placeholder.
  */
 function staticToDbShape(s: (typeof STATIC_GREEN_SPACES_FALLBACK)[number]): any {
+  const verified = verifiedImageFor(s.osmType, String(s.osmId), s.name);
   return {
     id: `static_${s.osmType}_${s.osmId}`,
     osmType: s.osmType,
-    osmId: s.osmId,
+    osmId: String(s.osmId),
     osmVersion: 1,
     name: s.name,
     category: s.category,
@@ -90,24 +102,24 @@ function staticToDbShape(s: (typeof STATIC_GREEN_SPACES_FALLBACK)[number]): any 
     entrances: JSON.stringify(s.entrances ?? []),
     source: 'STATIC_SEED',
     updatedAt: new Date(),
-    // NDVI from seed (synthetic but honest: labelled as seed data)
+    // NDVI from seed (illustrative estimate, never a measurement)
     _staticNdvi: {
       mean: s.ndviMean ?? null,
       min: s.ndviMin ?? null,
       max: s.ndviMax ?? null,
       densityClass: s.densityClass ?? 'UNAVAILABLE',
     },
-    // Image from seed
-    _staticImage: s.imageUrl
+    // Image from the generated, API-verified Commons records only
+    _staticImage: verified
       ? {
-          imageUrl: s.imageUrl,
-          thumbUrl: s.thumbUrl ?? undefined,
-          sourceUrl: s.imageUrl,
-          attribution: s.imageAttribution ?? 'See source',
-          licence: 'CC BY-SA 4.0',
-          verificationTier: 'TAKEN_IN_AREA',
-          source: 'SEED_DATA',
-          caption: s.caption ?? undefined,
+          imageUrl: verified.imageUrl,
+          thumbUrl: verified.thumbUrl,
+          sourceUrl: verified.sourceUrl,
+          attribution: verified.attribution,
+          licence: verified.licence,
+          verificationTier: verified.verificationTier,
+          source: verified.source,
+          caption: verified.caption ?? undefined,
         }
       : null,
   };
@@ -179,25 +191,23 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
       if (type === 'trails' && space.category !== 'Nature Reserve' && space.category !== 'Forest') continue;
     }
 
-    // NDVI — use static seed data if available (fallback mode), otherwise try DB
+    // NDVI — static seed values are illustrative estimates, never measurements.
     let ndvi: GreenSpaceSummary['ndvi'] = null;
     if (space._staticNdvi && space._staticNdvi.mean !== null) {
-      // Static seed data — labelled as seed-derived, not live satellite
-      ndvi = {
+      ndvi = normaliseNdvi({
         mean: space._staticNdvi.mean,
         min: space._staticNdvi.min,
         max: space._staticNdvi.max,
         pixelCount: null,
-        densityClass: space._staticNdvi.densityClass,
+        densityClass: space._staticNdvi.densityClass ?? 'UNAVAILABLE',
         confidence: null,
-        compositeType: null,
+        compositeType: 'SYNTHETIC',
         observationStart: null,
         observationEnd: null,
         imageCount: null,
         cloudCoverage: null,
         satelliteSource: null,
-        reason: 'SEED_DATA_ESTIMATE',
-      };
+      });
     } else {
       try {
         const { db } = await import('@/lib/db');
@@ -206,7 +216,7 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
           orderBy: { processedAt: 'desc' },
         });
         if (obs) {
-          ndvi = {
+          ndvi = normaliseNdvi({
             mean: obs.ndviMean,
             min: obs.ndviMin,
             max: obs.ndviMax,
@@ -214,26 +224,20 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
             densityClass: obs.densityClass,
             confidence: obs.confidence,
             compositeType: obs.compositeType,
-            observationStart: obs.observationStart?.toISOString?.() ?? null,
-            observationEnd: obs.observationEnd?.toISOString?.() ?? null,
+            observationStart: obs.observationStart,
+            observationEnd: obs.observationEnd,
             imageCount: obs.imageCount,
             cloudCoverage: obs.cloudCoverage,
             satelliteSource: obs.satelliteSource,
-          };
+          });
         }
       } catch {
-        // No observations yet — GEE not configured or DB unavailable
+        // No observations yet — provider unavailable or DB unreachable
       }
     }
 
     if (!ndvi) {
-      ndvi = {
-        mean: null, min: null, max: null, pixelCount: null,
-        densityClass: 'UNAVAILABLE', confidence: null,
-        compositeType: null, observationStart: null, observationEnd: null,
-        imageCount: null, cloudCoverage: null, satelliteSource: null,
-        reason: 'SATELLITE_UNAVAILABLE',
-      };
+      ndvi = unavailableNdvi('SATELLITE_UNAVAILABLE');
     }
 
     // Image — use static seed data if available, otherwise try DB
@@ -343,7 +347,7 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
       orderBy: { processedAt: 'desc' },
     });
     if (obs) {
-      ndviFull = {
+      ndviFull = normaliseNdvi({
         mean: obs.ndviMean,
         min: obs.ndviMin,
         max: obs.ndviMax,
@@ -351,14 +355,14 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
         densityClass: obs.densityClass,
         confidence: obs.confidence,
         compositeType: obs.compositeType,
-        observationStart: obs.observationStart?.toISOString?.() ?? null,
-        observationEnd: obs.observationEnd?.toISOString?.() ?? null,
+        observationStart: obs.observationStart,
+        observationEnd: obs.observationEnd,
         imageCount: obs.imageCount,
         cloudCoverage: obs.cloudCoverage,
         satelliteSource: obs.satelliteSource,
-      };
+      });
     }
-  } catch { /* no GEE data */ }
+  } catch { /* no vegetation observation available */ }
 
   let images: GreenSpaceDetail['images'] = [];
   try {

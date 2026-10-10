@@ -19,7 +19,7 @@ import GreenSidebar from './GreenSidebar';
 import GreenRightPanel from './GreenRightPanel';
 import GreenLegend from './GreenLegend';
 import SearchBox from './SearchBox';
-import { ShieldAlert, CheckCircle2, Calendar } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, Calendar, LocateFixed } from 'lucide-react';
 
 // Leaflet map loaded client-side only
 const GreenMap = dynamic(() => import('./GreenMap'), {
@@ -51,6 +51,9 @@ export default function GreenExplorer() {
     setCentreFromGeo,
     setCentreFromSearch,
     geoError,
+    geoNotice,
+    geoLoading,
+    clearGeoNotice,
     filters,
     setRadiusM,
     setFilterType,
@@ -200,7 +203,21 @@ export default function GreenExplorer() {
           <div className="text-right">
             <p className="text-xs font-bold text-slate-700 flex items-center gap-1 justify-end">
               <span>📍</span> {centre.name}
+              <button
+                onClick={() => setCentreFromGeo()}
+                disabled={geoLoading}
+                title="Detect my current location"
+                className="ml-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-[10px] font-black text-slate-600 border border-slate-200 transition"
+              >
+                <LocateFixed className={`w-3 h-3 ${geoLoading ? 'animate-pulse' : ''}`} />
+                {geoLoading ? 'LOCATING…' : 'LOCATE'}
+              </button>
             </p>
+            {geoNotice?.type === 'OUTSIDE_MUMBAI' && (
+              <p className="text-[10px] font-bold text-amber-600">
+                Outside Mumbai — map shows Mumbai-only green data
+              </p>
+            )}
             <p className="text-[10.5px] text-slate-400 font-mono">
               <Calendar className="w-3 h-3 inline mr-1" />
               Obs Date: {isNdviProcessed ? `${tiles?.observationStart}` : TODAY}
@@ -244,6 +261,9 @@ export default function GreenExplorer() {
             onToggleLayerVisibility={toggleLayerVisibility}
             onSetBasemap={setBasemap}
             geoError={geoError}
+            geoNotice={geoNotice}
+            geoLoading={geoLoading}
+            onDismissGeoNotice={clearGeoNotice}
             activeRoute={activeRoute?.geojson ?? null}
             routeOrigin={routeOrigin}
             routeDestination={routeDestination}
@@ -263,6 +283,8 @@ export default function GreenExplorer() {
             spacesError={spacesError}
             spacesPartial={spacesPartial}
             spacesWarnings={spacesWarnings}
+            geoNotice={geoNotice}
+            geoLoading={geoLoading}
             onRetry={refetchSpaces}
             filters={filters}
             onRadiusChange={setRadiusM}

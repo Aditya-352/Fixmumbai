@@ -16,6 +16,7 @@ import type {
 import type { HexCellMetric } from '@/lib/green/hex-grid-service';
 import type { BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import { DEFAULT_RADIUS_M, ACTIVE_CITY } from '@/lib/green/config';
+import mumbaiPlaces from '@/data/mumbai-places.json';
 
 // ── API base path ──────────────────────────────────────────────────────────
 // The app is deployed under /civic (basePath in next.config.js).
@@ -23,6 +24,14 @@ import { DEFAULT_RADIUS_M, ACTIVE_CITY } from '@/lib/green/config';
 // correctly in both development (localhost:3001/civic/...) and production
 // (how-network.healthrytix.com/civic/...).
 const BASE = '/civic/api/vegetation';
+
+export interface GeoNotice {
+  type: 'INSIDE_MUMBAI' | 'OUTSIDE_MUMBAI' | 'DENIED' | 'ERROR';
+  message: string;
+  distanceKm?: number;
+  userLat?: number;
+  userLon?: number;
+}
 
 interface UseGreenExplorerReturn {
   // centre
@@ -32,6 +41,9 @@ interface UseGreenExplorerReturn {
   setCentreFromGeo: () => void;
   setCentreFromSearch: (result: GeocodeResult) => void;
   geoError: string | null;
+  geoNotice: GeoNotice | null;
+  geoLoading: boolean;
+  clearGeoNotice: () => void;
 
   // filters
   filters: ExplorerFilters;
@@ -93,6 +105,38 @@ const DEFAULT_CENTRE: SearchCentre = {
   source: 'default',
 };
 
+/**
+ * Resolve a coordinate to a human-readable place name ("Bengaluru, Karnataka").
+ * Naming only — the green-density dataset stays limited to ACTIVE_CITY.bbox.
+ */
+async function resolvePlaceLabel(lat: number, lon: number): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}/reverse?lat=${lat}&lon=${lon}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.ok ? (json.data?.label ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Snap an in-coverage coordinate to the nearest known Mumbai locality so the
+ * header can name a neighbourhood ("Bandra West") instead of only the city.
+ * Returns null when the point is not plausibly inside the city.
+ */
+function nearestMumbaiLocality(lat: number, lon: number): string | null {
+  let best: { name: string; d2: number } | null = null;
+  for (const p of mumbaiPlaces) {
+    const dLat = p.lat - lat;
+    const dLng = p.lng - lon;
+    const d2 = dLat * dLat + dLng * dLng;
+    if (!best || d2 < best.d2) best = { name: p.name.split('(')[0].trim(), d2 };
+  }
+  // ~0.035° ≈ 3.9 km. Beyond that the "nearest locality" claim would be false.
+  return best && best.d2 <= 0.035 * 0.035 ? best.name : null;
+}
+
 const DEFAULT_FILTERS: ExplorerFilters = {
   type: 'all',
   categoryFilter: 'ALL',
@@ -109,10 +153,50 @@ const DEFAULT_FILTERS: ExplorerFilters = {
   },
 };
 
+/**
+ * Haversine distance in kilometres between two coordinates.
+ */
+function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Checks whether given coordinates fall within the Mumbai coverage diameter / bbox.
+ * Includes Mumbai Metropolitan Region boundary (Colaba to Dahisar, Thane, Navi Mumbai).
+ */
+function isWithinMumbai(lat: number, lon: number): boolean {
+  const [south, west, north, east] = ACTIVE_CITY.bbox;
+  const pad = 0.15; // ~15km buffer
+  const inBbox =
+    lat >= south - pad &&
+    lat <= north + pad &&
+    lon >= west - pad &&
+    lon <= east + pad;
+  const distFromCentre = haversineDistanceKm(lat, lon, ACTIVE_CITY.centre[0], ACTIVE_CITY.centre[1]);
+  return inBbox && distFromCentre <= 45;
+}
+
 export function useGreenExplorer(): UseGreenExplorerReturn {
   const [centre, setCentre] = useState<SearchCentre>(DEFAULT_CENTRE);
   const [hasChosenCentre, setHasChosenCentre] = useState<boolean>(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoNotice, setGeoNotice] = useState<GeoNotice | null>(null);
+  const [geoLoading, setGeoLoading] = useState<boolean>(false);
+
+  const clearGeoNotice = useCallback(() => {
+    setGeoNotice(null);
+    setGeoError(null);
+  }, []);
 
 
   const [compositeType, setCompositeType] = useState<'dry_season' | 'latest_90d'>('dry_season');
@@ -260,17 +344,125 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     }
   }, []);
 
-  // ── Initial loads ─────────────────────────────────────────────────────────
-  // Strategy for Issue A (slow navigation) and Issue E (blocking render):
-  // 1. Spaces load immediately (essential content, shown first)
-  // 2. Status loads in parallel with spaces (lightweight)
-  // 3. Tiles load LAST with a delay (expensive, optional satellite imagery)
-  //    This prevents the AgroMonitoring API call from blocking the page.
+  // ── Geolocation with Mumbai boundary verification ─────────────────────────
+  const setCentreFromGeo = useCallback(() => {
+    setGeoError(null);
+    setGeoNotice(null);
+
+    // Browser doesn't support geolocation
+    if (!('geolocation' in navigator)) {
+      const msg = 'Geolocation is not supported by your browser. Use the search box to find a location.';
+      setGeoError(msg);
+      setGeoNotice({ type: 'ERROR', message: msg });
+      return;
+    }
+
+    setGeoLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLoading(false);
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const inMumbai = isWithinMumbai(lat, lon);
+
+        // Resolve the real place name first so the header shows where the user
+        // actually is, regardless of whether that is inside the coverage area.
+        resolvePlaceLabel(lat, lon).then((geocodedName) => {
+          if (inMumbai) {
+            // Inside Mumbai: directly set user location and fetch nearby spaces.
+            // Prefer the local locality gazetteer (it knows Bandra West, Carter
+            // Road and friends) over the coarse reverse-geocoder, which usually
+            // only resolves to "Mumbai" at city zoom.
+            const placeName =
+              nearestMumbaiLocality(lat, lon) ?? geocodedName ?? 'Your Location';
+            setCentre({
+              name: placeName,
+              lat,
+              lon,
+              source: 'geolocation',
+              accuracyM: pos.coords.accuracy,
+            });
+            setHasChosenCentre(true);
+            setGeoError(null);
+            setGeoNotice({
+              type: 'INSIDE_MUMBAI',
+              message: `📍 You are in ${placeName}: showing green spaces within walking distance of your current location.`,
+              userLat: lat,
+              userLon: lon,
+            });
+          } else {
+            // Outside Mumbai: the header/location label follows the visitor, but
+            // the data footprint does NOT. hasChosenCentre stays false so the map
+            // stays on Mumbai and the API returns the whole city instead of a
+            // radius query anchored thousands of kilometres away.
+            const placeName = geocodedName ?? 'Your Location';
+            const distKm = Math.round(
+              haversineDistanceKm(lat, lon, ACTIVE_CITY.centre[0], ACTIVE_CITY.centre[1])
+            );
+            setCentre({
+              name: placeName,
+              lat,
+              lon,
+              source: 'geolocation',
+              accuracyM: pos.coords.accuracy,
+            });
+            setHasChosenCentre(false);
+            const outsideMsg =
+              `You are in ${placeName}, ${distKm} km from Mumbai. ` +
+              `Green Density data is only available for Mumbai, so the map below shows all Mumbai green spaces.`;
+            setGeoError(outsideMsg);
+            setGeoNotice({
+              type: 'OUTSIDE_MUMBAI',
+              message: outsideMsg,
+              distanceKm: distKm,
+              userLat: lat,
+              userLon: lon,
+            });
+          }
+        });
+      },
+      (err) => {
+        setGeoLoading(false);
+        let msg: string;
+        let noticeType: GeoNotice['type'] = 'ERROR';
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            msg = 'Location access denied. Showing Mumbai city centre. You can search any locality or park.';
+            noticeType = 'DENIED';
+            break;
+          case err.TIMEOUT:
+            msg = 'Location request timed out. Showing Mumbai city centre.';
+            noticeType = 'ERROR';
+            break;
+          case err.POSITION_UNAVAILABLE:
+            msg = 'Your current location could not be determined. Showing Mumbai city centre.';
+            noticeType = 'ERROR';
+            break;
+          default:
+            msg = 'Could not determine your location. Showing Mumbai city centre.';
+            noticeType = 'ERROR';
+        }
+        setGeoError(msg);
+        setGeoNotice({ type: noticeType, message: msg });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10_000,
+        maximumAge: 300_000,
+      }
+    );
+  }, []);
+
+  // ── Initial loads & Auto-GPS fetch on mount ─────────────────────────────
   useEffect(() => {
-    // Status is lightweight — load immediately
+    // 1. Status is lightweight — load immediately
     fetchStatus();
 
-    // Tiles are expensive (calls AgroMonitoring API) — delay so spaces load first
+    // 2. Automatically request GPS location when user enters Green Density
+    setCentreFromGeo();
+
+    // 3. Tiles are expensive (calls AgroMonitoring API) — delay so spaces load first
     const tilesTimer = setTimeout(() => {
       fetchTiles();
     }, 1500);
@@ -278,7 +470,7 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     return () => {
       clearTimeout(tilesTimer);
     };
-  }, [fetchStatus, fetchTiles]);
+  }, [fetchStatus, fetchTiles, setCentreFromGeo]);
 
   useEffect(() => {
     if (spacesDebounceTimerRef.current) {
@@ -294,68 +486,6 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
       }
     };
   }, [centre, filters, hasChosenCentre, fetchSpaces]);
-
-  // ── Geolocation (Issue D) ──────────────────────────────────────────────────
-  // Supports visitors anywhere in the world:
-  //  - Mumbai visitors: centres map on actual position, shows nearby spaces
-  //  - Non-Mumbai visitors: uses actual position, API now returns all city data
-  //    with a warning (instead of blocking with OUT_OF_BOUNDS error)
-  //  - All cases handled: granted, denied, timeout, unavailable, unsupported
-  const setCentreFromGeo = useCallback(() => {
-    setGeoError(null);
-
-    // Case 6: Browser doesn't support geolocation
-    if (!('geolocation' in navigator)) {
-      setGeoError('Geolocation is not supported by your browser. Use the search box to find a location.');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      // Case 1 & 2: Permission granted (first time or previously granted)
-      (pos) => {
-        setCentre({
-          name: 'Your location',
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          source: 'geolocation',
-          accuracyM: pos.coords.accuracy,
-        });
-        setHasChosenCentre(true);
-        // geoError is cleared — user sees their position
-      },
-      // Cases 3, 4, 5: Permission denied / timeout / unavailable
-      (err) => {
-        let msg: string;
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            // Case 3: Permission denied
-            msg = 'Location access denied. Use the search box to find a Mumbai locality or park.';
-            break;
-          case err.TIMEOUT:
-            // Case 4: Timed out
-            msg = 'Location request timed out. Check your device settings or use manual search.';
-            break;
-          case err.POSITION_UNAVAILABLE:
-            // Case 5: Device location unavailable
-            msg = 'Your current location could not be determined. Use the search box instead.';
-            break;
-          default:
-            msg = 'Could not determine your location. Use the search box to find a place.';
-        }
-        setGeoError(msg);
-        // Important: do NOT trap the user — map and data remain usable
-        // hasChosenCentre stays false so city overview is preserved
-      },
-      {
-        // enableHighAccuracy: true requests GPS (more accurate, slower).
-        // Use false for a faster response; the accuracy difference is acceptable
-        // for green-space discovery (we're looking for parks, not a specific door).
-        enableHighAccuracy: false,
-        timeout: 10_000,
-        maximumAge: 300_000, // 5 min — acceptable for green space exploration
-      }
-    );
-  }, []);
 
   const setCentreFromSearch = useCallback((result: GeocodeResult) => {
     setCentre({
@@ -475,6 +605,9 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     setCentreFromGeo,
     setCentreFromSearch,
     geoError,
+    geoNotice,
+    geoLoading,
+    clearGeoNotice,
     filters,
     setRadiusM,
     setFilterType,

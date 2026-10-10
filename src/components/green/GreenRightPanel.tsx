@@ -19,6 +19,7 @@ import type {
   FilterType,
   RightPanelTab,
 } from '@/lib/green/types';
+import type { GeoNotice } from '@/hooks/useGreenExplorer';
 import { RADIUS_OPTIONS_M } from '@/lib/green/config';
 import { BMC_NURSERIES, getBmcNurseryWards, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import {
@@ -63,6 +64,8 @@ interface GreenRightPanelProps {
   spacesError: string | null;
   spacesPartial: boolean;
   spacesWarnings: string[];
+  geoNotice?: GeoNotice | null;
+  geoLoading?: boolean;
   onRetry: () => void;
   filters: ExplorerFilters;
   onRadiusChange: (r: number) => void;
@@ -114,6 +117,8 @@ export default function GreenRightPanel({
   spacesError,
   spacesPartial,
   spacesWarnings,
+  geoNotice = null,
+  geoLoading = false,
   onRetry,
   filters,
   onRadiusChange,
@@ -299,6 +304,29 @@ export default function GreenRightPanel({
                   {nearestVerified.name}
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Geolocation Notice / Outside Diameter Callout */}
+          {geoNotice?.type === 'OUTSIDE_MUMBAI' && (
+            <div className="mx-3.5 mt-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-xs">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-amber-900 leading-tight">Outside Mumbai Coverage Diameter</p>
+                  <p className="text-[11px] text-amber-800 mt-0.5 leading-snug">
+                    {geoNotice.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          {geoNotice?.type === 'INSIDE_MUMBAI' && (
+            <div className="mx-3.5 mt-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <p className="text-[11px] font-bold text-emerald-900">
+                GPS active — showing green spaces nearest to your current location.
+              </p>
             </div>
           )}
 

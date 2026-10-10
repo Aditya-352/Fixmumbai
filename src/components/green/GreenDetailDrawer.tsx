@@ -498,17 +498,25 @@ export default function GreenDetailDrawer({
               </h3>
               {space.ndviFull ? (
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                      style={{ background: DENSITY_META[space.ndviFull.densityClass].colour }}
-                    >
-                      {DENSITY_META[space.ndviFull.densityClass].label}
-                    </span>
-                    {space.ndviFull.confidence && (
-                      <span className={`text-[10px] font-bold ${
-                        space.ndviFull.confidence === 'LOW' ? 'text-amber-600' : 'text-green-700'
-                      }`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {space.ndviFull.provenance === 'MEASURED' ? (
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                        style={{ background: DENSITY_META[space.ndviFull.densityClass].colour }}
+                      >
+                        {DENSITY_META[space.ndviFull.densityClass].label}
+                      </span>
+                    ) : (
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 border border-slate-300">
+                        Illustrative estimate
+                      </span>
+                    )}
+                    {space.ndviFull.provenance === 'MEASURED' && space.ndviFull.confidence && (
+                      <span
+                        className={`text-[10px] font-bold ${
+                          space.ndviFull.confidence === 'LOW' ? 'text-amber-600' : 'text-green-700'
+                        }`}
+                      >
                         Confidence: {space.ndviFull.confidence}
                       </span>
                     )}
@@ -528,19 +536,36 @@ export default function GreenDetailDrawer({
                         </span>
                       </div>
                     )}
+                    {space.ndviFull.provenance === 'MEASURED' && space.ndviFull.pixelCount !== null && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Valid pixels</span>
+                        <span className="font-bold text-slate-800">
+                          {space.ndviFull.pixelCount?.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {space.ndviFull.observationStart && space.ndviFull.observationEnd && (
-                    <p className="text-[10px] text-slate-400">
-                      Observation: {new Date(space.ndviFull.observationStart).toLocaleDateString('en-IN')} –{' '}
-                      {new Date(space.ndviFull.observationEnd).toLocaleDateString('en-IN')}
+
+                  {space.ndviFull.provenance === 'SYNTHETIC_ESTIMATE' ? (
+                    <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 leading-snug">
+                      This value is a curated placeholder, not a satellite measurement. No
+                      acquisition date, pixel count or cloud figure is available for it.
                     </p>
-                  )}
+                  ) : space.ndviFull.observationStart ? (
+                    <p className="text-[10px] text-slate-400">
+                      Observation:{' '}
+                      {new Date(space.ndviFull.observationStart).toLocaleDateString('en-IN')}
+                      {space.ndviFull.observationEnd &&
+                        ` – ${new Date(space.ndviFull.observationEnd).toLocaleDateString('en-IN')}`}
+                      {space.ndviFull.satelliteSource && ` · ${space.ndviFull.satelliteSource}`}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-400 border border-slate-200">
                   NDVI unavailable —{' '}
                   {space.ndvi?.reason === 'SATELLITE_UNAVAILABLE'
-                    ? 'Satellite data not reachable (GEE auth required).'
+                    ? 'Satellite data not reachable (AgroMonitoring key not configured).'
                     : 'Not yet computed for this space.'}
                 </div>
               )}
