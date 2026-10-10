@@ -56,4 +56,6 @@ export function coordinateCacheKey(prefix: string, lat: number, lon: number): st
 export const CACHE_TTL = {
   CPCB_MS: 15 * 60 * 1000, // CPCB real-time feed updates roughly hourly
   OPENAQ_MS: 15 * 60 * 1000,
+  AQICN_MS: 15 * 60 * 1000,
+  OPENWEATHER_MS: 15 * 60 * 1000,
 } as const;

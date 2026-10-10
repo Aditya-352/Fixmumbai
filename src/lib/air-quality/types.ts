@@ -11,7 +11,7 @@
  *   shapes.
  */
 
-export type AqiSource = 'CPCB' | 'OPENAQ';
+export type AqiSource = 'CPCB' | 'OPENAQ' | 'OPENWEATHER' | 'AQICN';
 
 /** Standard CPCB National AQI category buckets. */
 export type AqiCategory =
@@ -65,6 +65,8 @@ export interface RawStationReading {
    * CPCB's real-time resource, which does not include station lat/lon).
    */
   coordinatesResolvedFrom?: 'upstream' | 'reference-table' | 'unknown';
+  measuredAqi?: number | null;
+  dominantPollutant?: PollutantId | null;
 }
 
 export interface CalculatedAqi {
