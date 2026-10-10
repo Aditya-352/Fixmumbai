@@ -101,9 +101,10 @@ export interface AirQualityResponse {
     longitude: number;
   };
   /**
-   * The headline AQI. Always CPCB when a valid CPCB-derived AQI exists for a
-   * nearby station; falls back to an OpenAQ-derived indicative AQI only when
-   * no CPCB station is available. `null` when neither source has enough data.
+   * The headline AQI. OpenWeather is primary so the AQI and pollutant list
+   * come from coordinate-level OpenWeather Air Pollution data when available.
+   * Falls back to CPCB/OpenAQ/AQICN only when OpenWeather has no usable data.
+   * `null` when no source has enough data.
    */
   aqi: {
     value: number;

@@ -14,14 +14,32 @@ services:
     environment:
       NODE_ENV: production
 
-    volumes:
-      - fixmumbai_prisma:/app/prisma
-
     networks:
       - app_network
 
     expose:
       - "3000"
+
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: fixmumbai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fixmumbai_user
+      POSTGRES_PASSWORD: fixmumbai_prod_2024
+      POSTGRES_DB: fixmumbai
+    volumes:
+      - fixmumbai_pgdata:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fixmumbai_user -d fixmumbai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   app_network:  # Compose's internal/reference name
@@ -29,4 +47,4 @@ networks:
     name: ${DOCKER_NETWORK}  # actual docker network name
 
 volumes:
-  fixmumbai_prisma:
+  fixmumbai_pgdata:
