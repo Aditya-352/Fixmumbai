@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import Link from 'next/link';
 import { User, ShieldCheck, Info, ExternalLink, MapPin } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function RepresentativesDirectoryPage() {
   const mlas = await db.representative.findMany({
     where: { type: 'MLA' },

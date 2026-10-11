@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Clock, Eye, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ActivityPage() {
   const events = await db.timelineEvent.findMany({
     where: { publicVisibility: true },

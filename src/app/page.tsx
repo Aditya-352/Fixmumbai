@@ -5,6 +5,8 @@ import MumbaiMap from '@/components/map/MumbaiMap';
 import { db } from '@/lib/db';
 import { StatusBadge } from '@/components/ui/Badge';
 
+export const dynamic = 'force-dynamic';
+
 async function getHomepageData() {
   try {
     const reports = await db.report.findMany({

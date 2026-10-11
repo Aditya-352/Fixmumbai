@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { calculatePlatformActivityScore } from '@/lib/activity-score';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const wards = await db.bmcWard.findMany({

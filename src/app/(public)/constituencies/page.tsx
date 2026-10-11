@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import Link from 'next/link';
 import { MapPin, User, Info, ArrowRight } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ConstituenciesDirectoryPage() {
   const acs = await db.assemblyConstituency.findMany({
     orderBy: { acNumber: 'asc' },
