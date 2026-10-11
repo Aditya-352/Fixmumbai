@@ -2,6 +2,8 @@ import React from 'react';
 import { db } from '@/lib/db';
 import { BarChart3, ShieldCheck, Clock, CheckCircle2, Building2, AlertTriangle, Info } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AccountabilityDashboardPage() {
   const totalReports = await db.report.count();
   const openReports = await db.report.count({

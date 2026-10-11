@@ -2,6 +2,8 @@ import React from 'react';
 import { db } from '@/lib/db';
 import { Database, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DataSourcesPage() {
   const dataSources = await db.dataSource.findMany({
     orderBy: { name: 'asc' }
