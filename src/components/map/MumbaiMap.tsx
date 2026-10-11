@@ -217,23 +217,25 @@ export default function MumbaiMap({
 
   return (
     <div className="relative w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl" style={{ height }}>
-      {/* Ward Boundaries Toggle Overlay */}
-      <div className="absolute top-3 right-3 z-[400] bg-white/95 backdrop-blur border border-slate-200 shadow-lg rounded-2xl p-1.5 flex items-center gap-2 text-xs font-bold text-slate-800">
+      {/* Map data controls */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[400] w-[calc(100%-1.5rem)] sm:w-auto max-w-full bg-white/95 backdrop-blur border border-slate-200 shadow-xl rounded-2xl p-2 flex flex-wrap justify-center items-center gap-2 text-xs font-bold text-slate-800">
         <button
           type="button"
           onClick={() => setShowWards(!showWards)}
-          className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
+          aria-pressed={showWards}
+          className={`px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 font-extrabold ${
             showWards ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
           <Navigation className="w-3.5 h-3.5" />
-          {showWards ? '✓ BMC Wards Map Active' : 'Show 24 BMC Wards'}
+          Waste Aggregation Data
         </button>
 
         <button
           type="button"
           onClick={handleToggleAirQuality}
-          className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
+          aria-pressed={showAirQuality}
+          className={`px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 font-extrabold ${
             showAirQuality ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
@@ -242,8 +244,16 @@ export default function MumbaiMap({
           ) : (
             <Wind className="w-3.5 h-3.5" />
           )}
-          {showAirQuality ? '✓ Air Quality Layer' : 'Show Air Quality'}
+          {showAirQuality ? '✓ Show Air Quality' : 'Show Air Quality'}
         </button>
+
+        <Link
+          href="/green"
+          className="px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200"
+        >
+          <span aria-hidden="true">🌿</span>
+          Green Density
+        </Link>
       </div>
 
       {/* Air Quality status / error pill */}
