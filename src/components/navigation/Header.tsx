@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlusCircle, MapPin, Info, Menu, X, Shield, Trees, HelpCircle } from 'lucide-react';
+import { PlusCircle, MapPin, Info, Menu, X, Shield, Trees, HelpCircle, Flame } from 'lucide-react';
 
 export default function Header() {
   const pathname = usePathname();
@@ -12,6 +12,7 @@ export default function Header() {
   // Navigation Items
   const navItems = [
     { href: '/map', label: 'Map', icon: MapPin },
+    { href: '/heat-stress', label: '🌡️ WBGT Heat Map', icon: Flame },
     { href: '/green', label: '🌿 Green Density', icon: Trees },
     { href: '/report', label: 'Report', icon: PlusCircle },
     { href: '/about', label: 'About', icon: Info },
