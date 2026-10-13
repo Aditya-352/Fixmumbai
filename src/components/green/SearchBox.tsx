@@ -12,6 +12,8 @@ interface SearchBoxProps {
   onSelect: (result: GeocodeResult) => void;
   activeCentreName?: string;
   onResetCentre?: () => void;
+  /** Short city name used in the placeholder and aria label. */
+  cityName?: string;
 }
 
 export default function SearchBox({
@@ -22,6 +24,7 @@ export default function SearchBox({
   onSelect,
   activeCentreName,
   onResetCentre,
+  cityName = 'Mumbai',
 }: SearchBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -98,9 +101,9 @@ export default function SearchBox({
             setSelectedIndex(-1);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Search any Mumbai area, ward, park, or locality..."
+          placeholder={`Search any ${cityName} area, ward, park, or locality...`}
           className="flex-1 text-xs text-slate-800 bg-transparent outline-none placeholder:text-slate-400 font-medium"
-          aria-label="Search Mumbai locality or park"
+          aria-label={`Search ${cityName} locality or park`}
           aria-autocomplete="list"
           aria-controls="green-search-results"
           autoComplete="off"

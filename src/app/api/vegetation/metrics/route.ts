@@ -6,9 +6,44 @@ import {
   type HexInterpretation,
 } from '@/lib/green/hugsi-metrics';
 import { GREEN_EXPLORER_ENABLED } from '@/lib/green/config';
+import { assessMetrics } from '@/lib/green/metric-validation';
+import { DEFAULT_CANDIDATE_LIMIT } from '@/lib/green/spaces-service';
+import {
+  resolveCity,
+  cityMeta,
+  toErrorBody,
+  CityParamError,
+  DATA_UNAVAILABLE_REASON,
+  type ResolvedCity,
+} from '@/lib/green/city-param';
 
 /**
- * GET /api/vegetation/metrics?ward=ALL&year=2024&dimension=PARALLEL_SIDES_100M
+ * GET /api/vegetation/metrics?ward=ALL&year=2024&dimension=PARALLEL_SIDES_100M&city=mumbai
+ *
+ * AVAILABILITY vs. VALIDATION (see lib/green/metric-validation.ts)
+ * -------------------------------------------------------------------------
+ * These indicators divide a population figure by a boundary area, so the two are
+ * only meaningful at the same geographic level. Census 2011 publishes an
+ * urban-aglomeration total AND, separately, a municipal-corporation component,
+ * and they differ a lot (Greater Mumbai 18,394,912 vs 12,442,373).
+ *
+ * Two independent questions are answered separately:
+ *
+ *   availability — can a metric be computed? Needs green-space records.
+ *                  Pune and Bengaluru have none, so they receive
+ *                  DATA_UNAVAILABLE with `data: null`. No number is produced.
+ *
+ *   validation   — is the figure independently verified? Mumbai's is NOT: its
+ *                  boundary area is a disputed hardcoded constant and its
+ *                  population projections are undocumented. It is therefore
+ *                  STILL SERVED (preserving the existing Mumbai experience and
+ *                  keeping the numbers server-side) but every response carries
+ *                  `meta.validation.status = 'UNVALIDATED'` plus the reasons.
+ *
+ * An earlier revision refused to serve Mumbai because `isPublished()` was false.
+ * That was wrong in practice: GreenRightPanel has no error branch, so the client
+ * silently recomputed the same figures in the browser and displayed them as a
+ * server result. A refusal that is silently overridden is not a control.
  *
  * Dynamically computes HUGSI-inspired urban green space indicators:
  * 1. Percentage of Urban Green Space (clipped polygons with Turf spatial union)
@@ -30,6 +65,50 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // ── City resolution ───────────────────────────────────────────────────────
+  let resolved: ResolvedCity;
+  try {
+    resolved = resolveCity(req.nextUrl.searchParams);
+  } catch (e) {
+    if (e instanceof CityParamError) {
+      return NextResponse.json(toErrorBody(e), { status: e.status });
+    }
+    throw e;
+  }
+  const city = resolved.city;
+
+  // ── Availability guard ────────────────────────────────────────────────────
+  // A city with no green-space records cannot yield a metric. This is the ONLY
+  // case that returns `data: null`; it never fabricates a value, and it never
+  // falls back to another city's records.
+  const validation = assessMetrics(city);
+  if (validation.availability === 'NO_DATA') {
+    return NextResponse.json(
+      {
+        ok: true,
+        data: null,
+        meta: {
+          sources: [],
+          fetchedAt: new Date().toISOString(),
+          cache: 'NONE',
+          partial: true,
+          warnings: [
+            `${DATA_UNAVAILABLE_REASON}: no green-space records are registered for ` +
+              `${city.name}, so no metric can be computed. No other city's data is used.`,
+            ...validation.reasons,
+          ],
+          city: cityMeta(resolved),
+          validation,
+          recordCount: 0,
+          truncated: false,
+          complete: true,
+        },
+        error: null,
+      } as any,
+      { status: 200 }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const ward = searchParams.get('ward') ?? 'ALL';
   const yearParam = searchParams.get('year') ?? '2024';
@@ -40,11 +119,21 @@ export async function GET(req: NextRequest) {
 
   // Fetch green spaces with geometries from local DB
   let spaces: GreenSpaceSummary[] = [];
+  let recordCount = 0;
+  let truncated = false;
   try {
     const mod = await import('@/lib/db');
+    // Previously `take: 200`, which silently truncated the candidate set and
+    // therefore produced a wrong green-space percentage whenever a city had more
+    // than 200 records. Now one extra row is fetched so the cap is detectable.
     const rawSpaces = await (mod.db as any).greenSpace.findMany({
-      take: 200,
+      take: DEFAULT_CANDIDATE_LIMIT + 1,
     });
+    recordCount = rawSpaces.length;
+    if (rawSpaces.length > DEFAULT_CANDIDATE_LIMIT) {
+      truncated = true;
+      rawSpaces.length = DEFAULT_CANDIDATE_LIMIT;
+    }
 
     spaces = rawSpaces.map((s: any) => {
       let geometry: any = null;
@@ -96,8 +185,27 @@ export async function GET(req: NextRequest) {
       partial: false,
       warnings: [
         'HUGSI-inspired civic indicators adapted for Mumbai; not an official HUGSI global ranking score.',
+        ...(validation.status === 'UNVALIDATED'
+          ? [
+              `METRICS_UNVALIDATED: these figures are computed from provisional inputs and are ` +
+                `NOT independently validated. Do not cite them as verified statistics. ` +
+                `See meta.validation.reasons.`,
+            ]
+          : []),
+        ...(truncated
+          ? [
+              `Candidate record set truncated at ${DEFAULT_CANDIDATE_LIMIT}; the percentages below ` +
+                `are computed from an incomplete set and must not be presented as city-wide.`,
+            ]
+          : []),
       ],
-    },
+      city: cityMeta(resolved),
+      validation,
+      recordCount,
+      truncated,
+      // Only claim completeness when the candidate set was never capped.
+      complete: !truncated,
+    } as any,
     error: null,
   });
 }

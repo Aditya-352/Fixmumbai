@@ -21,9 +21,23 @@ import type {
 } from '@/lib/green/types';
 import type { GeoNotice } from '@/hooks/useGreenExplorer';
 import { RADIUS_OPTIONS_M } from '@/lib/green/config';
-import { BMC_NURSERIES, getBmcNurseryWards, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import {
-  MUMBAI_HUGSI_METRICS,
+  cityHasNurseries,
+  getNurseriesForCity,
+  getNurseryWardsForCity,
+  type BmcNurseryRecord,
+} from '@/lib/green/nurseries-service';
+import { DEFAULT_CITY, getCity, type CityId } from '@/lib/green/config';
+import { buildVegetationUrl } from '@/lib/green/city-endpoints';
+import {
+  initialMetricsState,
+  metricsStateFromResponse,
+  metricsStateFromTransportFailure,
+  pendingMetricsState,
+  mayPresentAsValidated,
+  type MetricsDisplayState,
+} from '@/lib/green/metrics-display-state';
+import {
   calculateComprehensiveHugsiMetrics,
   BMC_WARD_DATA,
   type MumbaiGreenMetricsSummary,
@@ -58,12 +72,22 @@ import {
 } from 'lucide-react';
 
 interface GreenRightPanelProps {
+  /** Selected city id. Appended to the /metrics request. */
+  cityId?: CityId;
   centre: SearchCentre;
   spaces: GreenSpaceSummary[];
   spacesLoading: boolean;
   spacesError: string | null;
   spacesPartial: boolean;
   spacesWarnings: string[];
+  /** True number of records matching city + filters + radius, before any page limit. */
+  spacesTotal?: number;
+  /** True when the page limit truncated the result set. */
+  spacesHasMore?: boolean;
+  /** Server's explicit "no dataset registered for this city" message. */
+  spacesUnavailableReason?: string | null;
+  /** True when the map framing is a provisional envelope, not a boundary. */
+  cityBoundaryIsProvisional?: boolean;
   geoNotice?: GeoNotice | null;
   geoLoading?: boolean;
   onRetry: () => void;
@@ -111,12 +135,17 @@ const CATEGORIES = [
 ];
 
 export default function GreenRightPanel({
+  cityId = DEFAULT_CITY.id,
   centre,
   spaces,
   spacesLoading,
   spacesError,
   spacesPartial,
   spacesWarnings,
+  spacesTotal,
+  spacesHasMore,
+  spacesUnavailableReason = null,
+  cityBoundaryIsProvisional = false,
   geoNotice = null,
   geoLoading = false,
   onRetry,
@@ -164,24 +193,53 @@ export default function GreenRightPanel({
     })
   );
   const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
+  /**
+   * Single source of truth for the status of whatever figure is on screen.
+   *
+   * Every path that can set `metricsData` must also set this: the initial
+   * browser-side computation, a successful API response, a city the server
+   * declined to compute, and a transport failure. Keeping them as one object
+   * prevents a figure being displayed with no status attached.
+   */
+  const [metricsState, setMetricsState] = useState<MetricsDisplayState>(initialMetricsState);
+  const metricsValidation = metricsState;
+  const metricsUnavailable = metricsState.unavailableMessage;
   const [activeTooltipMetric, setActiveTooltipMetric] = useState<MetricDefinition | null>(null);
+  const cityName = getCity(cityId).name;
   const [wardTableSearch, setWardTableSearch] = useState<string>('');
   const [wardSortKey, setWardSortKey] = useState<
     'wardCode' | 'greenCoverPercent' | 'populationDensityKm2' | 'greenPerCapitaM2'
   >('greenCoverPercent');
   const [wardSortAsc, setWardSortAsc] = useState<boolean>(false);
+  const [visibleSpacesCount, setVisibleSpacesCount] = useState<number>(60);
+
+  React.useEffect(() => {
+    setVisibleSpacesCount(60);
+  }, [categoryFilter, spaces]);
 
   const recalculateMetrics = React.useCallback(
     async (boundary: string, year: '2011' | '2021' | '2024', dim: HexInterpretation) => {
       setMetricsLoading(true);
+      setMetricsState((prev) => pendingMetricsState(prev));
       try {
+        // `?city=` is attached because /api/vegetation/metrics resolves it
+        // server-side and gates on whether the selected city has any records.
         const res = await fetch(
-          `/civic/api/vegetation/metrics?ward=${encodeURIComponent(boundary)}&year=${year}&dimension=${dim}`
+          buildVegetationUrl('metrics', { ward: boundary, year, dimension: dim }, cityId)
         );
         const json = await res.json();
-        if (json.ok && json.data) {
+        const next = metricsStateFromResponse(json ?? {});
+
+        if (next.status === 'DATA_UNAVAILABLE') {
+          // The server declined to compute a metric for this city. No figure is
+          // displayed, so a stale one cannot be mistaken for a current result.
+          setMetricsState(next);
+        } else if (json?.ok && json?.data) {
           setMetricsData(json.data);
+          setMetricsState(next);
         } else {
+          // No usable payload. Fall back to a local computation, labelled by the
+          // state model as browser-computed rather than server-verified.
           const calc = calculateComprehensiveHugsiMetrics({
             boundaryCode: boundary,
             year,
@@ -189,6 +247,7 @@ export default function GreenRightPanel({
             spaces,
           });
           setMetricsData(calc);
+          setMetricsState(next);
         }
       } catch (_) {
         const calc = calculateComprehensiveHugsiMetrics({
@@ -198,11 +257,12 @@ export default function GreenRightPanel({
           spaces,
         });
         setMetricsData(calc);
+        setMetricsState(metricsStateFromTransportFailure());
       } finally {
         setMetricsLoading(false);
       }
     },
-    [spaces]
+    [spaces, cityId]
   );
 
   const nearestVerified = spaces.find(
@@ -220,9 +280,11 @@ export default function GreenRightPanel({
     return true;
   });
 
-  // Filtered nurseries
-  const nurseryWardsList = getBmcNurseryWards();
-  const filteredNurseries = BMC_NURSERIES.filter((n) => {
+  // Filtered nurseries — scoped to the selected city. A city without its own
+  // nursery dataset resolves to an empty list rather than Mumbai's BMC records.
+  const hasNurseries = cityHasNurseries(cityId);
+  const nurseryWardsList = getNurseryWardsForCity(cityId);
+  const filteredNurseries = getNurseriesForCity(cityId).filter((n) => {
     const matchesWard = nurseryWard === 'ALL' || n.ward.toUpperCase() === nurseryWard.toUpperCase();
     const query = nurserySearch.trim().toLowerCase();
     const matchesSearch =
@@ -237,24 +299,32 @@ export default function GreenRightPanel({
   const radiusKm = (filters.radiusM / 1000).toFixed(0);
 
   return (
-    <aside className="w-full flex flex-col h-full overflow-hidden bg-white text-slate-900 border-l border-slate-200">
+    <aside className="w-full flex flex-col h-full overflow-hidden bg-white text-[#14231D] border-l border-[#E5EBE7]">
       {/* ── Top Navigation Tabs ────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center bg-slate-900 text-white p-1 border-b border-slate-800 overflow-x-auto no-scrollbar">
+      <div className="flex-shrink-0 flex items-center bg-white p-1.5 border-b border-[#E5EBE7] overflow-x-auto no-scrollbar gap-0.5">
         {TABS.map((t) => {
           const Icon = t.icon;
           const isActive = currentTab === t.id;
+          // The nursery count is the number of records for the SELECTED city, so
+          // a city with no nursery dataset must not advertise Mumbai's 27.
+          const label =
+            t.id === 'NURSERIES'
+              ? hasNurseries
+                ? `Nurseries (${filteredNurseries.length})`
+                : 'Nurseries (0)'
+              : t.label;
           return (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-[#EAF7F0] text-[#087F5B] shadow-xs border border-[#087F5B]/20'
+                  : 'text-[#64746B] hover:text-[#14231D] hover:bg-[#F7F9F8]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              <span>{t.label}</span>
+              <span>{label}</span>
               {t.id === 'HEXAGON' && selectedHex && (
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
               )}
@@ -272,15 +342,15 @@ export default function GreenRightPanel({
 
           {/* Nearest Walkable Chip */}
           {nearestVerified && (
-            <div className="flex-shrink-0 px-3.5 pt-3 pb-2 border-b border-slate-100 bg-white">
+            <div className="flex-shrink-0 px-3.5 pt-3 pb-2 border-b border-[#E5EBE7] bg-white">
               <div
                 onClick={() => onSpaceClick(nearestVerified.id)}
                 role="button"
                 tabIndex={0}
-                className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 cursor-pointer hover:border-emerald-400 hover:shadow-xs transition-all group"
+                className="bg-[#EAF7F0] border border-[#087F5B]/20 rounded-2xl p-3 cursor-pointer hover:border-[#087F5B]/40 hover:shadow-xs transition-all group"
               >
                 <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#087F5B] flex items-center gap-1">
                     🌿 Nearest Walkable
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -290,17 +360,17 @@ export default function GreenRightPanel({
                           e.stopPropagation();
                           onZoomTo5km();
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full text-[10px] font-bold shadow-xs transition"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#087F5B] hover:bg-[#076B4D] text-white rounded-full text-[10px] font-bold shadow-xs transition"
                       >
                         Zoom 5 km
                       </button>
                     )}
-                    <span className="text-emerald-700 text-xs font-bold flex-shrink-0">
+                    <span className="text-[#087F5B] text-xs font-bold flex-shrink-0">
                       {(nearestVerified.distanceM / 1000).toFixed(2)} km
                     </span>
                   </div>
                 </div>
-                <p className="text-xs font-black text-emerald-950 group-hover:text-emerald-700 transition leading-snug line-clamp-2">
+                <p className="text-xs font-black text-[#14231D] group-hover:text-[#087F5B] transition leading-snug line-clamp-2">
                   {nearestVerified.name}
                 </p>
               </div>
@@ -331,17 +401,17 @@ export default function GreenRightPanel({
           )}
 
           {/* Filter Toolbar */}
-          <div className="flex-shrink-0 px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/60 space-y-2">
+          <div className="flex-shrink-0 px-3.5 py-2.5 border-b border-[#E5EBE7] bg-[#F7F9F8]/60 space-y-2">
             {/* Category Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex flex-wrap items-center gap-1.5 py-0.5">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => onCategoryFilterChange && onCategoryFilterChange(cat)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition flex-shrink-0 ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition ${
                     categoryFilter === cat
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
+                      ? 'bg-[#087F5B] text-white shadow-xs'
+                      : 'bg-white border border-[#E5EBE7] text-[#64746B] hover:text-[#14231D] hover:border-[#087F5B]/30'
                   }`}
                 >
                   {cat}
@@ -351,7 +421,7 @@ export default function GreenRightPanel({
 
             {/* Radius Selector */}
             <div className="flex items-center justify-between pt-1">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              <span className="text-[10px] font-black text-[#64746B] uppercase tracking-wider">
                 Radius: {radiusKm} km
               </span>
               <div className="flex gap-1">
@@ -361,8 +431,8 @@ export default function GreenRightPanel({
                     onClick={() => onRadiusChange(r)}
                     className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition ${
                       filters.radiusM === r
-                        ? 'bg-emerald-700 text-white'
-                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-[#087F5B] text-white shadow-xs'
+                        : 'bg-white border border-[#E5EBE7] text-[#64746B] hover:bg-[#F7F9F8]'
                     }`}
                   >
                     {r / 1000}k
@@ -373,37 +443,85 @@ export default function GreenRightPanel({
           </div>
 
           {/* Spaces Card List */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-2 space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1">
+          <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-2 space-y-2 custom-scrollbar">
+            <div className="flex items-center justify-between text-[11px] font-bold text-[#64746B] px-1">
               <span>MAPPED GREEN AREAS</span>
-              <span>{filteredSpaces.length} locations</span>
+              <span>
+                {spacesHasMore ? `${filteredSpaces.length} of ${spacesTotal}` : `${filteredSpaces.length} locations`}
+              </span>
             </div>
 
             {spacesLoading ? (
-              <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
-                <div className="w-7 h-7 rounded-full border-3 border-emerald-500 border-t-transparent animate-spin" />
-                <span className="text-xs font-semibold">Loading Mumbai green spaces…</span>
+              <div className="py-12 flex flex-col items-center justify-center gap-3 text-[#64746B]">
+                <div className="w-7 h-7 rounded-full border-3 border-[#087F5B] border-t-transparent animate-spin" />
+                <span className="text-xs font-semibold">Loading {cityName} green spaces…</span>
+              </div>
+            ) : spacesUnavailableReason ? (
+              /*
+                DISTINCT FROM "no matches".
+                The server told us no dataset is registered for this city. That is
+                NOT the same as the city having no parks, and saying so would be a
+                much stronger and incorrect claim. No other city's records are
+                substituted here.
+              */
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-xs text-amber-900">
+                <p className="font-black">Green-space dataset not yet available</p>
+                <p className="mt-1.5 leading-snug">{spacesUnavailableReason}</p>
+                <p className="mt-2 leading-snug text-amber-800">
+                  This does not mean {cityName} has no parks — it means no green-space
+                  dataset has been published for it yet. Mumbai records are never shown here.
+                </p>
               </div>
             ) : filteredSpaces.length === 0 ? (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500">
+              <div className="bg-[#F7F9F8] border border-[#E5EBE7] rounded-2xl p-6 text-center text-xs text-[#64746B]">
                 No green spaces match current category or radius.
               </div>
             ) : (
-              filteredSpaces.map((space) => (
-                <GreenSpaceCard
-                  key={space.id}
-                  space={space}
-                  onClick={onSpaceClick}
-                  isSelected={space.id === selectedSpaceId}
-                />
-              ))
+              <>
+                {filteredSpaces.slice(0, visibleSpacesCount).map((space) => (
+                  <GreenSpaceCard
+                    key={space.id}
+                    space={space}
+                    onClick={onSpaceClick}
+                    isSelected={space.id === selectedSpaceId}
+                  />
+                ))}
+                {filteredSpaces.length > visibleSpacesCount && (
+                  <button
+                    onClick={() => setVisibleSpacesCount((prev) => Math.min(filteredSpaces.length, prev + 60))}
+                    className="w-full py-2.5 px-4 bg-[#EAF7F0] hover:bg-[#087F5B]/20 text-[#087F5B] text-xs font-bold rounded-xl transition text-center shadow-xs border border-[#087F5B]/20"
+                  >
+                    Load more (+60 of {filteredSpaces.length - visibleSpacesCount} remaining)
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
       )}
 
       {/* ── TAB 2: HUGSI-INSPIRED METRICS ──────────────────────────────────── */}
-      {currentTab === 'METRICS' && (
+      {/*
+        AVAILABILITY GATE
+        When the server declines to compute metrics for this city, the whole tab
+        is replaced by an explanation. Previously the panel fell back to
+        recomputing in the browser, which displayed unvalidated figures as though
+        they had come from the server. `metricsData` may hold an earlier Mumbai
+        result, so it must not be rendered here.
+      */}
+      {currentTab === 'METRICS' && metricsUnavailable && (
+        <div className="p-4">
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-4">
+            <p className="text-xs font-black text-amber-900">Metrics unavailable for this city</p>
+            <p className="mt-1.5 text-[11px] text-amber-800 leading-snug">{metricsUnavailable}</p>
+            <p className="mt-2.5 text-[10.5px] text-amber-700 leading-snug">
+              No figure has been substituted, and no other city&apos;s data is shown.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {currentTab === 'METRICS' && !metricsUnavailable && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Header Banner */}
           <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 text-white p-4 rounded-2xl border border-emerald-800/80 shadow-md">
@@ -546,6 +664,37 @@ export default function GreenRightPanel({
               <span>Boundary: <strong>{metricsData.boundaryName}</strong></span>
               <span>Obs Date: <strong>{metricsData.hexStats.observationDate}</strong></span>
             </div>
+
+            {/* VALIDATION STATUS
+                Availability and validation are separate. A figure can be
+                displayed and still be unverified; saying so here prevents the
+                numbers below being read as validated statistics. */}
+            {/*
+              VALIDATION BADGE
+              Driven entirely by the display-state model. A browser-computed
+              figure gets its own wording so it is never confused with a server
+              result, and the "validated" banner is gated by mayPresentAsValidated
+              so it cannot be shown over an unverified number.
+            */}
+            {!mayPresentAsValidated(metricsValidation) && (
+              <details className="mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2">
+                <summary className="cursor-pointer text-[11px] font-black text-amber-800">
+                  {metricsValidation.status === 'BROWSER_COMPUTED'
+                    ? '⚠ Computed in your browser — not a server-verified figure'
+                    : '⚠ Not independently validated — do not cite as a verified statistic'}
+                </summary>
+                <ul className="mt-1.5 space-y-1 list-disc pl-4">
+                  {metricsValidation.reasons.map((r, i) => (
+                    <li key={i} className="text-[10.5px] text-amber-900 leading-snug">{r}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {mayPresentAsValidated(metricsValidation) && (
+              <p className="mt-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800">
+                ✓ Inputs validated and approved for publication.
+              </p>
+            )}
           </div>
 
           {/* Metric 1: Percentage of Urban Green Space Card */}
@@ -987,11 +1136,28 @@ export default function GreenRightPanel({
               <Sprout className="w-3.5 h-3.5" /> BMC Citizen&apos;s Handbook Annexure
             </div>
             <h2 className="text-sm font-black text-slate-900 mt-0.5">
-              All 27 BMC Wardwise Nurseries
+              {hasNurseries ? 'All 27 BMC Wardwise Nurseries' : 'Nurseries'}
             </h2>
             <p className="text-[10px] text-slate-600 mt-0.5">
-              Source: Greening Mumbai Handbook (pp. 82–83) · BMC &amp; WRI India.
+              {hasNurseries ? (
+                <>Source: Greening Mumbai Handbook (pp. 82–83) · BMC &amp; WRI India.</>
+              ) : (
+                <>
+                  No nursery dataset is registered for {cityName}. BMC ward nurseries are
+                  Mumbai records and are not shown here.
+                </>
+              )}
             </p>
+
+            {!hasNurseries && (
+              <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                <p className="font-bold">Nurseries unavailable for {cityName}</p>
+                <p className="mt-0.5 leading-snug">
+                  No municipal nursery dataset is registered for this city. Nothing is
+                  substituted from another city.
+                </p>
+              </div>
+            )}
 
             {/* Ward Selector & Search */}
             <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1010,7 +1176,11 @@ export default function GreenRightPanel({
                 onChange={(e) => onNurseryWardChange && onNurseryWardChange(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-amber-600 font-semibold"
               >
-                <option value="ALL">All 24 Wards ({BMC_NURSERIES.length})</option>
+                <option value="ALL">
+                  {hasNurseries
+                    ? `All ${nurseryWardsList.length} Wards (${filteredNurseries.length} shown)`
+                    : 'No wards available'}
+                </option>
                 {nurseryWardsList.map((w) => (
                   <option key={w} value={w}>
                     Ward {w}

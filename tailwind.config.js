@@ -25,7 +25,18 @@ module.exports = {
           surface: '#FFFFFF',
           muted: '#F8FAFC',
           border: '#E2E8F0',
-        }
+        },
+        env: {
+          bg: '#F7F9F8',
+          surface: '#FFFFFF',
+          text: '#14231D',
+          secondary: '#64746B',
+          forest: '#087F5B',
+          forestHover: '#076B4D',
+          accent: '#16A36B',
+          soft: '#EAF7F0',
+          border: '#E5EBE7',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

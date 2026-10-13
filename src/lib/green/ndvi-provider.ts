@@ -100,6 +100,19 @@ export interface NdviSelection {
 // Separate lifetimes: a polygon list changes rarely, scene discovery changes
 // hourly, the chosen scene is pinned for the cache window so a stable tile is
 // served for a consistent AOI + layer + tile coordinate.
+//
+// WHY THE KEYS ARE NOT CITY-NAMESPACED
+// The scene and selection caches are keyed by the registered AOI *polygon id*
+// (`scenes:<polyid>:<start>`, `sel:<polyid>:<sceneId>`), and the polygon cache is
+// keyed by API key because the polygon list is an account-wide resource.
+//
+// A registered polygon belongs to exactly one city, so a polygon-id key is
+// already city-isolated: a Pune request can never be served a Mumbai polygon
+// entry, because the Pune request resolves no polygon in the first place (no
+// registered polygon intersects a Pune envelope) and returns before reaching
+// these caches. Adding a city segment would therefore invalidate warm caches
+// without improving isolation, and would risk serving stale Mumbai entries if a
+// future refactor changed the polygon-selection order. The keys are left as-is.
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
@@ -222,18 +235,30 @@ export function selectAoiPolygons(
   studyBbox: [number, number, number, number] = ACTIVE_CITY.bbox
 ): { selected: AgroPolygon[]; warnings: string[] } {
   const warnings: string[] = [];
-  const [w, s, e, n] = studyBbox;
+  // bbox is [south, west, north, east]; polygon bounds are
+  // [minLon, minLat, maxLon, maxLat]. The previous code destructured the study
+  // bbox as [w, s, e, n], swapping latitude and longitude so the comparison
+  // compared a longitude against a latitude and always failed. That went
+  // unnoticed because the name match short-circuited before this check ran.
+  const [s, w, n, e] = studyBbox;
 
-  // Prefer polygons explicitly related to the study area.
-  const named = polygons.filter((p) =>
-    /mumbai|sgnp|sanjay|aarey|powai|thane|borivali|andheri|colaba|dadar|bandra/i.test(p.name)
-  );
-
-  // Otherwise accept polygons that actually intersect the study bbox.
+  // Accept polygons that actually intersect the study area. This is checked
+  // FIRST and unconditionally.
+  //
+  // Previously a name match alone was sufficient, so a polygon named
+  // "Sanjay Gandhi National Park Mumbai" was selected even when the study area
+  // was Pune's envelope — serving one city's imagery for another city's request.
+  // A name hint may only narrow the set further; it may never widen it.
   const intersecting = polygons.filter((p) => {
     const [plon0, plat0, plon1, plat1] = p.bounds;
     return plon1 >= w && plon0 <= e && plat1 >= s && plat0 <= n;
   });
+
+  // Prefer polygons explicitly related to the study area, among those that
+  // intersect it.
+  const named = intersecting.filter((p) =>
+    /mumbai|sgnp|sanjay|aarey|powai|thane|borivali|andheri|colaba|dadar|bandra/i.test(p.name)
+  );
 
   const selected = named.length > 0 ? named : intersecting;
 
@@ -353,7 +378,26 @@ export function parseNumericStats(raw: any): NdviNumericStats | null {
  * Resolve the current NDVI observation with full provenance.
  * Never throws; every failure mode maps to an explicit status.
  */
-export async function resolveNdviObservation(): Promise<NdviSelection> {
+export interface ResolveNdviOptions {
+  /**
+   * Study area used to choose which registered AOI polygons apply.
+   * Defaults to the default city's bbox, preserving existing behaviour.
+   *
+   * IMPORTANT — this is a QUERY ENVELOPE, not a verified AOI. No city-specific
+   * Sentinel-2 polygon has been registered for Pune or Bengaluru; AgroMonitoring
+   * caps polygons at 3,000 ha, which makes whole-city coverage impractical.
+   * Nothing here invents a polygon or treats a bounding box as a verified AOI:
+   * a bbox that intersects no registered polygon yields IMAGERY_UNAVAILABLE.
+   */
+  studyBbox?: [number, number, number, number];
+  /** City id, recorded on the selection for provenance. */
+  cityId?: string;
+}
+
+export async function resolveNdviObservation(
+  options: ResolveNdviOptions = {}
+): Promise<NdviSelection> {
+  const studyBbox = options.studyBbox ?? ACTIVE_CITY.bbox;
   const key = process.env.AGROMONITORING_API_KEY;
   const base: NdviSelection = {
     status: 'NOT_CONFIGURED',
@@ -388,16 +432,19 @@ export async function resolveNdviObservation(): Promise<NdviSelection> {
   }
 
   // 2. AOI selection (explicit; no silent substitution).
-  const { selected, warnings: aoiWarnings } = selectAoiPolygons(polygons, ACTIVE_CITY.bbox);
+  const { selected, warnings: aoiWarnings } = selectAoiPolygons(polygons, studyBbox);
   const warnings = [...aoiWarnings];
   if (selected.length === 0) {
     return { ...base, status: 'IMAGERY_UNAVAILABLE', message: aoiWarnings[0] ?? 'No usable AOI polygon.', warnings };
   }
 
-  const [sW, sS, sE, sN] = ACTIVE_CITY.bbox;
+  // bbox is [south, west, north, east]; polygon bounds are
+  // [minLon, minLat, maxLon, maxLat]. Compare like with like.
+  const [stS, stW, stN, stE] = studyBbox;
   const coverage = selected.map((p) => {
-    const [pW, pS, pE, pN] = p.bounds;
-    const coversStudyArea = pW <= sW && pS <= sS && pE >= sE && pN >= sN;
+    const [pMinLon, pMinLat, pMaxLon, pMaxLat] = p.bounds;
+    const coversStudyArea =
+      pMinLon <= stW && pMinLat <= stS && pMaxLon >= stE && pMaxLat >= stN;
     return {
       aoiName: p.name,
       polygonId: p.id,
@@ -409,7 +456,7 @@ export async function resolveNdviObservation(): Promise<NdviSelection> {
   if (coverageIsPartial) {
     warnings.push(
       `Registered AOI covers only part of the configured study area ` +
-        `(${ACTIVE_CITY.name} bbox ${sW},${sS},${sE},${sN}). Coverage is NOT city-wide.`
+        `(bbox ${stS},${stW},${stN},${stE}). Coverage is NOT city-wide.`
     );
   }
 

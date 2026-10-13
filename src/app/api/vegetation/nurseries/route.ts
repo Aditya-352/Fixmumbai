@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/lib/green/types';
 import { getBmcNurseries, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import { GREEN_EXPLORER_ENABLED } from '@/lib/green/config';
+import { resolveCity, cityMeta, toErrorBody, CityParamError, NOT_AVAILABLE_WARNING } from '@/lib/green/city-param';
 
 /**
- * GET /api/vegetation/nurseries
+ * GET /api/vegetation/nurseries?city=mumbai
  *
  * Returns all 27 BMC Wardwise Nurseries from Greening Mumbai Handbook Annexure pp. 82-83.
  * Supports filtering by ward (?ward=A) and spatial distance sorting (?lat=...&lon=...).
+ *
+ * CITY PARAMETER
+ * This dataset is Mumbai-specific: it is transcribed from the BMC & WRI India
+ * "Greening Mumbai" handbook and has no analogue for Pune or Bengaluru. An
+ * explicit non-Mumbai request therefore returns HTTP 200 with `data: []` and a
+ * NOT_AVAILABLE_FOR_CITY warning, so BMC ward names and addresses are never
+ * presented as belonging to another city. No equivalent dataset has been
+ * invented for the other cities.
  */
 export async function GET(req: NextRequest) {
   if (!GREEN_EXPLORER_ENABLED) {
@@ -19,6 +28,37 @@ export async function GET(req: NextRequest) {
       },
       { status: 503 }
     );
+  }
+
+  let resolved;
+  try {
+    resolved = resolveCity(req.nextUrl.searchParams);
+  } catch (e) {
+    if (e instanceof CityParamError) {
+      return NextResponse.json(toErrorBody(e), { status: e.status });
+    }
+    throw e;
+  }
+  const city = resolved.city;
+
+  if (city.id !== 'mumbai') {
+    return NextResponse.json({
+      ok: true,
+      data: [],
+      meta: {
+        sources: [],
+        fetchedAt: new Date().toISOString(),
+        cache: 'HIT',
+        partial: false,
+        warnings: [
+          `${NOT_AVAILABLE_WARNING}: municipal nursery records are published only for Mumbai, ` +
+            `from the BMC & WRI India "Greening Mumbai" handbook annexure. No dataset has been ` +
+            `established for ${city.name}.`,
+        ],
+        city: cityMeta(resolved),
+      },
+      error: null,
+    } as any);
   }
 
   const { searchParams } = new URL(req.url);
@@ -49,7 +89,10 @@ export async function GET(req: NextRequest) {
       cache: 'HIT',
       partial: false,
       warnings: [],
-    },
+      city: cityMeta(resolved),
+      recordCount: nurseries.length,
+      complete: true,
+    } as any,
     error: null,
   });
 }
