@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, GeocodeResult } from '@/lib/green/types';
-import { ACTIVE_CITY, GREEN_EXPLORER_ENABLED } from '@/lib/green/config';
+import { GREEN_EXPLORER_ENABLED } from '@/lib/green/config';
+import {
+  resolveCity,
+  cityMeta,
+  emptyCityWarnings,
+  toErrorBody,
+  CityParamError,
+  type ResolvedCity,
+} from '@/lib/green/city-param';
 
 // Load static local Mumbai places and administrative wards
 const mumbaiPlaces = require('@/data/mumbai-places.json');
@@ -19,7 +27,16 @@ const SYNONYMS: Record<string, string> = {
 };
 
 /**
- * GET /api/vegetation/search?q=bandra
+ * GET /api/vegetation/search?q=bandra&city=mumbai
+ *
+ * CITY PARAMETER
+ * `?city=` selects the city; omitting it preserves Mumbai behaviour. A city with
+ * no registered records returns HTTP 200 with `data: []` and
+ * `meta.sources: []` — never another city's results.
+ *
+ * The Tier 1 local gazetteers (Mumbai localities and BMC wards) are applied only
+ * to Mumbai. For other cities Tier 1 is skipped rather than returning Mumbai
+ * names for a Pune or Bengaluru query.
  *
  * Multi-Tier Authentic Search Architecture for Mumbai:
  * 1. Fast local indexed match (Mumbai localities, neighbourhoods, 24 BMC Wards)
@@ -56,6 +73,37 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // ── City resolution ───────────────────────────────────────────────────────
+  let resolved: ResolvedCity;
+  try {
+    resolved = resolveCity(req.nextUrl.searchParams);
+  } catch (e) {
+    if (e instanceof CityParamError) {
+      return NextResponse.json(toErrorBody(e), { status: e.status });
+    }
+    throw e;
+  }
+  const city = resolved.city;
+
+  if (resolved.dataStatus === 'EMPTY') {
+    return NextResponse.json({
+      ok: true,
+      data: [],
+      meta: {
+        sources: [],
+        fetchedAt: new Date().toISOString(),
+        cache: 'NONE',
+        partial: false,
+        warnings: emptyCityWarnings(resolved),
+        city: cityMeta(resolved),
+      },
+      error: null,
+    } as any);
+  }
+
+  // Tier 1 is a Mumbai-only gazetteer.
+  const useLocalGazetteer = city.id === 'mumbai';
+
   const query = SYNONYMS[rawQuery.toLowerCase()] || rawQuery;
   const qLower = query.toLowerCase();
   const results: GeocodeResult[] = [];
@@ -71,8 +119,10 @@ export async function GET(req: NextRequest) {
   };
 
   // ── Tier 1: Local Mumbai Places & Wards (Instant 0ms match) ─────────────────
+  // Mumbai only — returning "Bandra West" for ?city=pune would be cross-city
+  // contamination, so the loop is skipped entirely for other cities.
   // A. Mumbai Places / Localities
-  for (const p of mumbaiPlaces) {
+  for (const p of useLocalGazetteer ? mumbaiPlaces : []) {
     if (
       p.name.toLowerCase().includes(qLower) ||
       (p.wardCode && p.wardCode.toLowerCase().includes(qLower)) ||
@@ -92,7 +142,7 @@ export async function GET(req: NextRequest) {
   }
 
   // B. BMC Administrative Wards
-  for (const w of mumbaiWards) {
+  for (const w of useLocalGazetteer ? mumbaiWards : []) {
     if (
       w.wardCode.toLowerCase().includes(qLower) ||
       w.wardName.toLowerCase().includes(qLower) ||
@@ -111,7 +161,10 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Tier 2: Database Green Spaces & Nature Reserves ─────────────────────────
+  // GreenSpace currently holds Mumbai records only, so this tier is Mumbai-only
+  // for the same anti-contamination reason as Tier 1.
   try {
+    if (!useLocalGazetteer) throw new Error('skip-local-tiers');
     const { db } = await import('@/lib/db');
     const spaces = await (db as any).greenSpace.findMany({
       where: {
@@ -136,11 +189,11 @@ export async function GET(req: NextRequest) {
       });
     }
   } catch {
-    // Local DB query fallback
+    // Local DB query fallback / tier intentionally skipped for this city
   }
 
   // ── Tier 3: Live OpenStreetMap Geocoding (Photon & Nominatim bounded) ───────
-  const [south, west, north, east] = ACTIVE_CITY.bbox;
+  const [south, west, north, east] = city.bbox;
   const userAgent = process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)';
 
   try {
@@ -156,7 +209,13 @@ export async function GET(req: NextRequest) {
       for (const f of features) {
         const p = f.properties;
         const name = p.name || p.street || query;
-        const displayName = [p.name, p.street, p.district, p.city || 'Mumbai']
+        // The query bbox is already scoped to the selected city, so the
+        // coordinates are correct; only a missing `city` property needs a
+        // fallback. That fallback must name the SELECTED city — hardcoding
+        // 'Mumbai' labelled every Pune and Bengaluru result as being in
+        // Mumbai. For Mumbai the output is unchanged.
+        const cityLabel = city.name.replace(/,\s*India$/, '');
+        const displayName = [p.name, p.street, p.district, p.city || cityLabel]
           .filter(Boolean)
           .join(', ');
 
@@ -178,12 +237,15 @@ export async function GET(req: NextRequest) {
     ok: true,
     data: results.slice(0, 10),
     meta: {
-      sources: ['local', 'prisma_green_spaces', 'photon'],
+      sources: useLocalGazetteer
+        ? ['local', 'prisma_green_spaces', 'photon']
+        : ['photon'],
       fetchedAt: new Date().toISOString(),
       cache: 'HIT',
       partial: false,
       warnings: [],
-    },
+      city: cityMeta(resolved),
+    } as any,
     error: null,
   });
 }

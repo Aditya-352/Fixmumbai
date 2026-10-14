@@ -34,12 +34,18 @@ import {
   BASEMAP_SAT_ATTRIBUTION,
 } from '@/lib/green/config';
 import { generate100mHexGrid, type HexCellMetric } from '@/lib/green/hex-grid-service';
-import { BMC_NURSERIES, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
+import { getNurseriesForCity, cityHasNurseries, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import MapLayerControl from './MapLayerControl';
-import { Locate, Plus, Minus, X, CheckCircle2, AlertTriangle } from 'lucide-react';
-import type { GeoNotice } from '@/hooks/useGreenExplorer';
+import { Plus, Minus, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { DEFAULT_CITY, type CityConfig } from '@/lib/green/config';
 
 interface GreenMapProps {
+  /**
+   * Selected city. Mumbai keeps its existing island framing verbatim; other
+   * cities frame on their provisional envelope, which is labelled as such in the
+   * UI and is never described as a municipal boundary.
+   */
+  city?: CityConfig;
   centre: SearchCentre;
   hasChosenCentre?: boolean;
   spaces: GreenSpaceSummary[];
@@ -51,13 +57,9 @@ interface GreenMapProps {
   selectedHexId?: string | null;
   onSelectNursery?: (nursery: BmcNurseryRecord | null) => void;
   selectedNurseryId?: string | null;
-  onLocateMe: () => void;
   onToggleLayerVisibility: (layer: keyof LayerVisibilityState) => void;
   onSetBasemap: (mode: 'light' | 'satellite') => void;
   geoError?: string | null;
-  geoNotice?: GeoNotice | null;
-  geoLoading?: boolean;
-  onDismissGeoNotice?: () => void;
   /** GeoJSON feature for the active pedestrian route (from directions API) */
   activeRoute?: GeoJSON.Feature | null;
   /** Route origin coordinates and label */
@@ -89,6 +91,7 @@ const MUMBAI_ISLAND_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 export default function GreenMap({
+  city,
   centre,
   hasChosenCentre = false,
   spaces,
@@ -100,13 +103,9 @@ export default function GreenMap({
   selectedHexId,
   onSelectNursery,
   selectedNurseryId,
-  onLocateMe,
   onToggleLayerVisibility,
   onSetBasemap,
   geoError,
-  geoNotice = null,
-  geoLoading = false,
-  onDismissGeoNotice,
   activeRoute = null,
   routeOrigin = null,
   routeDestination = null,
@@ -138,14 +137,14 @@ export default function GreenMap({
   useEffect(() => {
     (window as any)._greenSpaceClick = (id: string) => onSpaceClick(id);
     (window as any)._nurserySelectClick = (id: string) => {
-      const found = BMC_NURSERIES.find((n) => n.id === id);
+      const found = getNurseriesForCity((city ?? DEFAULT_CITY).id).find((n) => n.id === id);
       if (found && onSelectNursery) onSelectNursery(found);
     };
     return () => {
       delete (window as any)._greenSpaceClick;
       delete (window as any)._nurserySelectClick;
     };
-  }, [onSpaceClick, onSelectNursery]);
+  }, [onSpaceClick, onSelectNursery, city]);
 
   // ── Route polyline rendering ──────────────────────────────────────────────
   useEffect(() => {
@@ -374,8 +373,25 @@ export default function GreenMap({
       // Default to light basemap
       lightGroup.addTo(map);
 
-      // Fit to Mumbai island bounds
-      map.fitBounds(MUMBAI_ISLAND_BOUNDS, { padding: [16, 16] });
+      // Fit to the selected city.
+      //
+      // Mumbai keeps its historical island framing byte-for-byte. Other cities
+      // frame on their provisional envelope — a measured extent of candidate
+      // ward geometry, NOT an administrative boundary. The badge below states
+      // this so the framing is never mistaken for a municipal limit.
+      const activeCity = city ?? DEFAULT_CITY;
+      if (activeCity.id === 'mumbai') {
+        map.fitBounds(MUMBAI_ISLAND_BOUNDS, { padding: [16, 16] });
+      } else {
+        const [bSouth, bWest, bNorth, bEast] = activeCity.bbox;
+        map.fitBounds(
+          [
+            [bSouth, bWest],
+            [bNorth, bEast],
+          ],
+          { padding: [16, 16] }
+        );
+      }
       setZoomLevel(map.getZoom());
 
       map.on('zoomend', () => {
@@ -402,6 +418,25 @@ export default function GreenMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── 1b. NDVI availability per city ─────────────────────────────────────────
+  // AgroMonitoring imagery is served per REGISTERED polygon. Only one exists,
+  // and it covers a Mumbai AOI. For any other city the NDVI raster layer has no
+  // legitimate source, so it is disabled here rather than silently rendering
+  // another city's tiles or a blank overlay.
+  const activeCityId = (city ?? DEFAULT_CITY).id;
+  const ndviSupportedCity = activeCityId === 'mumbai';
+
+  useEffect(() => {
+    if (ndviSupportedCity) return;
+    // Turn the layer off for this city; `ndviUnavailable` explains why in the UI.
+    if (filters.layerVisibility.ndvi) onToggleLayerVisibility?.('ndvi');
+    setNdviUnavailable(true);
+  }, [ndviSupportedCity, filters.layerVisibility.ndvi, onToggleLayerVisibility]);
+
+  useEffect(() => {
+    if (ndviSupportedCity) setNdviUnavailable(false);
+  }, [ndviSupportedCity]);
+
   // ── 2. Basemap Switcher (Light / Satellite) ───────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
@@ -427,7 +462,9 @@ export default function GreenMap({
     }
 
     const ndviTileUrl = tiles?.layers?.[0]?.urlTemplate;
-    const isNdviVisible = Boolean(filters.layerVisibility.ndvi && ndviTileUrl);
+    const isNdviVisible = Boolean(
+      ndviSupportedCity && filters.layerVisibility.ndvi && ndviTileUrl
+    );
 
     if (isNdviVisible && ndviTileUrl) {
       setNdviUnavailable(false);
@@ -484,7 +521,10 @@ export default function GreenMap({
       setRasterLoaded(false);
       setRasterInViewport(false);
     } else {
-      setNdviUnavailable(false);
+      // A city with no registered AOI must stay flagged even though the user has
+      // the layer switched off; otherwise the explanation disappears the moment
+      // the toggle is cleared.
+      setNdviUnavailable(!ndviSupportedCity);
       setRasterLoaded(false);
       setRasterInViewport(false);
     }
@@ -495,7 +535,7 @@ export default function GreenMap({
         ndviLayerRef.current = null;
       }
     };
-  }, [filters.layerVisibility.ndvi, tiles, mapReady]);
+  }, [filters.layerVisibility.ndvi, tiles, mapReady, ndviSupportedCity]);
 
   // ── 3. Centre Pin & 5km Radius Circle ─────────────────────────────────────
   useEffect(() => {
@@ -675,7 +715,9 @@ export default function GreenMap({
     import('leaflet').then((L) => {
       if (!mapRef.current) return;
 
-      let list = BMC_NURSERIES;
+      // Nurseries for the SELECTED city. Cities without a registered nursery
+      // dataset get an empty list — never Mumbai's BMC records.
+      let list = getNurseriesForCity(activeCityId);
       if (filters.nurseryWard && filters.nurseryWard !== 'ALL') {
         list = list.filter((n) => n.ward.toUpperCase() === filters.nurseryWard!.toUpperCase());
       }
@@ -737,7 +779,7 @@ export default function GreenMap({
         nurseryLayerRef.current.push(mkr);
       });
     });
-  }, [filters.layerVisibility.nurseries, filters.nurseryWard, selectedNurseryId, mapReady, onSelectNursery]);
+  }, [filters.layerVisibility.nurseries, filters.nurseryWard, selectedNurseryId, mapReady, onSelectNursery, activeCityId]);
 
   // ── 6. Green Spaces Polygons & Markers ────────────────────────────────────
   useEffect(() => {
@@ -760,6 +802,44 @@ export default function GreenMap({
         tiles.layers.length > 0
       );
 
+      /**
+       * Fallback marker set.
+       *
+       * `isBigOrReserve` below applies an absolute hectare threshold that was
+       * tuned against Mumbai, where genuinely large reserves exist. Cities whose
+       * records are uniformly small (Pune's municipal gardens are well under a
+       * hectare) therefore matched nothing at low zoom and rendered no markers at
+       * all, leaving those maps empty and their markers unclickable.
+       *
+       * If the size rule selects nothing for the current records, fall back to
+       * that city's own largest records. This is additive: when the normal rule
+       * already selects something — Mumbai's case — behaviour is unchanged.
+       */
+      const haOf = (sp: any) =>
+        (sp.areaM2 ? sp.areaM2 / 10000 : 0) || (sp.areaHectares ?? 0);
+      const sizeRuleSelectsSomething = spaces.some((sp: any) => {
+        if (sp.id === selectedSpaceId) return true;
+        const h = haOf(sp);
+        const n = (sp.name || '').toLowerCase();
+        return (
+          h >= 20 ||
+          sp.category === 'Nature Reserve' ||
+          sp.category === 'National Park' ||
+          n.includes('sanjay gandhi') ||
+          n.includes('sgnp') ||
+          n.includes('aarey') ||
+          n.includes('mahim') ||
+          n.includes('hanging garden')
+        );
+      });
+      const fallbackIds = new Set<string>();
+      if (!sizeRuleSelectsSomething && spaces.length > 0) {
+        [...spaces]
+          .sort((a: any, b: any) => haOf(b) - haOf(a))
+          .slice(0, 25)
+          .forEach((sp: any) => fallbackIds.add(sp.id));
+      }
+
       spaces.forEach((space) => {
         const isSelected = space.id === selectedSpaceId;
         const isWalkable = space.walkClass === 'WALKABLE_VERIFIED';
@@ -777,80 +857,22 @@ export default function GreenMap({
           nameLower.includes('mahim') ||
           nameLower.includes('hanging garden');
 
-        let showMarker = false;
-        if (isSelected) {
-          showMarker = true;
-        } else if (zoomLevel <= 12) {
-          showMarker = isBigOrReserve;
-        } else if (zoomLevel <= 14) {
-          showMarker = ha >= 2 || isBigOrReserve;
-        } else {
-          showMarker = true;
-        }
+        // All walkable & green space records are shown on the map
+        const showMarker = true;
 
-        // OSM Green Space boundary — drawn ONLY for the selected feature.
-        // Rendering every park outline produced a map covered in blue dashed
-        // boxes; parks remain discoverable via their markers, and the boundary
-        // appears as soon as a space is selected.
+        // Draw polygon outline when a space is selected
         if (isSelected && space.geometry && (space.geometry.type === 'Polygon' || space.geometry.type === 'MultiPolygon')) {
           try {
-            const ndviClass = space.ndvi?.densityClass;
-            const ndviMean = space.ndvi?.mean;
-            const isPublic = space.accessStatus === 'PUBLIC_TAGGED';
-
-            let strokeColor = '#4d7c0f';
-            let strokeWidth = 1.5;
-            let strokeOpacity = 0.6;
-            let dashArray: string | undefined = undefined;
-
-            if (isPublic && !isSelected) {
-              strokeColor = '#2563EB';
-              strokeWidth = 1.8;
-              dashArray = '4 3';
-              strokeOpacity = 0.7;
-            }
-
-            if (isSelected) {
-              strokeColor = '#1D4ED8';
-              strokeWidth = 3;
-              strokeOpacity = 0.9;
-              dashArray = undefined;
-            }
-
-            const areaHa = space.areaM2 ? (space.areaM2 / 10000).toFixed(1) : null;
-            const ndviDisplay = ndviMean !== null && ndviMean !== undefined ? ndviMean.toFixed(2) : null;
-
             const poly = L.geoJSON(space.geometry as any, {
               pane: 'ndviPane',
               style: {
-                color: strokeColor,
-                opacity: strokeOpacity,
-                weight: strokeWidth,
-                dashArray,
-                fillOpacity: 0,
+                color: '#1D4ED8',
+                weight: 3,
+                opacity: 0.9,
+                fillOpacity: 0.12,
+                fillColor: '#3B82F6',
               },
-            })
-              .bindTooltip(
-                `<div style="font-family:system-ui,sans-serif;padding:2px 0;">
-                  <div style="font-weight:800;font-size:12px;color:#0f172a;line-height:1.2;">${space.name || space.category}</div>
-                  <div style="display:flex;align-items:center;gap:6px;margin-top:3px;font-size:10px;color:#475569;">
-                    <span style="font-weight:700;color:#16a34a;">${space.category}</span>
-                    ${areaHa ? `<span>· ${areaHa} ha</span>` : ''}
-                  </div>
-                  ${ndviDisplay ? `
-                    <div style="margin-top:3px;font-size:10px;font-weight:700;color:${ndviMean! >= 0.55 ? '#15803d' : ndviMean! >= 0.25 ? '#65a30d' : '#d97706'};">
-                      NDVI: ${ndviDisplay} (${ndviClass === 'HIGH' ? 'High Vegetation' : ndviClass === 'MEDIUM' ? 'Medium Vegetation' : 'Low Vegetation'})
-                    </div>
-                  ` : ''}
-                  <div style="margin-top:2px;font-size:9.5px;color:${isWalkable ? '#2563eb' : '#64748b'};">
-                    ${isWalkable ? '✓ Walkable & Verified' : 'Mapped Urban Canopy'}
-                  </div>
-                </div>`,
-                { sticky: true, opacity: 0.95 }
-              )
-              .on('click', () => onSpaceClick(space.id))
-              .addTo(map);
-
+            }).addTo(map);
             spaceLayersRef.current.push(poly);
           } catch (_) {}
         }
@@ -858,8 +880,16 @@ export default function GreenMap({
         // Marker Badges
         if (showMarker) {
           const fillBg = isWalkable ? '#2563EB' : '#1F6B3A';
-          const svgIcon = isWalkable ? WALKER_SVG : TREE_SVG;
-          const badgeSize = isSelected ? 30 : 24;  // Smaller, less obtrusive markers
+          const badgeSize = isSelected ? 30 : zoomLevel <= 11 ? 16 : zoomLevel <= 13 ? 20 : 24;
+          const iconPx = badgeSize <= 16 ? 10 : badgeSize <= 20 ? 13 : 16;
+          const svgIcon = isWalkable
+            ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${iconPx}" height="${iconPx}" fill="white" aria-hidden="true">
+                <circle cx="12" cy="4" r="2.2"/>
+                <path d="M15.5 8.5l-1.5-1.5-2 1-2-1-1.5 1.5L7 14h2.2l.5-3 1.5 1.5V17h2v-5.5L11.5 10l.5-1.5 2 1.5L16 12h2.2l-2.7-3.5z"/>
+              </svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${iconPx}" height="${iconPx}" fill="white" aria-hidden="true">
+                <path d="M12 2L6.5 10h2.8L5 15h4.5v5h5v-5H19l-4.3-5h2.8L12 2z"/>
+              </svg>`;
           const borderWidth = isSelected ? '3px' : '2px';
 
           const markerHtml = `
@@ -964,15 +994,6 @@ export default function GreenMap({
               <Minus className="w-4 h-4" />
             </button>
           </div>
-
-          <button
-            onClick={onLocateMe}
-            className="w-9 h-9 rounded-xl bg-white border border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.12)] hover:bg-blue-50 flex items-center justify-center text-slate-700 hover:text-blue-600 transition-all focus:outline-none"
-            title="Use my GPS location"
-            aria-label="Find my current location"
-          >
-            <Locate className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Scale Bar */}
@@ -988,47 +1009,19 @@ export default function GreenMap({
         </div>
       </div>
 
-      {/* Geolocation Loading Indicator */}
-      {geoLoading && (
-        <div className="absolute top-16 left-4 z-[1000] bg-white/95 backdrop-blur-md border border-blue-200 text-blue-900 text-xs px-3.5 py-2 rounded-xl shadow-lg flex items-center gap-2">
-          <Locate className="w-4 h-4 text-blue-600 animate-pulse" />
-          <span className="font-semibold">Detecting your location in Mumbai…</span>
-        </div>
-      )}
 
-      {/* Geolocation Notice / Outside Diameter Alert Toast */}
-      {geoNotice && (
-        <div
-          className={`absolute top-16 left-4 z-[1000] text-xs px-3.5 py-2.5 rounded-2xl shadow-xl flex items-start gap-2.5 max-w-sm border backdrop-blur-md transition-all ${
-            geoNotice.type === 'OUTSIDE_MUMBAI'
-              ? 'bg-amber-600/95 text-white border-amber-500 shadow-amber-900/20'
-              : geoNotice.type === 'INSIDE_MUMBAI'
-              ? 'bg-emerald-600/95 text-white border-emerald-500 shadow-emerald-900/20'
-              : 'bg-slate-800/95 text-white border-slate-700'
-          }`}
-        >
-          <span className="text-base shrink-0 mt-0.5">
-            {geoNotice.type === 'OUTSIDE_MUMBAI' ? '⚠️' : geoNotice.type === 'INSIDE_MUMBAI' ? '📍' : 'ℹ️'}
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold leading-tight">
-              {geoNotice.type === 'OUTSIDE_MUMBAI'
-                ? 'Outside Coverage Diameter'
-                : geoNotice.type === 'INSIDE_MUMBAI'
-                ? 'Mumbai GPS Active'
-                : 'Notice'}
-            </p>
-            <p className="text-[11px] opacity-90 mt-0.5 leading-snug">{geoNotice.message}</p>
-          </div>
-          {onDismissGeoNotice && (
-            <button
-              onClick={onDismissGeoNotice}
-              className="p-1 hover:bg-white/20 rounded-lg text-white shrink-0 -mr-1"
-              title="Dismiss"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+      {/* City-level data honesty banner.
+          Shown regardless of the NDVI toggle, because the reason a city has no
+          vegetation layer is the absence of a registered AOI — not a user
+          setting. */}
+      {!ndviSupportedCity && (
+        <div className="absolute top-16 left-4 z-[1000] bg-amber-900/90 backdrop-blur-sm text-white text-[11px] px-3 py-2 rounded-xl shadow-lg max-w-[280px] border border-amber-700">
+          <p className="font-black">No satellite vegetation layer for this city</p>
+          <p className="mt-1 leading-snug">
+            Vegetation imagery is served per registered AOI polygon. None is registered
+            for this city, so the NDVI layer is disabled. The map framing shown is a
+            provisional measured envelope, not an official municipal boundary.
+          </p>
         </div>
       )}
 

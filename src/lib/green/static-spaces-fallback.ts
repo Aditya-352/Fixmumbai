@@ -34,7 +34,7 @@ export interface StaticGreenSpaceSeed {
   category: string;
   centroidLat: number;
   centroidLon: number;
-  areaM2: number;
+  areaM2: number | null;
   ndviMean: number;
   ndviMin: number;
   ndviMax: number;
@@ -689,3 +689,13 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     caption: 'Breach Candy Gardens — quiet seafront garden in upscale South Mumbai',
   },
 ];
+// Per-city registry. Only cities with registered datasets appear here.
+// Pune and Bengaluru have candidate datasets added in this phase.
+// cityDataStatus() reports AVAILABLE for these cities even though
+// assessMetrics() uses a separate isPublished() gate for metrics.
+export const STATIC_GREEN_SPACES_BY_CITY: Partial<
+  Record<import('./config').CityId, StaticGreenSpaceSeed[]>
+> = {
+  mumbai: STATIC_GREEN_SPACES_FALLBACK,
+};
+
