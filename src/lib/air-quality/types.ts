@@ -56,6 +56,8 @@ export interface RawStationReading {
   pollutants: PollutantReading[];
   /** Precomputed AQI from the source, when the upstream feed reports one. */
   measuredAqi?: number | null;
+  /** Official OpenWeather 1-5 index when source is OPENWEATHER. */
+  openWeatherIndex?: number;
   /** Dominant pollutant reported or inferred by the source, when available. */
   dominantPollutant?: PollutantId | null;
   /**
@@ -120,6 +122,7 @@ export interface AirQualityResponse {
      * source that does return a precomputed value is represented honestly.
      */
     valueType: 'measured' | 'calculated';
+    openWeatherIndex?: number;
   } | null;
   station: StationSummary | null;
   /** Every pollutant reading contributing to `aqi`, from the same station. */

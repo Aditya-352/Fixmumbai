@@ -2,6 +2,8 @@ import React from 'react';
 import type { Metadata } from 'next';
 import GreenExplorer from '@/components/green/GreenExplorer';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Green Density Explorer | FixMumbai — Vegetation & Walkable Green Spaces',
   description:

@@ -18,6 +18,7 @@ import {
 
 import wardsData from '@/data/mumbai-wards.json';
 import type { AirQualityResponse, AqiCategory } from '@/lib/air-quality/types';
+import { detectLocationViaIp } from '@/lib/user-location';
 
 export interface ReportMarker {
   id: string;
@@ -41,7 +42,7 @@ interface MumbaiMapProps {
   onMarkerSelect?: (report: ReportMarker) => void;
 }
 
-// AQI category colors follow CPCB's National AQI color scale.
+// AQI category colors follow standard Weather API AQI color scale.
 const AQI_CATEGORY_COLORS: Record<AqiCategory, string> = {
   Good: '#16A34A',
   Satisfactory: '#84CC16',
@@ -113,15 +114,23 @@ export default function MumbaiMap({
         setUserLocation(coords);
         fetchAirQuality(coords[0], coords[1]);
       },
-      (geoError) => {
+      async () => {
+        // Fallback to IP geolocation when browser GPS is denied or times out
+        try {
+          const ipLoc = await detectLocationViaIp();
+          if (ipLoc) {
+            const coords: [number, number] = [ipLoc.lat, ipLoc.lon];
+            setUserLocation(coords);
+            fetchAirQuality(coords[0], coords[1]);
+            return;
+          }
+        } catch {
+          // ignore
+        }
         setAqStatus('error');
-        setAqError(
-          geoError.code === geoError.PERMISSION_DENIED
-            ? 'Location access was denied. Enable location permissions to see air quality near you.'
-            : 'Could not determine your location. Please try again.'
-        );
+        setAqError('Could not determine your exact location. Please try again.');
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5 * 60 * 1000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   };
 
@@ -145,7 +154,7 @@ export default function MumbaiMap({
 
   // Dynamic Leaflet container wrapper
   const L = require('leaflet');
-  const { MapContainer, TileLayer, Marker, Popup, Polygon } = require('react-leaflet');
+  const { MapContainer, TileLayer, Marker, Popup } = require('react-leaflet');
 
   // Custom visual marker states (Icon + Color + Symbol)
   const createCustomIcon = (status: string) => {
@@ -175,7 +184,7 @@ export default function MumbaiMap({
     });
   };
 
-  // Air Quality marker: colored by CPCB AQI category, placed at the user's GPS location.
+  // Air Quality marker: colored by Weather API AQI category, placed at the user's GPS location.
   const createAqiIcon = (category: AqiCategory, value: number) => {
     const color = AQI_CATEGORY_COLORS[category];
     const html = `
@@ -284,43 +293,27 @@ export default function MumbaiMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* 24 BMC Ward Polygon Outlines & Circular Ward Badges (Exact match to reference image) */}
+        {/* 24 BMC Ward Markers */}
         {showWards && wardsData.map((w, idx) => (
-          <React.Fragment key={w.wardCode}>
-            <Polygon
-              positions={w.polygon || [[w.bbox[1], w.bbox[0]], [w.bbox[3], w.bbox[0]], [w.bbox[3], w.bbox[2]], [w.bbox[1], w.bbox[2]]]}
-              pathOptions={{
-                color: '#1D4ED8', // Solid vibrant blue border stroke matching screenshot
-                weight: 2.5,
-                opacity: 0.95,
-                fillColor: '#3B82F6',
-                fillOpacity: 0.06
-              }}
-            >
-              <Popup className="fixmumbai-leaflet-popup">
-                <div className="p-2 space-y-1 font-sans text-xs max-w-[240px]">
-                  <div className="text-[10px] font-black text-blue-600 uppercase tracking-wider">{w.regionZone} • BMC WARD {w.wardCode}</div>
-                  <div className="font-extrabold text-sm text-slate-900 leading-tight">{w.wardName}</div>
-                  <div className="text-slate-600 text-[11px] font-semibold pt-1">Assistant Commissioner:</div>
-                  <div className="text-slate-900 font-bold text-xs">{w.assistantCommissioner}</div>
-                  <div className="text-slate-400 text-[10px] border-t border-slate-100 pt-1 mt-1 truncate">{w.wardOfficeName}</div>
+          <Marker
+            key={w.wardCode}
+            position={[w.centerLatitude, w.centerLongitude]}
+            icon={createWardBadgeIcon(w.wardCode, idx)}
+          >
+            <Popup className="fixmumbai-leaflet-popup">
+              <div className="p-2 space-y-1 font-sans text-xs max-w-[240px]">
+                <div className="text-[10px] font-black text-red-600 uppercase tracking-wider">
+                  {w.regionZone} • BMC WARD {w.wardCode}
                 </div>
-              </Popup>
-            </Polygon>
-
-            {/* Circular Ward Letter Badge Marker (Yellow / Red badges matching screenshot) */}
-            <Marker
-              position={[w.centerLatitude, w.centerLongitude]}
-              icon={createWardBadgeIcon(w.wardCode, idx)}
-            >
-              <Popup className="fixmumbai-leaflet-popup">
-                <div className="p-1 space-y-1 font-sans text-xs text-center">
-                  <div className="font-black text-xs text-blue-700 uppercase">BMC WARD {w.wardCode}</div>
-                  <div className="font-bold text-slate-900">{w.wardName}</div>
+                <div className="font-extrabold text-sm text-slate-900 leading-tight">{w.wardName}</div>
+                <div className="text-slate-600 text-[11px] font-semibold pt-1">Assistant Commissioner:</div>
+                <div className="text-slate-900 font-bold text-xs">{w.assistantCommissioner}</div>
+                <div className="text-slate-400 text-[10px] border-t border-slate-100 pt-1 mt-1 truncate">
+                  {w.wardOfficeName}
                 </div>
-              </Popup>
-            </Marker>
-          </React.Fragment>
+              </div>
+            </Popup>
+          </Marker>
         ))}
 
         {reports.map((report) => (

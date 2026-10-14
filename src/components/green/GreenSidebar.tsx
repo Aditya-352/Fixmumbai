@@ -15,7 +15,7 @@ const MODES = [
   {
     number: 2,
     label: 'Air Quality Map',
-    sublabel: 'CPCB / OpenAQ live data',
+    sublabel: 'Weather API / Live Telemetry',
     href: '/map',
     icon: '💨',
   },

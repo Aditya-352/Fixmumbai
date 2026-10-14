@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isLocationInMumbai, mapCoordinatesToCivicBoundary } from '@/lib/gis';
+import { isLocationInMumbai, isLocationInIndia, mapCoordinatesToCivicBoundary } from '@/lib/gis';
 import type { RawStationReading } from '@/lib/air-quality/types';
 
 const mocks = vi.hoisted(() => ({
   getCpcbStationsForMumbai: vi.fn(),
   getOpenAqStationsNear: vi.fn(),
   getAqicnStationsForMumbai: vi.fn(),
+  getAqicnStationsForLocation: vi.fn(),
   getOpenWeatherAirQualityForLocation: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ vi.mock('@/lib/air-quality/openaq-client', () => ({
 
 vi.mock('@/lib/air-quality/aqicn-client', () => ({
   getAqicnStationsForMumbai: mocks.getAqicnStationsForMumbai,
+  getAqicnStationsForLocation: mocks.getAqicnStationsForLocation,
 }));
 
 vi.mock('@/lib/air-quality/openweather-client', () => ({
@@ -30,6 +32,8 @@ import { AirQualityServiceError } from '@/lib/air-quality/types';
 
 const MUMBAI_CST = { lat: 18.9402, lon: 72.8356 };
 const DELHI = { lat: 28.6139, lon: 77.209 };
+const BENGALURU = { lat: 12.9716, lon: 77.5946 };
+const LONDON = { lat: 51.5074, lon: -0.1278 };
 
 function openWeatherStation(overrides: Partial<RawStationReading> = {}): RawStationReading {
   return station({
@@ -75,18 +79,24 @@ function station(overrides: Partial<RawStationReading> = {}): RawStationReading 
   };
 }
 
-describe('Mumbai-only location features', () => {
+describe('India-wide air quality and Mumbai civic location features', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getCpcbStationsForMumbai.mockResolvedValue([]);
     mocks.getOpenAqStationsNear.mockResolvedValue([]);
     mocks.getAqicnStationsForMumbai.mockResolvedValue([]);
+    mocks.getAqicnStationsForLocation.mockResolvedValue([]);
     mocks.getOpenWeatherAirQualityForLocation.mockResolvedValue(null);
   });
 
-  it('accepts Mumbai coordinates and rejects coordinates outside the Mumbai service area', () => {
+  it('accepts Mumbai and other Indian cities, and verifies India geofencing', () => {
     expect(isLocationInMumbai(MUMBAI_CST.lat, MUMBAI_CST.lon)).toBe(true);
     expect(isLocationInMumbai(DELHI.lat, DELHI.lon)).toBe(false);
+
+    expect(isLocationInIndia(MUMBAI_CST.lat, MUMBAI_CST.lon)).toBe(true);
+    expect(isLocationInIndia(DELHI.lat, DELHI.lon)).toBe(true);
+    expect(isLocationInIndia(BENGALURU.lat, BENGALURU.lon)).toBe(true);
+    expect(isLocationInIndia(LONDON.lat, LONDON.lon)).toBe(false);
   });
 
   it('maps an in-Mumbai GPS point to civic boundaries', () => {
@@ -148,14 +158,65 @@ describe('Mumbai-only location features', () => {
     expect(result.dataQuality.note).toContain('OpenWeather did not return a usable reading');
   });
 
-  it('does not call upstream air-quality providers for a non-Mumbai location', async () => {
-    await expect(getAirQualityForLocation(DELHI.lat, DELHI.lon)).rejects.toMatchObject({
+  it('returns real-time air quality for other Indian locations across whole India (e.g. Delhi)', async () => {
+    mocks.getOpenWeatherAirQualityForLocation.mockResolvedValue(
+      openWeatherStation({
+        stationId: `ow-${DELHI.lat.toFixed(3)}-${DELHI.lon.toFixed(3)}`,
+        stationName: 'OpenWeather Atmospheric Observation (New Delhi)',
+        latitude: DELHI.lat,
+        longitude: DELHI.lon,
+        city: 'New Delhi',
+        state: 'Delhi',
+        measuredAqi: 168,
+      })
+    );
+
+    const result = await getAirQualityForLocation(DELHI.lat, DELHI.lon);
+
+    expect(result.location).toEqual({ latitude: DELHI.lat, longitude: DELHI.lon });
+    expect(result.aqi).toMatchObject({
+      source: 'OPENWEATHER',
+      value: 168,
+      valueType: 'measured',
+    });
+    expect(result.sources.find((s) => s.name === 'OPENWEATHER')?.stationsFound).toBe(1);
+    expect(mocks.getOpenWeatherAirQualityForLocation).toHaveBeenCalledWith(DELHI.lat, DELHI.lon);
+  });
+
+  it('falls back to AQICN for non-Mumbai Indian locations when OpenWeather is unavailable', async () => {
+    mocks.getAqicnStationsForLocation.mockResolvedValue([
+      station({
+        source: 'AQICN',
+        stationId: 'waqi-3251',
+        stationName: 'Mandir Marg, Delhi',
+        latitude: 28.634,
+        longitude: 77.201,
+        measuredAqi: 185,
+        dominantPollutant: 'PM2.5',
+        pollutants: [],
+        coordinatesResolvedFrom: 'upstream',
+      }),
+    ]);
+
+    const result = await getAirQualityForLocation(DELHI.lat, DELHI.lon);
+
+    expect(result.aqi).toMatchObject({
+      source: 'AQICN',
+      value: 185,
+      valueType: 'measured',
+    });
+    expect(mocks.getAqicnStationsForLocation).toHaveBeenCalledWith(DELHI.lat, DELHI.lon);
+  });
+
+  it('does not call upstream air-quality providers for coordinates outside India', async () => {
+    await expect(getAirQualityForLocation(LONDON.lat, LONDON.lon)).rejects.toMatchObject({
       code: 'OUT_OF_SERVICE_AREA',
     } satisfies Partial<AirQualityServiceError>);
 
     expect(mocks.getCpcbStationsForMumbai).not.toHaveBeenCalled();
     expect(mocks.getOpenAqStationsNear).not.toHaveBeenCalled();
     expect(mocks.getAqicnStationsForMumbai).not.toHaveBeenCalled();
+    expect(mocks.getAqicnStationsForLocation).not.toHaveBeenCalled();
     expect(mocks.getOpenWeatherAirQualityForLocation).not.toHaveBeenCalled();
   });
 });

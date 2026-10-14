@@ -1,5 +1,5 @@
 import { airQualityCache, CACHE_TTL, coordinateCacheKey } from './cache';
-import { distanceKm, isLocationInMumbai } from './station-resolver';
+import { distanceKm, isLocationInMumbai, reverseGeocodeLocation } from './station-resolver';
 import type { PollutantId, PollutantReading, RawStationReading } from './types';
 
 const AQICN_BASE_URL = 'https://api.waqi.info';
@@ -115,7 +115,12 @@ function mapFeedToRawStation(
 ): RawStationReading {
   const lat = feed?.city?.geo?.[0] ?? item.station.geo[0];
   const lon = feed?.city?.geo?.[1] ?? item.station.geo[1];
-  const stationName = feed?.city?.name ?? item.station.name;
+  const rawStationName = feed?.city?.name ?? item.station.name;
+  const stationName =
+    rawStationName
+      .replace(/\s*\([^)]*[\uFFFD\u007F-\uFFFF?][^)]*\)/g, '')
+      .replace(/,\s*India$/i, '')
+      .trim() || rawStationName;
   const lastUpdated = feed?.time?.iso ?? item.time?.stime ?? null;
 
   const pollutants: PollutantReading[] = [];
@@ -134,8 +139,11 @@ function mapFeedToRawStation(
     }
   }
 
-  const measuredAqi =
+  let measuredAqi =
     typeof feed?.aqi === 'number' && feed.aqi > 0 && feed.aqi < 900 ? feed.aqi : null;
+  if (measuredAqi === null && item.aqi && !Number.isNaN(Number(item.aqi)) && Number(item.aqi) > 0) {
+    measuredAqi = Number(item.aqi);
+  }
   const dominantPollutant = feed?.dominentpol ? normalizePollutantId(feed.dominentpol) : null;
 
   return {
@@ -153,40 +161,6 @@ function mapFeedToRawStation(
     distanceKm: null,
     coordinatesResolvedFrom: 'upstream',
   };
-}
-
-/**
- * Reverse geocodes coordinates within India to find the nearest city/district/state.
- */
-async function reverseGeocodeLocation(lat: number, lon: number): Promise<{ city: string; state: string }> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
-      {
-        headers: {
-          'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
-          'Accept-Language': 'en',
-        },
-        signal: controller.signal,
-      }
-    );
-    clearTimeout(timeout);
-    if (!res.ok) return { city: '', state: '' };
-    const data = await res.json();
-    const city =
-      data.address?.city ||
-      data.address?.town ||
-      data.address?.state_district ||
-      data.address?.county ||
-      data.address?.village ||
-      '';
-    const state = data.address?.state || '';
-    return { city, state };
-  } catch {
-    return { city: '', state: '' };
-  }
 }
 
 /**
