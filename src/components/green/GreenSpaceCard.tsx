@@ -42,15 +42,15 @@ export default function GreenSpaceCard({ space, onClick, isSelected }: GreenSpac
   return (
     <button
       onClick={() => onClick(space.id)}
-      className={`w-full text-left rounded-2xl border p-2.5 transition-all duration-150 flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+      className={`w-full text-left rounded-2xl border p-2.5 transition-all duration-150 flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-[#087F5B] ${
         isSelected
-          ? 'border-emerald-600 bg-emerald-50/70 shadow-md ring-1 ring-emerald-600'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+          ? 'border-[#087F5B] bg-[#EAF7F0]/50 shadow-xs ring-1 ring-[#087F5B]'
+          : 'border-[#E5EBE7] bg-white hover:border-[#087F5B]/30 hover:shadow-xs'
       }`}
       aria-label={`View details for ${space.name || 'Unnamed green space'}`}
     >
       {/* 80px thumbnail — LEFT */}
-      <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 relative border border-slate-200">
+      <div className="w-20 h-20 rounded-xl bg-[#F7F9F8] overflow-hidden flex-shrink-0 relative border border-[#E5EBE7]">
         {space.image?.imageUrl ? (
           <img
             src={space.image.thumbUrl || space.image.imageUrl}
@@ -59,23 +59,22 @@ export default function GreenSpaceCard({ space, onClick, isSelected }: GreenSpac
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-700 text-2xl">
+          <div className="w-full h-full flex items-center justify-center bg-[#EAF7F0] text-[#087F5B] text-2xl font-bold">
             🌿
           </div>
         )}
       </div>
 
       {/* Middle: name (up to 2 lines), distance, description (1 line) */}
-      <div className="flex-1 min-w-0 space-y-0.5">
+      <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-start justify-between gap-1.5">
-          {/* Item 7: name wraps to 2 lines, no truncation */}
-          <h3 className="text-xs font-black text-slate-900 line-clamp-2 leading-tight">
+          <h3 className="text-xs font-black text-[#14231D] line-clamp-2 leading-tight">
             {space.name || 'Unnamed Green Space'}
           </h3>
           {density !== 'UNAVAILABLE' && (
             <span
               className={`flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
-                ndviMeasured ? 'text-white' : 'text-slate-600 bg-slate-200 border border-slate-300'
+                ndviMeasured ? 'text-white' : 'text-[#64746B] bg-slate-100 border border-[#E5EBE7]'
               }`}
               style={ndviMeasured ? { background: densityMeta.colour } : undefined}
               title={
@@ -90,29 +89,32 @@ export default function GreenSpaceCard({ space, onClick, isSelected }: GreenSpac
           )}
         </div>
 
-        {/* Distance + walk time — uses accurate boundary distance */}
-        <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 flex-wrap">
-          <span>{isWalkable ? '🚶' : '📍'}</span>
+        {/* Distance + walk time */}
+        <div className="text-[11px] font-semibold text-[#64746B] flex items-center gap-1.5 flex-wrap">
+          <span className="flex items-center gap-1 text-[#087F5B] font-bold">
+            {isWalkable ? '🚶' : '📍'}
+            {isWalkable ? 'Walkable' : space.category}
+          </span>
           {space.isInsidePolygon ? (
-            <span className="text-emerald-700 font-bold">Inside this green space</span>
+            <span className="text-[#087F5B] font-bold">Inside boundary</span>
           ) : space.distanceLabel ? (
-            <span>{space.distanceLabel}</span>
+            <span>· {space.distanceLabel}</span>
           ) : (
-            <span>{distKm} km</span>
+            <span>· {distKm} km</span>
           )}
           {!space.isInsidePolygon && space.walkMinutes !== null && (
-            <span className="text-slate-400">· {walkLabel}</span>
+            <span className="text-slate-400">({walkLabel})</span>
           )}
         </div>
 
-        {/* 1-line tag description — truncate descriptions, NOT names */}
-        <p className="text-[10px] text-slate-500 truncate leading-tight">
+        {/* 1-line tag description */}
+        <p className="text-[10px] text-[#64746B] truncate leading-tight">
           {description}
         </p>
       </div>
 
       {/* Chevron */}
-      <div className="flex-shrink-0 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all pr-0.5">
+      <div className="flex-shrink-0 text-slate-300 group-hover:text-[#087F5B] group-hover:translate-x-0.5 transition-all pr-1">
         <ChevronRight className="w-4 h-4" />
       </div>
     </button>

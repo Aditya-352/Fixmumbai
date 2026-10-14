@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, TilesResponse, TileProvenance } from '@/lib/green/types';
-import { GREEN_EXPLORER_ENABLED, DENSITY_META } from '@/lib/green/config';
+import { GREEN_EXPLORER_ENABLED, DENSITY_META, ACTIVE_CITY } from '@/lib/green/config';
 import { resolveNdviObservation } from '@/lib/green/ndvi-provider';
+import { CityParamError, cityMeta, resolveCity, toErrorBody } from '@/lib/green/city-param';
 
 /**
- * GET /api/vegetation/tiles
+ * GET /api/vegetation/tiles?city
  *
  * Returns the NDVI display layer plus full observation provenance.
  *
@@ -15,8 +16,12 @@ import { resolveNdviObservation } from '@/lib/green/ndvi-provider';
  *    never returned to the browser.
  *  - Display tiles are colour-rendered PNGs. Numerical NDVI, when the provider
  *    supplies it, is reported separately in `numerical`.
+ *  - Satellite imagery is registered for one city only. Asking for any other
+ *    city returns an empty `layers` array with an explicit reason, because
+ *    serving one city's NDVI pixels over another city's map would be a
+ *    fabricated green-density reading.
  */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   if (!GREEN_EXPLORER_ENABLED) {
     return NextResponse.json<ApiResponse<never>>(
       {
@@ -27,6 +32,22 @@ export async function GET(_req: NextRequest) {
       { status: 503 }
     );
   }
+
+  // ── City resolution ───────────────────────────────────────────────────────
+  let resolved;
+  try {
+    resolved = resolveCity(req.nextUrl.searchParams);
+  } catch (e) {
+    if (e instanceof CityParamError) {
+      return NextResponse.json(toErrorBody(e), { status: e.status });
+    }
+    throw e;
+  }
+  const city = resolved.city;
+
+  // Only the city the registered AOI actually covers has satellite coverage.
+  const ndviCoveredCity = ACTIVE_CITY.id;
+  const cityHasImagery = city.id === ndviCoveredCity;
 
   const sel = await resolveNdviObservation();
 
@@ -56,7 +77,7 @@ export async function GET(_req: NextRequest) {
       partialStudyArea: c.partialStudyArea,
     })),
     coverageIsPartial: sel.coverageIsPartial,
-    studyAreaName: 'Mumbai',
+    studyAreaName: city.name,
     // Numerical NDVI comes from the provider's statistics endpoint, never from
     // decoding the rendered PNG.
     numerical: sel.numeric
@@ -81,7 +102,15 @@ export async function GET(_req: NextRequest) {
 
   const warnings = [...sel.warnings];
 
-  const responseData: TilesResponse = hasObservation
+  if (!cityHasImagery) {
+    warnings.push(
+      `Satellite NDVI imagery is not registered for ${city.name}. ` +
+      `No NDVI layer is returned. Imagery registered for ${ndviCoveredCity} is never ` +
+      `projected onto another city's map.`
+    );
+  }
+
+  const responseData: TilesResponse = hasObservation && cityHasImagery
     ? {
         layers: (['HIGH', 'MEDIUM', 'LOW'] as const).map((cls) => ({
           urlTemplate: '/civic/api/vegetation/ndvi-tile/{z}/{x}/{y}',
@@ -122,8 +151,9 @@ export async function GET(_req: NextRequest) {
       sources: sel.scene ? [sel.scene.dataset] : ['AgroMonitoring (no usable observation)'],
       fetchedAt: new Date().toISOString(),
       cache: 'HIT',
-      partial: sel.coverageIsPartial || !hasObservation,
+      partial: sel.coverageIsPartial || !hasObservation || !cityHasImagery,
       warnings,
+      city: cityMeta(resolved),
     },
     error: null,
   });

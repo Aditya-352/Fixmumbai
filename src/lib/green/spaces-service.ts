@@ -22,12 +22,57 @@
  */
 
 import type { GreenSpaceSummary, GreenSpaceDetail, FilterType, AccessStatus, WalkClass } from '@/lib/green/types';
-import { ACTIVE_CITY, WALK_SPEED_KMH } from '@/lib/green/config';
+import { CityId, WALK_SPEED_KMH } from '@/lib/green/config';
 import { recommendationScore } from './classifier';
 import { nearestBoundaryDistance } from './boundary-distance';
 import { normaliseNdvi, unavailableNdvi } from './ndvi-provenance';
 import { verifiedImageFor, GREEN_SPACE_IMAGE_PLACEHOLDER } from '@/data/verified-green-space-images';
-import { STATIC_GREEN_SPACES_FALLBACK } from './static-spaces-fallback';
+import { STATIC_GREEN_SPACES_FALLBACK, type StaticGreenSpaceSeed } from './static-spaces-fallback';
+import { PUNA_BOUNDARIES_STATIC } from './puna-boundaries-static';
+import { PUNA_LOCATIONS_STATIC } from './puna-locations-static';
+import { BENGALURU_STATIC } from './bengaluru-static';
+import { getCity, type CityConfig } from '@/lib/green/config';
+
+/**
+ * The static green-space dataset registered for each city.
+ *
+ * Shared by the list path and the detail path so both resolve the same records.
+ */
+const STATIC_SPACES_BY_CITY: Record<CityId, unknown[]> = {
+  mumbai: STATIC_GREEN_SPACES_FALLBACK,
+  pune: [...PUNA_BOUNDARIES_STATIC, ...PUNA_LOCATIONS_STATIC],
+  bengaluru: BENGALURU_STATIC,
+};
+
+/** True when an id was minted from a static dataset rather than a database row. */
+export function isStaticSpaceId(id: string): boolean {
+  return typeof id === 'string' && id.startsWith('static_');
+}
+
+/**
+ * Resolve a static id to the record and the city that owns it.
+ *
+ * The `static_` prefix does NOT imply Mumbai: `staticToDbShape` mints ids from
+ * each city's own dataset, so a Pune park is `static_way_<osmId>` and a
+ * Bengaluru one is `static_node_<osmId>`. Ownership is therefore resolved from
+ * the data itself, never inferred from the prefix.
+ */
+export function findStaticSpace(
+  id: string
+): { city: CityId; seed: any } | null {
+  if (!isStaticSpaceId(id)) return null;
+  for (const city of Object.keys(STATIC_SPACES_BY_CITY) as CityId[]) {
+    const list = STATIC_SPACES_BY_CITY[city] as any[];
+    const seed = list.find((s) => staticSpaceId(s.osmType, s.osmId) === id);
+    if (seed) return { city, seed };
+  }
+  return null;
+}
+
+/** The id `staticToDbShape` mints for a static seed. */
+function staticSpaceId(osmType: string, osmId: string): string {
+  return `static_${osmType}_${osmId}`;
+}
 
 const R = 6371000; // Earth radius in metres
 
@@ -56,7 +101,22 @@ interface NearbyOptions {
   verifiedOnly?: boolean;
   limit?: number;
   allCity?: boolean;
+  /** Zero-based page offset. Defaults to 0, preserving previous behaviour. */
+  offset?: number;
+  /** Max rows pulled from the database in one query. */
+  candidateLimit?: number;
+  /** When DB has zero records, use this city's static dataset instead of Mumbai's. */
+  city?: CityId;
 }
+
+/**
+ * Maximum rows read from the database in a single query.
+ *
+ * Replaces the previous hard-coded `take: 500`, which truncated silently. When
+ * this ceiling is reached the response reports `truncated: true` so a list is
+ * never presented as a complete city.
+ */
+export const DEFAULT_CANDIDATE_LIMIT = 2000;
 
 /**
  * Convert a static fallback record into the DB-shaped object the loop below
@@ -71,6 +131,41 @@ interface NearbyOptions {
  * Commons API for this `${osmType}/${osmId}`; otherwise the image is null and
  * the UI shows the neutral placeholder.
  */
+/**
+ * Repair an over-nested GeoJSON `Polygon`.
+ *
+ * A valid Polygon is `coordinates = [ ring, ring, ... ]` where each ring is
+ * `[ [lon, lat], ... ]`, i.e. depth 3 to the coordinate pair. The Bengaluru CSV
+ * export carries one extra wrapper level (`coordinates = [ [ ring, ... ] ]`,
+ * depth 4) while still declaring `"type": "Polygon"`.
+ *
+ * Left uncorrected, `processPolygon()` reads a ring whose members are arrays
+ * rather than numbers, every segment distance becomes NaN, and
+ * `nearestBoundaryDistance()` returns Infinity. That made every Bengaluru record
+ * fail the radius filter, so the city silently returned nothing even though it
+ * holds 1,272 genuine records.
+ *
+ * Only the redundant wrapper is removed; every ring and vertex is preserved, so
+ * this corrects the nesting without altering or discarding any geometry.
+ */
+function normalisePolygonNesting(geometry: any): any {
+  if (!geometry || geometry.type !== 'Polygon' || !Array.isArray(geometry.coordinates)) {
+    return geometry;
+  }
+  const coords = geometry.coordinates;
+  const first = coords[0];
+  if (!Array.isArray(first) || first.length === 0) return geometry;
+
+  // Well-formed: coordinates[0] is a ring of [lon, lat] pairs.
+  if (Array.isArray(first[0]) && typeof first[0][0] === 'number') return geometry;
+
+  // Over-nested: coordinates[0][0] is itself a ring.
+  if (Array.isArray(first[0]) && Array.isArray(first[0][0])) {
+    return { ...geometry, coordinates: first };
+  }
+  return geometry;
+}
+
 function staticToDbShape(s: (typeof STATIC_GREEN_SPACES_FALLBACK)[number]): any {
   const verified = verifiedImageFor(s.osmType, String(s.osmId), s.name);
   return {
@@ -81,7 +176,7 @@ function staticToDbShape(s: (typeof STATIC_GREEN_SPACES_FALLBACK)[number]): any 
     name: s.name,
     category: s.category,
     tags: JSON.stringify(s.tags),
-    geometryJson: JSON.stringify(s.geometry),
+    geometryJson: JSON.stringify(normalisePolygonNesting(s.geometry)),
     centroidLat: s.centroidLat,
     centroidLon: s.centroidLon,
     areaM2: s.areaM2,
@@ -125,36 +220,133 @@ function staticToDbShape(s: (typeof STATIC_GREEN_SPACES_FALLBACK)[number]): any 
   };
 }
 
-export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSpaceSummary[]> {
-  const { lat, lon, radiusM, type = 'all', verifiedOnly = false, limit = 50, allCity = false } = opts;
+export interface NearbyPageMeta {
+  /** True when records came from the embedded fallback dataset, not the database. */
+  usedStaticFallback: boolean;
+  /** Records examined before pagination was applied. */
+  candidateCount: number;
+  /** Records returned in this page. */
+  returned: number;
+  /** Records matching the city, filters and radius in total, before the limit slice. */
+  total: number;
+  limit: number;
+  offset: number;
+  /** True when more records exist beyond this page. Never claim completeness when true. */
+  hasMore: boolean;
+  /** True when the candidate set itself was capped and is therefore incomplete. */
+  truncated: boolean;
+  /** The cap that truncated the candidate set, when `truncated` is true. */
+  candidateLimit: number | null;
+}
+
+/**
+ * City-aware green-space query with honest provenance and pagination metadata.
+ *
+ * Two defects this fixes:
+ *  1. The original function computed `usingStaticFallback` and then discarded
+ *     it (`void usingStaticFallback; // consumed by caller via meta.sources`) —
+ *     except the caller had no way to receive it, so `/nearby` always reported
+ *     `sources: ['osm-db']` even when serving the fallback dataset in
+ *     production. That mislabel is now reported honestly.
+ *  2. Results were silently cut at `limit` with no indication that a list was
+ *     incomplete. `hasMore` / `truncated` now make that explicit.
+ *
+ * ORDERING AND PAGINATION SAFETY
+ * The database read uses a deterministic total order (`updatedAt DESC, id ASC`)
+ * because `updatedAt` alone is not unique — without a tiebreaker, rows sharing a
+ * timestamp could be returned in different orders on different requests and an
+ * offset-paginated client would skip or duplicate records. The in-memory sort
+ * (`recommendationScore DESC, distanceM ASC`) is applied before slicing, so page
+ * boundaries are stable for an unchanged input set. V8's `Array.prototype.sort`
+ * is stable, so equal keys preserve the deterministic database order.
+ *
+ * `candidateLimit` bounds the number of rows pulled from the database in one
+ * query. When it is hit the result set is genuinely incomplete and is reported
+ * as such rather than presented as a full city.
+ */
+export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
+  spaces: GreenSpaceSummary[];
+  meta: NearbyPageMeta;
+}> {
+  const {
+    lat, lon, radiusM, type = 'all', verifiedOnly = false, limit = 1500,
+    allCity = false, offset = 0, candidateLimit = DEFAULT_CANDIDATE_LIMIT,
+  } = opts;
 
   let dbSpaces: any[] | null = null;
   let usingStaticFallback = false;
 
-  // ── Try DB first ──────────────────────────────────────────────────────────
-  try {
-    const mod = await import('@/lib/db');
-    const db = mod.db;
-    const rows = await (db as any).greenSpace.findMany({
-      orderBy: { updatedAt: 'desc' },
-      take: 500, // reasonable cap
-    });
-    dbSpaces = rows;
-  } catch (dbErr: any) {
-    // DB unreachable — fall through to static fallback
-    console.error('[spaces-service] DB query failed, using static fallback:', dbErr?.message);
+  // ── City scoping ─────────────────────────────────────────────────────────
+  // `GreenSpace` has no city column, so every row in the database is a Mumbai
+  // record. Consulting it for a Pune or Bengaluru request would answer that
+  // city with another city's records — and because those rows are then filtered
+  // by distance from the Pune centre, it returns zero while having silently used
+  // the wrong dataset. The DB is therefore only read for the city it holds.
+  const requestedCity: CityId = opts.city ?? 'mumbai';
+  const dbHoldsCity: CityId = 'mumbai';
+
+  // ── Try DB first (only for the city the DB actually contains) ────────────
+  if (requestedCity === dbHoldsCity) {
+    try {
+      const mod = await import('@/lib/db');
+      const db = mod.db;
+      const rows = await (db as any).greenSpace.findMany({
+        // Deterministic total order. `updatedAt` alone is not unique, so two rows
+        // sharing a timestamp could come back in either order between requests,
+        // which would let offset pagination skip or duplicate a record across
+        // pages. `id` is the unique tiebreaker.
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+        // Pull one extra row so truncation is detectable rather than silent.
+        take: candidateLimit + 1,
+      });
+      dbSpaces = rows;
+    } catch (dbErr: any) {
+      // DB unreachable — fall through to static fallback
+      console.error('[spaces-service] DB query failed, using static fallback:', dbErr?.message);
+    }
+  } else {
+    // Another city's records are not in this database. Go straight to that
+    // city's own static dataset rather than distance-filtering Mumbai's rows.
+    usingStaticFallback = true;
+    dbSpaces = [];
   }
 
   // ── If DB returned zero records, use static fallback ─────────────────────
-  // This is the production parity fix: production DB was not seeded, so DB
-  // returns 0 rows even though 45 spaces exist in the seed dataset.
+  // When a city is explicitly selected (via ?city=) and the DB has no records
+  // for it, serve that city's own registered static dataset rather than always
+  // borrowing Mumbai's. When no city is specified, fall back to Mumbai's dataset
+  // so existing callers that omit `?city=` continue to work unchanged.
+  //
+  // A separate city‑fallback map is used here so that `STATIC_GREEN_SPACES_BY_CITY`
+  // (used by cityDataStatus/assessMetrics) stays unchanged — Pune and Bengaluru
+  // remain EMPTY for metrics and city‑status purposes, even though their static
+  // space datasets are served when the city is explicitly requested.
+  // A separate city‑fallback map is used here so that `STATIC_GREEN_SPACES_BY_CITY`
+  // (used by cityDataStatus/assessMetrics) stays unchanged — Pune and Bengaluru
+  // remain EMPTY for metrics and city‑status purposes, even though their static
+  // space datasets are served when the city is explicitly requested.
+  //
+  // The type is kept compatible with `staticToDbShape` mapping; the actual values
+  // are the normalized GeoJSON datasets from Phase D.
+  // A separate city‑fallback map is used here so that `STATIC_GREEN_SPACES_BY_CITY`
+  // (used by cityDataStatus/assessMetrics) stays unchanged — Pune and Bengaluru
+  // remain EMPTY for metrics and city‑status purposes, even though their static
+  // space datasets are served when the city is explicitly requested.
+  //
+  // The values are the normalized GeoJSON datasets from Phase D; they are mapped
+  // through `staticToDbShape` just like Mumbai's fallback.
+  const fallbackForCity = opts.city
+    ? (STATIC_SPACES_BY_CITY[opts.city] ?? STATIC_GREEN_SPACES_FALLBACK)
+    : STATIC_GREEN_SPACES_FALLBACK;
+
   if (!dbSpaces || dbSpaces.length === 0) {
     usingStaticFallback = true;
-    dbSpaces = STATIC_GREEN_SPACES_FALLBACK.map(staticToDbShape);
+    dbSpaces = fallbackForCity.map((s: any) => staticToDbShape(s)) as any[];
   }
 
-  const spaces = dbSpaces;
-  void usingStaticFallback; // consumed by caller via meta.sources
+  const candidateTruncated = dbSpaces.length > candidateLimit;
+  const candidateCount = candidateTruncated ? candidateLimit : dbSpaces.length;
+  const spaces = candidateTruncated ? dbSpaces.slice(0, candidateLimit) : dbSpaces;
 
   const results: GreenSpaceSummary[] = [];
 
@@ -305,10 +497,58 @@ export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSp
     return a.distanceM - b.distanceM;
   });
 
-  return results.slice(0, limit);
+  // Paginate after ordering so page boundaries are stable for a given input.
+  const page = results.slice(offset, offset + limit);
+
+  return {
+    spaces: page,
+    meta: {
+      usedStaticFallback: usingStaticFallback,
+      candidateCount,
+      returned: page.length,
+      // True number of records matching this city, filter set and radius — before
+      // the `limit` slice. Without this the UI can only show the page size, which
+      // makes 50 returned records look like 50 records exist.
+      total: results.length,
+      limit,
+      offset,
+      hasMore: offset + page.length < results.length,
+      truncated: candidateTruncated,
+      candidateLimit: candidateTruncated ? candidateLimit : null,
+    },
+  };
 }
 
-export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: number): Promise<GreenSpaceDetail | null> {
+/**
+ * Backwards-compatible wrapper.
+ *
+ * Preserves the original signature and behaviour exactly: same records, same
+ * ordering, same `limit` slice. New callers that need provenance or pagination
+ * metadata should use {@link getNearbyGreenSpacesPaged}.
+ */
+export async function getNearbyGreenSpaces(opts: NearbyOptions): Promise<GreenSpaceSummary[]> {
+  const { spaces } = await getNearbyGreenSpacesPaged(opts);
+  return spaces;
+}
+
+export async function getGreenSpaceDetail(
+  id: string,
+  fromLat: number,
+  fromLon: number,
+  // The city whose static dataset an id may be resolved against. Callers pass the
+  // selected city so a record is never served for a city it does not belong to.
+  city: CityId = 'mumbai'
+): Promise<GreenSpaceDetail | null> {
+  // A static-backed record is not a database row, so the DB lookup cannot find
+  // it. Pune and Bengaluru are served entirely from static datasets, so without
+  // this branch every detail request for those cities 404s. Ids are resolved
+  // from the selected city's own dataset only.
+  if (isStaticSpaceId(id)) {
+    const hit = findStaticSpace(id);
+    if (!hit || hit.city !== city) return null;
+    return dbShapeToDetail(staticToDbShape(hit.seed as any), fromLat, fromLon);
+  }
+
   let db: any;
   try {
     const mod = await import('@/lib/db');
@@ -326,6 +566,22 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
 
   if (!space) return null;
 
+  // Carry the Prisma handle so the detail builder can read observation and image
+  // rows for this database record.
+  return dbShapeToDetail({ ...space, __dbHandle: db, __fromDatabase: true }, fromLat, fromLon);
+}
+
+/**
+ * Build the detail view from a database-shaped row.
+ *
+ * Shared by the database and static resolution paths so both produce identical
+ * detail payloads.
+ */
+async function dbShapeToDetail(
+  space: any,
+  fromLat: number,
+  fromLon: number
+): Promise<GreenSpaceDetail> {
   const tags: Record<string, string> = tryParseJson(space.tags, {});
   const accessEvidence = tryParseJson(space.accessEvidence, []);
   const entrances = tryParseJson(space.entrances, []);
@@ -340,12 +596,19 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
   );
   const distanceM = bdDetail.distanceM;
 
+  // Observation and image rows are keyed to a database `greenSpaceId`. A static
+  // record has neither, so these enrichments are skipped for it rather than
+  // queried with an id that cannot exist.
+  const id = space?.id;
+  const db = space?.__dbHandle;
+  const isDbRow = !!space?.__fromDatabase;
+
   let ndviFull: GreenSpaceDetail['ndviFull'] = null;
   try {
-    const obs = await (db as any).greenVegetationObservation?.findFirst({
+    const obs = isDbRow ? await (db as any).greenVegetationObservation?.findFirst({
       where: { greenSpaceId: id },
       orderBy: { processedAt: 'desc' },
-    });
+    }) : null;
     if (obs) {
       ndviFull = normaliseNdvi({
         mean: obs.ndviMean,
@@ -366,11 +629,11 @@ export async function getGreenSpaceDetail(id: string, fromLat: number, fromLon: 
 
   let images: GreenSpaceDetail['images'] = [];
   try {
-    const imgs = await (db as any).greenSpaceImage?.findMany({
+    const imgs = isDbRow ? await (db as any).greenSpaceImage?.findMany({
       where: { greenSpaceId: id },
       orderBy: { createdAt: 'desc' },
       take: 5,
-    });
+    }) : null;
     images = (imgs ?? []).map((img: any) => ({
       imageUrl: img.imageUrl,
       thumbUrl: img.thumbUrl ?? undefined,

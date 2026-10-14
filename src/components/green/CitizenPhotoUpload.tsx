@@ -3,43 +3,52 @@
 /**
  * CitizenPhotoUpload — Modal for submitting citizen greenery photographs.
  *
- * Features:
- * - Camera capture on mobile (capture="environment") + file picker fallback
- * - Image preview with size/type validation before upload
- * - Category selector (park, mangrove, wetland, etc.)
- * - Optional description (max 500 chars)
- * - Location: uses greenSpace centroid by default; shows lat/lon for transparency
- * - Explicit consent checkbox (required before submit)
- * - Clear moderation disclosure ("Your photo will be reviewed before appearing publicly")
- * - Handles upload progress, success, and error states
- * - Never stores EXIF GPS; only user-confirmed coordinates
+ * Design features:
+ * - Premium white modal with clean soft-green accents (#EAF7F0, #087F5B).
+ * - Clear tabs: Take a Photo (live camera stream or native mobile capture) vs Upload Photo (drag & drop).
+ * - Supports modal overlay mode (with backdrop) and embedded drawer mode.
+ * - Form validation: file size, file types, consent checkbox, description.
+ * - Moderation disclosure & privacy safeguards.
+ * - Submits directly to /civic/api/vegetation/photos.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import { Camera, Upload, X, MapPin, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  Camera,
+  Upload,
+  X,
+  MapPin,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  Image as ImageIcon,
+} from 'lucide-react';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 8;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const CATEGORIES = [
-  { value: 'PARK', label: '🌳 Park' },
-  { value: 'GARDEN', label: '🌺 Garden' },
+  { value: 'PARK', label: '🌳 Public Park / Garden' },
   { value: 'OPEN_GREEN_SPACE', label: '🌿 Open Green Space' },
-  { value: 'MANGROVE', label: '🌊 Mangrove' },
-  { value: 'WETLAND', label: '🦆 Wetland' },
-  { value: 'COMMUNITY_GARDEN', label: '🥬 Community Garden' },
-  { value: 'NURSERY', label: '🌱 Nursery' },
-  { value: 'OTHER', label: '🍀 Other Greenery' },
+  { value: 'MANGROVE', label: '🌊 Mangrove Patch' },
+  { value: 'WETLAND', label: '🦆 Wetland / Marsh' },
+  { value: 'COMMUNITY_GARDEN', label: '🥬 Community / Terrace Garden' },
+  { value: 'NURSERY', label: '🌱 Municipal Nursery' },
+  { value: 'OTHER', label: '🍀 Other Green Canopy' },
 ];
 
-interface CitizenPhotoUploadProps {
+export interface CitizenPhotoUploadProps {
   greenSpaceId: string | null;
   greenSpaceName: string;
   defaultLat: number;
   defaultLon: number;
   onClose: () => void;
   onSuccess: () => void;
+  initialMode?: 'camera' | 'upload';
+  isModal?: boolean;
 }
 
 type UploadState =
@@ -55,7 +64,10 @@ export default function CitizenPhotoUpload({
   defaultLon,
   onClose,
   onSuccess,
+  initialMode = 'upload',
+  isModal = true,
 }: CitizenPhotoUploadProps) {
+  const [activeMode, setActiveMode] = useState<'camera' | 'upload'>(initialMode);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -66,6 +78,11 @@ export default function CitizenPhotoUpload({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const validateAndSetFile = useCallback((file: File) => {
     setFileError(null);
@@ -76,7 +93,9 @@ export default function CitizenPhotoUpload({
     }
 
     if (file.size > MAX_SIZE_BYTES) {
-      setFileError(`Image too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_SIZE_MB} MB.`);
+      setFileError(
+        `Image too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_SIZE_MB} MB.`
+      );
       return;
     }
 
@@ -87,24 +106,98 @@ export default function CitizenPhotoUpload({
 
     setSelectedFile(file);
 
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => setPreviewUrl(e.target?.result as string);
     reader.readAsDataURL(file);
   }, []);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) validateAndSetFile(file);
-    // Reset input so same file can be selected again
-    e.target.value = '';
-  }, [validateAndSetFile]);
+  // Camera stream connection
+  useEffect(() => {
+    if (isCameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(console.error);
+    }
+  }, [isCameraActive, cameraStream]);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) validateAndSetFile(file);
-  }, [validateAndSetFile]);
+  // Clean up stream on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera not supported on this browser.');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      setCameraStream(stream);
+      setIsCameraActive(true);
+    } catch (err: any) {
+      console.warn('Camera stream error, falling back to file input:', err);
+      setCameraError('Direct camera preview unavailable. Opening device camera picker…');
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const stopCamera = useCallback(() => {
+    cameraStream?.getTracks().forEach((t) => t.stop());
+    setCameraStream(null);
+    setIsCameraActive(false);
+  }, [cameraStream]);
+
+  // If initial mode is camera, auto-start camera
+  useEffect(() => {
+    if (initialMode === 'camera' && !selectedFile) {
+      startCamera();
+    }
+  }, [initialMode]);
+
+  const capturePhoto = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `evidence-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        validateAndSetFile(file);
+        stopCamera();
+      },
+      'image/jpeg',
+      0.88
+    );
+  }, [validateAndSetFile, stopCamera]);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) validateAndSetFile(file);
+      e.target.value = '';
+    },
+    [validateAndSetFile]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files?.[0];
+      if (file) validateAndSetFile(file);
+    },
+    [validateAndSetFile]
+  );
 
   const clearFile = useCallback(() => {
     setSelectedFile(null);
@@ -114,7 +207,7 @@ export default function CitizenPhotoUpload({
 
   const handleSubmit = useCallback(async () => {
     if (!selectedFile) {
-      setUploadState({ status: 'error', message: 'Please select a photo first.' });
+      setUploadState({ status: 'error', message: 'Please select or capture a photo first.' });
       return;
     }
 
@@ -159,8 +252,7 @@ export default function CitizenPhotoUpload({
         message: json.data?.message ?? 'Photo submitted successfully!',
       });
 
-      // Auto-close after 2.5s on success
-      setTimeout(() => onSuccess(), 2500);
+      setTimeout(() => onSuccess(), 2200);
     } catch (err: any) {
       setUploadState({
         status: 'error',
@@ -169,84 +261,158 @@ export default function CitizenPhotoUpload({
     }
   }, [selectedFile, consentGiven, description, category, defaultLat, defaultLon, greenSpaceId, onSuccess]);
 
-  return (
-    <div
-      className="absolute inset-0 z-50 bg-white flex flex-col"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Add greenery photo"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Camera className="w-4 h-4 text-emerald-600" />
-          <span className="font-black text-slate-900 text-sm">Add Greenery Photo</span>
+  const content = (
+    <div className="w-full h-full max-w-lg bg-white rounded-3xl shadow-xl border border-[#E5EBE7] flex flex-col overflow-hidden text-[#14231D]">
+      {/* ── Modal Header ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E5EBE7] bg-white flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#EAF7F0] text-[#087F5B] flex items-center justify-center font-bold">
+            <Camera className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-black text-sm text-[#14231D] leading-tight">
+              Add Photo Evidence
+            </h3>
+            <p className="text-[11px] text-[#64746B]">
+              Contribute verified visual evidence of Mumbai greenery
+            </p>
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+          className="p-1.5 rounded-xl hover:bg-slate-100 text-[#64746B] hover:text-[#14231D] transition-colors"
           aria-label="Close photo upload"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Success state */}
+      {/* ── Success State ─────────────────────────────────────────────────── */}
       {uploadState.status === 'success' && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
-          <CheckCircle2 className="w-16 h-16 text-emerald-500" />
-          <div className="text-center space-y-1">
-            <h3 className="text-lg font-black text-slate-900">Photo Submitted!</h3>
-            <p className="text-sm text-slate-600">{uploadState.message}</p>
+        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 text-center">
+          <div className="w-16 h-16 rounded-full bg-[#EAF7F0] flex items-center justify-center text-[#087F5B]">
+            <CheckCircle2 className="w-10 h-10" />
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 max-w-xs text-center">
-            📋 Your photo is in the review queue and will appear on the map once approved.
+          <div className="space-y-1">
+            <h4 className="text-base font-black text-[#14231D]">Photo Submitted!</h4>
+            <p className="text-xs text-[#64746B] max-w-xs">{uploadState.message}</p>
+          </div>
+          <div className="bg-[#EAF7F0] border border-[#087F5B]/30 rounded-2xl p-3 text-xs text-[#087F5B] max-w-xs text-center font-medium">
+            📋 Your photo is in the review queue and will appear on the map once verified.
           </div>
         </div>
       )}
 
-      {/* Form */}
+      {/* ── Form Body ─────────────────────────────────────────────────────── */}
       {uploadState.status !== 'success' && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Location context */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
-            <MapPin className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-emerald-800">{greenSpaceName}</p>
-              <p className="text-[10.5px] text-emerald-700 mt-0.5">
-                Location: {defaultLat.toFixed(5)}, {defaultLon.toFixed(5)}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+          {/* Location context chip */}
+          <div className="bg-[#EAF7F0] border border-[#087F5B]/20 rounded-2xl p-3 flex items-start gap-2.5">
+            <MapPin className="w-4 h-4 text-[#087F5B] flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#14231D] truncate">
+                {greenSpaceName || 'Mumbai Green Location'}
+              </p>
+              <p className="text-[11px] text-[#087F5B] font-mono mt-0.5">
+                {defaultLat.toFixed(5)}, {defaultLon.toFixed(5)}
               </p>
             </div>
           </div>
 
-          {/* File picker area */}
-          {!selectedFile ? (
-            <div>
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 block">
-                Select Photo
-              </label>
-              <div
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                className="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Camera className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-600">Tap to select from gallery</p>
-                <p className="text-[10.5px] text-slate-400 mt-1">JPEG, PNG, WebP · Max {MAX_SIZE_MB} MB</p>
-                <p className="text-[10px] text-slate-400">Or drag and drop</p>
-              </div>
-
-              {/* Camera capture button (mobile) */}
+          {/* Mode Switcher: Take Photo vs Upload File */}
+          {!selectedFile && (
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#F7F9F8] border border-[#E5EBE7] rounded-2xl">
               <button
-                onClick={() => cameraInputRef.current?.click()}
-                className="w-full mt-2 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-xl transition"
+                type="button"
+                onClick={() => {
+                  setActiveMode('camera');
+                  startCamera();
+                }}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
+                  activeMode === 'camera'
+                    ? 'bg-white text-[#087F5B] shadow-xs border border-[#E5EBE7]'
+                    : 'text-[#64746B] hover:text-[#14231D]'
+                }`}
               >
                 <Camera className="w-3.5 h-3.5" />
-                Use Camera
+                Take Photo
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMode('upload');
+                  stopCamera();
+                  fileInputRef.current?.click();
+                }}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
+                  activeMode === 'upload'
+                    ? 'bg-white text-[#087F5B] shadow-xs border border-[#E5EBE7]'
+                    : 'text-[#64746B] hover:text-[#14231D]'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Upload File
+              </button>
+            </div>
+          )}
 
-              {/* Hidden inputs */}
+          {/* Capture / Drop Area */}
+          {!selectedFile ? (
+            <div>
+              {isCameraActive ? (
+                /* Live Camera Stream */
+                <div className="relative rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-2.5 px-3">
+                    <button
+                      type="button"
+                      onClick={stopCamera}
+                      className="px-3.5 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="px-5 py-2 bg-[#087F5B] hover:bg-[#076B4D] text-white rounded-full text-xs font-black flex items-center gap-2 shadow-lg active:scale-95 transition"
+                    >
+                      <Camera className="w-4 h-4" /> Capture Photo
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Drag and drop zone */
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-[#E5EBE7] hover:border-[#087F5B] rounded-2xl p-6 text-center cursor-pointer bg-[#F7F9F8] hover:bg-[#EAF7F0]/30 transition group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-[#E5EBE7] flex items-center justify-center mx-auto mb-2 text-[#087F5B] group-hover:scale-105 transition-transform">
+                    <ImageIcon className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-bold text-[#14231D]">
+                    Click to browse or drag and drop photo
+                  </p>
+                  <p className="text-[11px] text-[#64746B] mt-0.5">
+                    JPEG, PNG, WebP · Up to {MAX_SIZE_MB} MB
+                  </p>
+                </div>
+              )}
+
+              {cameraError && (
+                <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mt-2">
+                  {cameraError}
+                </p>
+              )}
+
+              {/* Hidden file inputs */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -264,130 +430,135 @@ export default function CitizenPhotoUpload({
               />
             </div>
           ) : (
-            /* Preview */
-            <div>
-              <div className="relative rounded-2xl overflow-hidden">
+            /* Selected File Preview */
+            <div className="space-y-2">
+              <div className="relative rounded-2xl overflow-hidden border border-[#E5EBE7] aspect-video bg-slate-900">
                 <img
                   src={previewUrl!}
                   alt="Photo preview"
-                  className="w-full h-48 object-cover"
+                  className="w-full h-full object-cover"
                 />
                 <button
                   onClick={clearFile}
-                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition"
+                  className="absolute top-2.5 right-2.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition"
                   aria-label="Remove photo"
                 >
                   <X className="w-4 h-4" />
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-3 py-1.5">
-                  <p className="text-white text-[10px]">
-                    {selectedFile.name} · {(selectedFile.size / 1024).toFixed(0)} KB
-                  </p>
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white text-[11px] flex justify-between items-end">
+                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                  <span className="font-mono text-[10px]">
+                    {(selectedFile.size / 1024).toFixed(0)} KB
+                  </span>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full mt-2 text-xs font-semibold text-slate-600 underline"
+                className="text-xs font-bold text-[#087F5B] hover:underline"
               >
-                Choose a different photo
+                Change photo
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={handleFileChange}
-              />
             </div>
           )}
 
-          {/* File error */}
           {fileError && (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-700">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-              {fileError}
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-2.5 text-xs text-red-700">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{fileError}</span>
             </div>
           )}
 
-          {/* Category */}
+          {/* Category selection */}
           <div>
-            <label htmlFor="photo-category" className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 block">
-              Category
+            <label
+              htmlFor="evidence-category"
+              className="text-[10.5px] font-bold text-[#64746B] uppercase tracking-wider block mb-1.5"
+            >
+              Greenery Category
             </label>
             <select
-              id="photo-category"
+              id="evidence-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-[#E5EBE7] rounded-xl px-3 py-2 text-xs font-bold text-[#14231D] focus:outline-none focus:ring-2 focus:ring-[#087F5B]"
             >
               {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Description */}
+          {/* Optional description */}
           <div>
-            <label htmlFor="photo-description" className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 block">
-              Description <span className="font-normal text-slate-400">(optional)</span>
-            </label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label
+                htmlFor="evidence-description"
+                className="text-[10.5px] font-bold text-[#64746B] uppercase tracking-wider"
+              >
+                Description <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <span className="text-[10px] text-[#64746B] font-mono">
+                {description.length}/500
+              </span>
+            </div>
             <textarea
-              id="photo-description"
+              id="evidence-description"
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-              placeholder="What's visible in this photo? e.g. 'Mangroves along the creek near Bandra'"
-              rows={3}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-emerald-500 resize-none"
+              placeholder="e.g. 'Dense tree canopy and lit walkway inside Priyadarshini Park'"
+              rows={2}
+              className="w-full bg-white border border-[#E5EBE7] rounded-xl p-2.5 text-xs text-[#14231D] focus:outline-none focus:ring-2 focus:ring-[#087F5B] resize-none"
             />
-            <p className="text-[10px] text-slate-400 mt-0.5 text-right">{description.length}/500</p>
           </div>
 
-          {/* Moderation notice */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
-            <p className="font-bold text-slate-700">Before you submit</p>
-            <ul className="list-disc list-inside space-y-0.5">
-              <li>Your photo will be reviewed before appearing on the map.</li>
-              <li>Only photos of real open greenery are accepted.</li>
-              <li>EXIF location data in your file will not be stored.</li>
-              <li>Your user account (if signed in) will be associated.</li>
+          {/* Transparency note */}
+          <div className="bg-[#F7F9F8] border border-[#E5EBE7] rounded-xl p-3 text-[11px] text-[#64746B] space-y-1">
+            <p className="font-bold text-[#14231D]">Civic Evidence Guidelines</p>
+            <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
+              <li>Photos are reviewed before being published on the map.</li>
+              <li>Only genuine open greenery and public parks are accepted.</li>
+              <li>EXIF GPS tags are stripped; only verified location is mapped.</li>
             </ul>
           </div>
 
-          {/* Consent */}
-          <label className="flex items-start gap-2.5 cursor-pointer">
+          {/* Consent Checkbox */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={consentGiven}
               onChange={(e) => setConsentGiven(e.target.checked)}
-              className="mt-0.5 accent-emerald-600 w-4 h-4 flex-shrink-0"
+              className="mt-0.5 w-4 h-4 accent-[#087F5B] rounded cursor-pointer shrink-0"
             />
-            <span className="text-xs text-slate-700 leading-relaxed">
-              I confirm this photo shows real open greenery in Mumbai, I have the right to share it, and I agree to it being displayed on FixMumbai under a Creative Commons Attribution licence after moderation.
+            <span className="text-[11px] text-[#64746B] leading-snug">
+              I confirm this photo shows real greenery in Mumbai, I hold the right to share it, and I agree to it being displayed on FixMumbai under Creative Commons Attribution.
             </span>
           </label>
 
           {/* Upload error */}
           {uploadState.status === 'error' && (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-700">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-              {uploadState.message}
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-2.5 text-xs text-red-700">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{uploadState.message}</span>
             </div>
           )}
         </div>
       )}
 
-      {/* Submit footer */}
+      {/* ── Submit Footer ─────────────────────────────────────────────────── */}
       {uploadState.status !== 'success' && (
-        <div className="flex-shrink-0 px-4 py-3 border-t border-slate-200 bg-white">
+        <div className="p-4 border-t border-[#E5EBE7] bg-white flex-shrink-0">
           <button
             onClick={handleSubmit}
             disabled={!selectedFile || !consentGiven || uploadState.status === 'uploading'}
-            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 text-white text-sm font-bold py-3 rounded-xl transition"
+            className="w-full flex items-center justify-center gap-2 bg-[#087F5B] hover:bg-[#076B4D] disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold py-3 rounded-2xl shadow-xs transition active:scale-95"
           >
             {uploadState.status === 'uploading' ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Uploading…
+                Submitting Evidence…
               </>
             ) : (
               <>
@@ -396,11 +567,22 @@ export default function CitizenPhotoUpload({
               </>
             )}
           </button>
-          <p className="text-[10px] text-slate-400 text-center mt-1.5">
-            Photos are reviewed by our team before appearing publicly.
-          </p>
         </div>
       )}
+    </div>
+  );
+
+  if (!isModal) {
+    return content;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      {content}
     </div>
   );
 }

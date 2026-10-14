@@ -58,6 +58,24 @@ export interface ApiMeta {
   cache: 'HIT' | 'MISS' | 'NONE';
   partial: boolean;
   warnings: string[];
+  /**
+   * Which city this response describes. Present on every city-aware endpoint so
+   * a client can verify it received the city it asked for rather than assuming
+   * it. Absent only on endpoints that are not city-scoped.
+   */
+  city?: import('./city-param').CityResponseMeta;
+  /**
+   * True number of records matching the city, filters and radius, before the
+   * response page limit. Present when the endpoint paginates, so a client can
+   * report "50 of 279" instead of implying 50 is the whole set.
+   */
+  total?: number;
+  /** Records in this response page. */
+  returned?: number;
+  /** Page size used by the endpoint. */
+  limit?: number;
+  /** True when more records exist beyond this page. */
+  hasMore?: boolean;
 }
 
 export interface ApiOk<T> {

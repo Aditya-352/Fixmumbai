@@ -89,3 +89,45 @@ export function getBmcNurseryWards(): string[] {
   const wards = Array.from(new Set(BMC_NURSERIES.map((n) => n.ward)));
   return wards.sort();
 }
+
+/**
+ * The only city for which a nursery dataset is registered.
+ *
+ * The 27 records in `BMC_NURSERIES` come from the Brihanmumbai Municipal
+ * Corporation "Greening Mumbai" handbook and describe BMC wards. They are Mumbai
+ * records and are only valid over Mumbai. Presenting them for Pune or Bengaluru
+ * would be a fabricated municipal claim, so other cities resolve to none.
+ */
+const NURSERY_CITY = 'mumbai' as const;
+
+/** True when `cityId` has a registered nursery dataset. */
+export function cityHasNurseries(cityId: string): boolean {
+  return cityId === NURSERY_CITY;
+}
+
+/**
+ * Nurseries for the selected city.
+ *
+ * Returns an empty list — never Mumbai's — for any city without its own
+ * registered nursery dataset. Callers must render an explicit unavailable state
+ * rather than assuming a non-empty list.
+ */
+export function getNurseriesForCity(cityId: string, opts?: {
+  ward?: string;
+  search?: string;
+}): BmcNurseryRecord[] {
+  if (!cityHasNurseries(cityId)) return [];
+  return getBmcNurseries({ ward: opts?.ward, search: opts?.search });
+}
+
+/** Wards available for the selected city; empty when it has no nursery data. */
+export function getNurseryWardsForCity(cityId: string): string[] {
+  if (!cityHasNurseries(cityId)) return [];
+  return getBmcNurseryWards();
+}
+
+/** Human-readable source attribution for the selected city's nursery data. */
+export function getNurserySourceLabel(cityId: string): string | null {
+  if (!cityHasNurseries(cityId)) return null;
+  return 'Greening Mumbai Citizen’s Handbook (pp. 82–83) · BMC & WRI India';
+}

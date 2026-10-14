@@ -15,8 +15,9 @@ import type {
 } from '@/lib/green/types';
 import type { HexCellMetric } from '@/lib/green/hex-grid-service';
 import type { BmcNurseryRecord } from '@/lib/green/nurseries-service';
-import { DEFAULT_RADIUS_M, ACTIVE_CITY } from '@/lib/green/config';
+import { DEFAULT_RADIUS_M, ACTIVE_CITY, CityId, CITY_REGISTRY } from '@/lib/green/config';
 import mumbaiPlaces from '@/data/mumbai-places.json';
+import { buildVegetationUrl } from '@/lib/green/city-endpoints';
 
 // ── API base path ──────────────────────────────────────────────────────────
 // The app is deployed under /civic (basePath in next.config.js).
@@ -38,8 +39,7 @@ interface UseGreenExplorerReturn {
   centre: SearchCentre;
   hasChosenCentre: boolean;
   activateCentre: (customCentre?: SearchCentre) => void;
-  setCentreFromGeo: () => void;
-  setCentreFromSearch: (result: GeocodeResult) => void;
+    setCentreFromSearch: (result: GeocodeResult) => void;
   geoError: string | null;
   geoNotice: GeoNotice | null;
   geoLoading: boolean;
@@ -75,6 +75,10 @@ interface UseGreenExplorerReturn {
   spacesLoading: boolean;
   spacesError: string | null;
   spacesPartial: boolean;
+  /** True number of matching records, before any page limit. */
+  spacesTotal: number;
+  /** True when the page limit truncated the result set. */
+  spacesHasMore: boolean;
   spacesWarnings: string[];
   refetchSpaces: () => void;
 
@@ -98,12 +102,22 @@ interface UseGreenExplorerReturn {
   searchLoading: boolean;
 }
 
-const DEFAULT_CENTRE: SearchCentre = {
-  name: ACTIVE_CITY.name,
-  lat: ACTIVE_CITY.centre[0],
-  lon: ACTIVE_CITY.centre[1],
-  source: 'default',
-};
+/**
+ * Build the initial map centre for a city.
+ *
+ * This MUST be derived from the selected city rather than from a module-level
+ * Mumbai constant, otherwise switching to Pune/Bengaluru would keep the
+ * viewport (and therefore every distance/bbox check derived from it) on Mumbai.
+ */
+function defaultCentreFor(city: CityId): SearchCentre {
+  const cfg = CITY_REGISTRY[city] ?? ACTIVE_CITY;
+  return {
+    name: cfg.name,
+    lat: cfg.centre[0],
+    lon: cfg.centre[1],
+    source: 'default',
+  };
+}
 
 /**
  * Resolve a coordinate to a human-readable place name ("Bengaluru, Karnataka").
@@ -171,23 +185,24 @@ function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
 /**
- * Checks whether given coordinates fall within the Mumbai coverage diameter / bbox.
- * Includes Mumbai Metropolitan Region boundary (Colaba to Dahisar, Thane, Navi Mumbai).
+ * Checks whether given coordinates fall within the selected city's coverage
+ * bbox. Includes a ~15km buffer and a 45km centre-distance cap.
  */
-function isWithinMumbai(lat: number, lon: number): boolean {
-  const [south, west, north, east] = ACTIVE_CITY.bbox;
+function isWithinCity(city: CityId, lat: number, lon: number): boolean {
+  const cfg = CITY_REGISTRY[city] ?? ACTIVE_CITY;
+  const [south, west, north, east] = cfg.bbox;
   const pad = 0.15; // ~15km buffer
   const inBbox =
     lat >= south - pad &&
     lat <= north + pad &&
     lon >= west - pad &&
     lon <= east + pad;
-  const distFromCentre = haversineDistanceKm(lat, lon, ACTIVE_CITY.centre[0], ACTIVE_CITY.centre[1]);
+  const distFromCentre = haversineDistanceKm(lat, lon, cfg.centre[0], cfg.centre[1]);
   return inBbox && distFromCentre <= 45;
 }
 
-export function useGreenExplorer(): UseGreenExplorerReturn {
-  const [centre, setCentre] = useState<SearchCentre>(DEFAULT_CENTRE);
+export function useGreenExplorer(city: CityId | undefined = undefined): UseGreenExplorerReturn {
+  const [centre, setCentre] = useState<SearchCentre>(() => defaultCentreFor(city ?? ACTIVE_CITY.id));
   const [hasChosenCentre, setHasChosenCentre] = useState<boolean>(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoNotice, setGeoNotice] = useState<GeoNotice | null>(null);
@@ -206,6 +221,8 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
   const [spacesLoading, setSpacesLoading] = useState(false);
   const [spacesError, setSpacesError] = useState<string | null>(null);
   const [spacesPartial, setSpacesPartial] = useState(false);
+  const [spacesTotal, setSpacesTotal] = useState(0);
+  const [spacesHasMore, setSpacesHasMore] = useState(false);
   const [spacesWarnings, setSpacesWarnings] = useState<string[]>([]);
 
   const [tiles, setTiles] = useState<TilesResponse | null>(null);
@@ -223,6 +240,16 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const spacesAbortRef = useRef<AbortController | null>(null);
+  /**
+   * Monotonic per-city request generation.
+   *
+   * Aborting the previous request is necessary but not sufficient: a response
+   * that has already resolved can still commit its state after a city switch.
+   * Every fetch captures the generation it started under and refuses to write
+   * state once the generation has advanced, so a late response from the previous
+   * city can never overwrite the new city's records.
+   */
+  const cityGenRef = useRef(0);
   const spacesDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch nearby spaces with 250ms debounce and AbortController ─────────────────────
@@ -237,13 +264,17 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     setSpacesError(null);
     setSpacesPartial(false);
     setSpacesWarnings([]);
+    setSpacesTotal(0);
+    setSpacesHasMore(false);
 
+    const gen = cityGenRef.current;
     const params = new URLSearchParams({
       lat: String(c.lat),
       lon: String(c.lon),
       radius: String(f.radiusM),
       type: f.type,
       verifiedOnly: String(f.verifiedOnly),
+      city: city ?? ACTIVE_CITY.id,
     });
 
     // If centre is not chosen yet, load whole city for initial map overview
@@ -280,7 +311,14 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
       }
 
       const data = json.data ?? [];
+      // A response that began under an older city must not land.
+      if (gen !== cityGenRef.current) return;
       setSpaces(data);
+      // Prefer the server's true match count; fall back to the page length so a
+      // response without pagination metadata still shows a correct number.
+      const m = json?.meta ?? {};
+      setSpacesTotal(typeof m.total === 'number' ? m.total : data.length);
+      setSpacesHasMore(m.hasMore === true);
       setSpacesPartial(json.meta?.partial ?? false);
 
       // Filter out the "seed required" warning so it doesn't alarm end users
@@ -297,7 +335,7 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     } finally {
       setSpacesLoading(false);
     }
-  }, []);
+  }, [city]);
 
   const refetchSpaces = useCallback(() => {
     fetchSpaces(centre, filters, hasChosenCentre);
@@ -314,163 +352,38 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
   // Tiles are loaded with a 1.5s delay after mount so they don't block the
   // initial green-space data fetch (which is the most important content).
   const fetchTiles = useCallback(async () => {
+    const gen = cityGenRef.current;
     setTilesLoading(true);
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 20_000); // 20s timeout
-      const res = await fetch(`${BASE}/tiles`, { signal: ctrl.signal });
+      const res = await fetch(`${BASE}/tiles?city=${city ?? ACTIVE_CITY.id}`, { signal: ctrl.signal });
       clearTimeout(timer);
       const json = await res.json();
-      if (res.ok && json.ok) setTiles(json.data);
+      if (gen === cityGenRef.current && res.ok && json.ok) setTiles(json.data);
       // If tiles fail, that's OK — satellite is optional. Spaces still show.
     } catch {
       // silent — tiles are optional; NDVI unavailable state is shown in UI
     } finally {
       setTilesLoading(false);
     }
-  }, []);
+  }, [city]);
 
   // ── Fetch status (lightweight DB connectivity check) ──────────────────────
   const fetchStatus = useCallback(async () => {
+    const gen = cityGenRef.current;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 8_000);
-      const res = await fetch(`${BASE}/status`, { signal: ctrl.signal });
+      const res = await fetch(`${BASE}/status?city=${city ?? ACTIVE_CITY.id}`, { signal: ctrl.signal });
       clearTimeout(timer);
       const json = await res.json();
-      if (res.ok && json.ok) setStatus(json.data);
+      if (gen === cityGenRef.current && res.ok && json.ok) setStatus(json.data);
     } catch {
       // silent
     }
-  }, []);
+  }, [city]);
 
-  // ── Geolocation with Mumbai boundary verification ─────────────────────────
-  const setCentreFromGeo = useCallback(() => {
-    setGeoError(null);
-    setGeoNotice(null);
-
-    // Browser doesn't support geolocation
-    if (!('geolocation' in navigator)) {
-      const msg = 'Geolocation is not supported by your browser. Use the search box to find a location.';
-      setGeoError(msg);
-      setGeoNotice({ type: 'ERROR', message: msg });
-      return;
-    }
-
-    setGeoLoading(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGeoLoading(false);
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const inMumbai = isWithinMumbai(lat, lon);
-
-        // Resolve the real place name first so the header shows where the user
-        // actually is, regardless of whether that is inside the coverage area.
-        resolvePlaceLabel(lat, lon).then((geocodedName) => {
-          if (inMumbai) {
-            // Inside Mumbai: directly set user location and fetch nearby spaces.
-            // Prefer the local locality gazetteer (it knows Bandra West, Carter
-            // Road and friends) over the coarse reverse-geocoder, which usually
-            // only resolves to "Mumbai" at city zoom.
-            const placeName =
-              nearestMumbaiLocality(lat, lon) ?? geocodedName ?? 'Your Location';
-            setCentre({
-              name: placeName,
-              lat,
-              lon,
-              source: 'geolocation',
-              accuracyM: pos.coords.accuracy,
-            });
-            setHasChosenCentre(true);
-            setGeoError(null);
-            setGeoNotice({
-              type: 'INSIDE_MUMBAI',
-              message: `📍 You are in ${placeName}: showing green spaces within walking distance of your current location.`,
-              userLat: lat,
-              userLon: lon,
-            });
-          } else {
-            // Outside Mumbai: the header/location label follows the visitor, but
-            // the data footprint does NOT. hasChosenCentre stays false so the map
-            // stays on Mumbai and the API returns the whole city instead of a
-            // radius query anchored thousands of kilometres away.
-            const placeName = geocodedName ?? 'Your Location';
-            const distKm = Math.round(
-              haversineDistanceKm(lat, lon, ACTIVE_CITY.centre[0], ACTIVE_CITY.centre[1])
-            );
-            setCentre({
-              name: placeName,
-              lat,
-              lon,
-              source: 'geolocation',
-              accuracyM: pos.coords.accuracy,
-            });
-            setHasChosenCentre(false);
-            const outsideMsg =
-              `You are in ${placeName}, ${distKm} km from Mumbai. ` +
-              `Green Density data is only available for Mumbai, so the map below shows all Mumbai green spaces.`;
-            setGeoError(outsideMsg);
-            setGeoNotice({
-              type: 'OUTSIDE_MUMBAI',
-              message: outsideMsg,
-              distanceKm: distKm,
-              userLat: lat,
-              userLon: lon,
-            });
-          }
-        });
-      },
-      (err) => {
-        setGeoLoading(false);
-        let msg: string;
-        let noticeType: GeoNotice['type'] = 'ERROR';
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            msg = 'Location access denied. Showing Mumbai city centre. You can search any locality or park.';
-            noticeType = 'DENIED';
-            break;
-          case err.TIMEOUT:
-            msg = 'Location request timed out. Showing Mumbai city centre.';
-            noticeType = 'ERROR';
-            break;
-          case err.POSITION_UNAVAILABLE:
-            msg = 'Your current location could not be determined. Showing Mumbai city centre.';
-            noticeType = 'ERROR';
-            break;
-          default:
-            msg = 'Could not determine your location. Showing Mumbai city centre.';
-            noticeType = 'ERROR';
-        }
-        setGeoError(msg);
-        setGeoNotice({ type: noticeType, message: msg });
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 10_000,
-        maximumAge: 300_000,
-      }
-    );
-  }, []);
-
-  // ── Initial loads & Auto-GPS fetch on mount ─────────────────────────────
-  useEffect(() => {
-    // 1. Status is lightweight — load immediately
-    fetchStatus();
-
-    // 2. Automatically request GPS location when user enters Green Density
-    setCentreFromGeo();
-
-    // 3. Tiles are expensive (calls AgroMonitoring API) — delay so spaces load first
-    const tilesTimer = setTimeout(() => {
-      fetchTiles();
-    }, 1500);
-
-    return () => {
-      clearTimeout(tilesTimer);
-    };
-  }, [fetchStatus, fetchTiles, setCentreFromGeo]);
 
   useEffect(() => {
     if (spacesDebounceTimerRef.current) {
@@ -502,6 +415,49 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
   const [activeTab, setActiveTab] = useState<RightPanelTab>('SPACES');
   const [selectedHex, setSelectedHex] = useState<HexCellMetric | null>(null);
   const [selectedNursery, setSelectedNursery] = useState<BmcNurseryRecord | null>(null);
+
+  // ── City change reset ──────────────────────────────────────────────────────────────
+  // Switching city must not carry over the previous city's map centre, markers,
+  // search results or selected park. This is explicit rather than relying on the
+  // caller remounting the component, so the hook is correct in isolation too.
+  const firstCityRunRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (firstCityRunRef.current === null) {
+firstCityRunRef.current = city ?? ACTIVE_CITY.id;
+
+    // Invalidate every in-flight request issued for the previous city, and abort
+    // them so no late response can repopulate the new city with old records.
+    cityGenRef.current += 1;
+    spacesAbortRef.current?.abort();
+    abortRef.current?.abort();
+    if (spacesDebounceTimerRef.current) clearTimeout(spacesDebounceTimerRef.current);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setSpacesLoading(false);
+    setSearchLoading(false);
+      return;
+    }
+    if (firstCityRunRef.current === (city ?? ACTIVE_CITY.id)) return;
+    firstCityRunRef.current = city ?? ACTIVE_CITY.id;
+
+    // Re-centre on the newly selected city, and clear everything derived from
+    // the old one so stale markers/selection cannot masquerade as new data.
+    setCentre(defaultCentreFor((city ?? ACTIVE_CITY.id) as CityId));
+    setHasChosenCentre(false);
+    setSpaces([]);
+    setSpacesPartial(false);
+    setSpacesWarnings([]);
+    setSpacesError(null);
+    setSpacesTotal(0);
+    setSpacesHasMore(false);
+    setTiles(null);
+    setStatus(null);
+    setSelectedSpace(null);
+    setSelectedHex(null);
+    setSelectedNursery(null);
+    setSearchQuery('');
+    setSearchResults([]);
+    setActiveTab('SPACES');
+  }, [city]);
 
   // ── Filters ────────────────────────────────────────────────────────────────
   const setRadiusM = useCallback((r: number) => {
@@ -553,10 +509,14 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
 
   // ── Detail drawer ──────────────────────────────────────────────────────────
   const openDetail = useCallback(async (id: string) => {
+    // A record belongs to the selected city, so the lookup must be city-scoped.
+    // Without `?city=` the route defaulted to Mumbai and reported a Pune park as
+    // "not found in Mumbai".
     setDetailLoading(true);
     setSelectedSpace(null);
     try {
-      const res = await fetch(`${BASE}/areas/${id}`);
+      const url = buildVegetationUrl('areas/{id}', { id }, city ?? ACTIVE_CITY.id);
+      const res = await fetch(url);
       const json = await res.json();
       if (res.ok && json.ok) {
         setSelectedSpace(json.data);
@@ -566,7 +526,7 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     } finally {
       setDetailLoading(false);
     }
-  }, []);
+  }, [city]);
 
   const closeDetail = useCallback(() => {
     setSelectedSpace(null);
@@ -580,29 +540,32 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
       return;
     }
     searchTimerRef.current = setTimeout(async () => {
+      const gen = cityGenRef.current;
       setSearchLoading(true);
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
       try {
         const res = await fetch(
-          `${BASE}/search?q=${encodeURIComponent(searchQuery)}`,
+          `${BASE}/search?q=${encodeURIComponent(searchQuery)}&city=${city ?? ACTIVE_CITY.id}`,
           { signal: abortRef.current.signal }
         );
         const json = await res.json();
-        if (res.ok && json.ok) setSearchResults(json.data ?? []);
+        if (gen === cityGenRef.current && res.ok && json.ok) {
+          setSearchResults(json.data ?? []);
+        }
       } catch {
         // aborted or network error — ignore
       } finally {
         setSearchLoading(false);
       }
     }, 300);
-  }, [searchQuery]);
+  }, [searchQuery, city]);
 
   return {
     centre,
     hasChosenCentre,
     activateCentre,
-    setCentreFromGeo,
+    
     setCentreFromSearch,
     geoError,
     geoNotice,
@@ -629,6 +592,8 @@ export function useGreenExplorer(): UseGreenExplorerReturn {
     spacesLoading,
     spacesError,
     spacesPartial,
+    spacesTotal,
+    spacesHasMore,
     spacesWarnings,
     refetchSpaces,
     tiles,
