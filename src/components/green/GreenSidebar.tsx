@@ -21,7 +21,7 @@ const MODES = [
   {
     number: 2,
     label: 'Air Quality Map',
-    sublabel: 'CPCB & OpenAQ real-time',
+    sublabel: 'CPCB, AQICN & Live Telemetry',
     href: '/map',
     icon: Wind,
   },

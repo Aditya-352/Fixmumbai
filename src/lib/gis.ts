@@ -57,6 +57,29 @@ export function isLocationInMumbai(lat: number, lng: number): boolean {
   );
 }
 
+/**
+ * Geographic bounding box covering all Indian states, union territories,
+ * island territories, and surrounding coastal waters.
+ */
+export const INDIA_GEOFENCE = {
+  minLat: 6.0,
+  maxLat: 38.5,
+  minLng: 68.0,
+  maxLng: 97.5,
+};
+
+/**
+ * Checks if coordinates fall within India's geographical boundaries.
+ */
+export function isLocationInIndia(lat: number, lng: number): boolean {
+  return (
+    lat >= INDIA_GEOFENCE.minLat &&
+    lat <= INDIA_GEOFENCE.maxLat &&
+    lng >= INDIA_GEOFENCE.minLng &&
+    lng <= INDIA_GEOFENCE.maxLng
+  );
+}
+
 export interface MumbaiPlaceItem {
   name: string;
   wardCode: string;

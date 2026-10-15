@@ -14,10 +14,14 @@ import {
   RefreshCw,
   Compass,
   MapPin,
-  Flame,
-  CheckCircle2,
+  Gauge,
+  Eye,
+  Sunrise,
+  Sunset,
+  Cloud,
 } from 'lucide-react';
 import { calculateWbgt } from '@/lib/wbgt/calculator';
+import { detectExactUserLocation } from '@/lib/user-location';
 
 // Dynamically load the Weather Map component
 const WeatherMap = dynamic(() => import('@/components/heat-stress/HeatStressMap'), {
@@ -39,13 +43,21 @@ export default function HeatStressDashboard() {
     state: 'Maharashtra',
   });
 
-  // Real weather parameters fetched dynamically
+  // Real weather parameters fetched dynamically from OpenWeather
   const [temperature, setTemperature] = useState<number>(33.6);
   const [humidity, setHumidity] = useState<number>(52);
   const [apparentTemp, setApparentTemp] = useState<number>(36.2);
   const [windSpeed, setWindSpeed] = useState<number>(14.5);
   const [windDirection, setWindDirection] = useState<number>(240);
   const [isDirectSun, setIsDirectSun] = useState<boolean>(true);
+  const [weatherDescription, setWeatherDescription] = useState<string>('Clear Sky');
+  const [weatherIcon, setWeatherIcon] = useState<string>('01d');
+  const [pressure, setPressure] = useState<number | undefined>(1012);
+  const [clouds, setClouds] = useState<number>(15);
+  const [visibility, setVisibility] = useState<number | null>(10);
+  const [sunriseTime, setSunriseTime] = useState<string | null>(null);
+  const [sunsetTime, setSunsetTime] = useState<string | null>(null);
+  const [provider, setProvider] = useState<string>('OPENWEATHER');
   const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
@@ -53,21 +65,40 @@ export default function HeatStressDashboard() {
   const fetchLiveWeather = useCallback(async (lat: number, lon: number, customName?: string, customState?: string) => {
     setLoadingWeather(true);
     try {
-      const res = await fetch(`/civic/api/weather?lat=${lat}&lon=${lon}`);
+      // Support Next.js basePath /civic and fallback gracefully
+      let res = await fetch(`/civic/api/weather?lat=${lat}&lon=${lon}`);
+      if (!res.ok && res.status === 404) {
+        res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+      }
       const json = await res.json();
       if (json.success && json.data) {
-        setTemperature(Math.round(json.data.temperature * 10) / 10);
-        setHumidity(Math.round(json.data.relativeHumidity));
-        setApparentTemp(Math.round(json.data.apparentTemperature * 10) / 10);
-        setWindSpeed(Math.round(json.data.windSpeed * 10) / 10);
-        setWindDirection(json.data.windDirection || 240);
-        setIsDirectSun(json.data.isDay && json.data.shortwaveRadiation > 100);
+        const d = json.data;
+        setTemperature(Math.round(d.temperature * 10) / 10);
+        setHumidity(Math.round(d.relativeHumidity));
+        setApparentTemp(Math.round(d.apparentTemperature * 10) / 10);
+        setWindSpeed(Math.round(d.windSpeed * 10) / 10);
+        setWindDirection(d.windDirection || 240);
+        setIsDirectSun(d.isDay && (d.clouds ?? 0) < 50);
+
+        if (d.weatherDescription) setWeatherDescription(d.weatherDescription);
+        if (d.weatherIcon) setWeatherIcon(d.weatherIcon);
+        if (d.pressure) setPressure(d.pressure);
+        if (typeof d.clouds === 'number') setClouds(d.clouds);
+        if (typeof d.visibility === 'number') setVisibility(d.visibility);
+        if (d.provider) setProvider(d.provider);
+
+        if (d.sunrise) {
+          setSunriseTime(new Date(d.sunrise).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
+        if (d.sunset) {
+          setSunsetTime(new Date(d.sunset).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
 
         setLocation({
           lat,
           lon,
-          name: customName || json.data.placeName || 'Selected Location',
-          state: customState || json.data.adminName || '',
+          name: customName || d.placeName || 'Selected Location',
+          state: customState || d.adminName || '',
         });
 
         setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -89,16 +120,14 @@ export default function HeatStressDashboard() {
     fetchLiveWeather(lat, lon, name, state);
   };
 
-  // Locate user GPS
-  const handleLocateMe = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        handleSelectLocation(pos.coords.latitude, pos.coords.longitude, 'Your GPS Position');
-      },
-      (err) => console.warn('Geolocation failed', err),
-      { enableHighAccuracy: true }
-    );
+  // Locate user GPS or Network IP
+  const handleLocateMe = async () => {
+    try {
+      const loc = await detectExactUserLocation();
+      handleSelectLocation(loc.lat, loc.lon, loc.name, loc.state);
+    } catch (err) {
+      console.warn('Location detection failed', err);
+    }
   };
 
   // Run the Healthrytix mathematical formulation based on REAL dynamic values
@@ -121,7 +150,7 @@ export default function HeatStressDashboard() {
         </p>
       </div>
 
-      {/* Grid: Map + Clean Right-Side Telemetry Card (Sliders Removed!) */}
+      {/* Grid: Map + Clean Right-Side Telemetry Card */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: Interactive Real-Time Weather Map */}
         <div className="lg:col-span-7 space-y-4">
@@ -169,7 +198,7 @@ export default function HeatStressDashboard() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span>DYNAMIC TELEMETRY: OPEN-METEO SATELLITE & GRID</span>
+              <span>DYNAMIC TELEMETRY: {provider === 'OPENWEATHER' ? 'OPENWEATHER REAL-TIME OBSERVATION' : 'OPEN-METEO SATELLITE & GRID'}</span>
             </div>
             <div>
               SYNCED AT: <span className="font-bold text-slate-800">{lastUpdated || 'Loading...'}</span>
@@ -177,7 +206,7 @@ export default function HeatStressDashboard() {
           </div>
         </div>
 
-        {/* Right: Clean Real-Time Weather & Health Advisory Card (No Sliders!) */}
+        {/* Right: Clean Real-Time Weather & Health Advisory Card */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-sm space-y-6">
             {/* Header: Location & Status */}
@@ -197,6 +226,26 @@ export default function HeatStressDashboard() {
               </div>
               <span className={`text-xs font-mono font-bold px-3 py-1 rounded-full border ${wbgtResult.riskColor}`}>
                 {wbgtResult.riskLevel} Thermal Load
+              </span>
+            </div>
+
+            {/* Weather Condition Banner */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 text-slate-800">
+              <div className="flex items-center gap-3">
+                {weatherIcon && (
+                  <img
+                    src={`https://openweathermap.org/img/wn/${weatherIcon}@2x.png`}
+                    alt={weatherDescription}
+                    className="w-11 h-11 -my-2 drop-shadow-sm"
+                  />
+                )}
+                <div>
+                  <div className="font-extrabold text-sm text-slate-900">{weatherDescription}</div>
+                  <div className="text-[11px] font-medium text-slate-500">Real-time Atmospheric Condition</div>
+                </div>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-white text-blue-700 border border-blue-200 shadow-xs">
+                OpenWeather
               </span>
             </div>
 
@@ -251,7 +300,37 @@ export default function HeatStressDashboard() {
                   {isDirectSun ? 'Direct Sun (+6.5°)' : 'Shaded / Low (+0.8°)'}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  Automatic Solar Load
+                  Cloud Cover: {clouds}%
+                </div>
+              </div>
+            </div>
+
+            {/* Extended OpenWeather Barometric & Sunlight Telemetry */}
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1">
+                  <Gauge className="w-3 h-3 text-slate-500" /> Pressure
+                </div>
+                <div className="font-mono font-bold text-slate-800 mt-0.5">
+                  {pressure ? `${pressure} hPa` : '—'}
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1">
+                  <Eye className="w-3 h-3 text-slate-500" /> Visibility
+                </div>
+                <div className="font-mono font-bold text-slate-800 mt-0.5">
+                  {visibility !== null ? `${visibility} km` : '10 km'}
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1">
+                  <Sunset className="w-3 h-3 text-amber-500" /> Sunset
+                </div>
+                <div className="font-mono font-bold text-slate-800 mt-0.5">
+                  {sunsetTime || '—'}
                 </div>
               </div>
             </div>

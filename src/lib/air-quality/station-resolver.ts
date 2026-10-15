@@ -1,23 +1,54 @@
 import mumbaiPlaces from '@/data/mumbai-places.json';
-import { isLocationInMumbai, MUMBAI_GEOFENCE } from '@/lib/gis';
+import { isLocationInMumbai, MUMBAI_GEOFENCE, isLocationInIndia, INDIA_GEOFENCE } from '@/lib/gis';
+import { airQualityCache, CACHE_TTL, coordinateCacheKey } from './cache';
 import type { RawStationReading } from './types';
 
-/**
- * CPCB's real-time AQI resource (data.gov.in, resource id
- * 3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69) reports `station`, `city`, `state`
- * and pollutant values, but does NOT include station latitude/longitude in
- * its field schema. To compute a distance-from-user and to decide which
- * station is "nearest", we resolve each CPCB station name to an approximate
- * locality centroid using FixMumbai's existing, already-reviewed locality
- * dataset (`mumbai-places.json`, also used by the civic reporting flow).
- *
- * This is a coordinate *approximation* for a named locality, not a
- * fabricated per-station reading — when a station name can't be matched to
- * any known locality it is still returned by the API, just without a
- * distance figure, and callers must not claim precision they don't have.
- */
+export { MUMBAI_GEOFENCE, isLocationInMumbai, INDIA_GEOFENCE, isLocationInIndia };
 
-export { MUMBAI_GEOFENCE, isLocationInMumbai };
+/**
+ * Reverse geocodes coordinates within India to find the nearest city/district/state.
+ * Caches results in memory to avoid repeated external calls.
+ */
+export async function reverseGeocodeLocation(
+  lat: number,
+  lon: number
+): Promise<{ city: string; state: string }> {
+  if (isLocationInMumbai(lat, lon)) {
+    return { city: 'Mumbai', state: 'Maharashtra' };
+  }
+
+  const cacheKey = coordinateCacheKey('reverse-geocode', lat, lon);
+  return airQualityCache.getOrSet(cacheKey, CACHE_TTL.OPENWEATHER_MS, async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+        {
+          headers: {
+            'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
+            'Accept-Language': 'en',
+          },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeout);
+      if (!res.ok) return { city: '', state: '' };
+      const data = await res.json();
+      const city =
+        data.address?.city ||
+        data.address?.town ||
+        data.address?.state_district ||
+        data.address?.county ||
+        data.address?.village ||
+        '';
+      const state = data.address?.state || '';
+      return { city, state };
+    } catch {
+      return { city: '', state: '' };
+    }
+  });
+}
 
 function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
