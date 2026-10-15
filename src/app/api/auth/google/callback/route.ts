@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/',
+      path: APP_BASE_PATH,
       maxAge: 7 * 24 * 60 * 60,
     });
 
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/',
+      path: APP_BASE_PATH,
       maxAge: 0,
     });
 
