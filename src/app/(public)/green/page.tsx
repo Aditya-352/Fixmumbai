@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * /civic/green — Green Density & Nature Exploration
+ * /pulse/green — Green Density & Nature Exploration
  *
  * The GreenExplorer component is fully client-rendered (next/dynamic ssr:false
  * for the Leaflet map). This server component only provides the SEO wrapper.

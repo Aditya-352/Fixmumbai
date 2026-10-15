@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, Star, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 interface VerificationModalProps {
   reportId: string;
@@ -29,7 +30,7 @@ export default function VerificationModal({
     setError(null);
 
     try {
-      const res = await fetch(`/civic/api/reports/${reportId}/verification`, {
+      const res = await fetch(`${APP_BASE_PATH}/api/reports/${reportId}/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

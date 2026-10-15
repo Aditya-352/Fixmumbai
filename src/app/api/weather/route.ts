@@ -36,7 +36,7 @@ function getCacheKey(lat: number, lon: number): string {
 }
 
 /**
- * GET /civic/api/weather?lat=19.076&lon=72.877
+ * GET /pulse/api/weather?lat=19.076&lon=72.877
  *
  * Fetches real-time dynamic weather parameters powered primarily by
  * OpenWeather Current Weather API, with Open-Meteo as high-reliability fallback.

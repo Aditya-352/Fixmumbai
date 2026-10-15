@@ -5,6 +5,7 @@ import { Camera, MapPin, CheckCircle, ArrowRight, ArrowLeft, AlertCircle, Sparkl
 import { useRouter } from 'next/navigation';
 import { isLocationInMumbai, searchMumbaiPlaces, mapCoordinatesToCivicBoundary, MumbaiPlaceItem } from '@/lib/gis';
 import wardsData from '@/data/mumbai-wards.json';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 const categories = [
   { id: '1', name: 'Garbage pile', icon: '🗑️', desc: 'Uncollected accumulated trash pile' },
@@ -47,7 +48,7 @@ export default function ReportingWizard() {
   const [reporterEmail, setReporterEmail] = useState<string>('');
 
   useEffect(() => {
-    fetch('/civic/api/categories')
+    fetch(`${APP_BASE_PATH}/api/categories`)
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data?.length > 0) {
@@ -219,7 +220,7 @@ export default function ReportingWizard() {
     setError(null);
 
     try {
-      const res = await fetch('/civic/api/reports', {
+      const res = await fetch(`${APP_BASE_PATH}/api/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

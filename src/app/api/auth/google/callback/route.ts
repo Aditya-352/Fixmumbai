@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { signJwtToken } from '@/lib/auth';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 type GoogleUserInfo = {
   sub: string;
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   if (!clientId || !clientSecret || !appUrl) {
     return NextResponse.redirect(
-      new URL('/civic/admin/login?error=google_error', req.url)
+      new URL(`${APP_BASE_PATH}/admin/login?error=google_error`, req.url)
     );
   }
 
@@ -29,11 +30,11 @@ export async function GET(req: NextRequest) {
 
   if (!code || !returnedState || !savedState || returnedState !== savedState) {
     return NextResponse.redirect(
-      new URL('/civic/admin/login?error=invalid_state', req.url)
+      new URL(`${APP_BASE_PATH}/admin/login?error=invalid_state`, req.url)
     );
   }
 
-  const redirectUri = `${appUrl.replace(/\/$/, '')}/civic/api/auth/google/callback`;
+  const redirectUri = `${appUrl.replace(/\/$/, '')}${APP_BASE_PATH}/api/auth/google/callback`;
 
   try {
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     if (!googleUser.email || !googleUser.email_verified) {
       return NextResponse.redirect(
-        new URL('/civic/admin/login?error=not_authorized', req.url)
+        new URL(`${APP_BASE_PATH}/admin/login?error=not_authorized`, req.url)
       );
     }
 
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
       !['AUTHORITY_ADMIN', 'SUPER_ADMIN'].includes(user.role)
     ) {
       return NextResponse.redirect(
-        new URL('/civic/admin/login?error=not_authorized', req.url)
+        new URL(`${APP_BASE_PATH}/admin/login?error=not_authorized`, req.url)
       );
     }
 
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
     });
 
     const response = NextResponse.redirect(
-      new URL('/civic/admin', appUrl)
+      new URL(`${APP_BASE_PATH}/admin`, appUrl)
     );
 
     response.cookies.set('fixmumbai_session', session, {
@@ -132,7 +133,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Google OAuth error:', error);
     return NextResponse.redirect(
-      new URL('/civic/admin/login?error=google_error', req.url)
+      new URL(`${APP_BASE_PATH}/admin/login?error=google_error`, req.url)
     );
   }
 }

@@ -8,6 +8,7 @@ import BeforeAfterSlider from '@/components/ui/BeforeAfterSlider';
 import VerificationModal from '@/components/verification/VerificationModal';
 import MumbaiMap from '@/components/map/MumbaiMap';
 import { Shield, MapPin, Building2, User, Clock, CheckCircle2, AlertTriangle, ArrowLeft, Share2, Copy, Check } from 'lucide-react';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export default function PublicReportDetailPage() {
   const params = useParams();
@@ -22,7 +23,7 @@ export default function PublicReportDetailPage() {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/civic/api/reports/${reportId}`);
+      const res = await fetch(`${APP_BASE_PATH}/api/reports/${reportId}`);
       const data = await res.json();
       if (data.success) {
         setReport(data.data);

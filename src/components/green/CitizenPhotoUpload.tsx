@@ -9,7 +9,7 @@
  * - Supports modal overlay mode (with backdrop) and embedded drawer mode.
  * - Form validation: file size, file types, consent checkbox, description.
  * - Moderation disclosure & privacy safeguards.
- * - Submits directly to /civic/api/vegetation/photos.
+ * - Submits directly to /pulse/api/vegetation/photos.
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Image as ImageIcon,
 } from 'lucide-react';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 8;
@@ -232,7 +233,7 @@ export default function CitizenPhotoUpload({
     }
 
     try {
-      const res = await fetch('/civic/api/vegetation/photos', {
+      const res = await fetch(`${APP_BASE_PATH}/api/vegetation/photos`, {
         method: 'POST',
         body: formData,
       });

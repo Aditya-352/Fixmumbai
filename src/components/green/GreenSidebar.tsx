@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Compass, Wind, Trees } from 'lucide-react';
 import type { LayerVisibilityState } from '@/lib/green/types';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 const MODES = [
   {
@@ -52,7 +53,7 @@ export interface GreenSidebarProps {
 
 export default function GreenSidebar(_props: GreenSidebarProps) {
   const pathname = usePathname();
-  const isGreenActive = pathname === '/green' || pathname === '/civic/green';
+  const isGreenActive = pathname === '/green' || pathname === `${APP_BASE_PATH}/green`;
 
   return (
     <aside
@@ -91,7 +92,7 @@ export default function GreenSidebar(_props: GreenSidebarProps) {
             (mode.href === '/green' && isGreenActive) ||
             (mode.href !== '/green' &&
               !isGreenActive &&
-              (pathname === mode.href || pathname === `/civic${mode.href}`));
+              (pathname === mode.href || pathname === `${APP_BASE_PATH}${mode.href}`));
 
           return (
             <Link

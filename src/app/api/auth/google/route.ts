@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET() {
   }
 
   const state = crypto.randomBytes(32).toString('hex');
-  const redirectUri = `${appUrl.replace(/\/$/, '')}/civic/api/auth/google/callback`;
+  const redirectUri = `${appUrl.replace(/\/$/, '')}${APP_BASE_PATH}/api/auth/google/callback`;
 
   const googleUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   googleUrl.searchParams.set('client_id', clientId);

@@ -19,6 +19,7 @@ import {
 import wardsData from '@/data/mumbai-wards.json';
 import type { AirQualityResponse, AqiCategory } from '@/lib/air-quality/types';
 import { detectLocationViaIp } from '@/lib/user-location';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export interface ReportMarker {
   id: string;
@@ -52,7 +53,7 @@ const AQI_CATEGORY_COLORS: Record<AqiCategory, string> = {
   Severe: '#7F1D1D'
 };
 
-const AIR_QUALITY_API_PATH = '/civic/api/air-quality';
+const AIR_QUALITY_API_PATH = `${APP_BASE_PATH}/api/air-quality`;
 
 type AqStatus = 'idle' | 'locating' | 'loading' | 'ready' | 'error';
 
