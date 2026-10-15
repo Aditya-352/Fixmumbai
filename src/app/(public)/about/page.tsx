@@ -9,7 +9,7 @@ export default function AboutPage() {
         <div className="w-12 h-12 rounded-2xl bg-red-600/10 border border-red-500/20 text-red-600 font-black text-2xl flex items-center justify-center mx-auto">
           F
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900">About FixMumbai</h1>
+        <h1 className="text-3xl sm:text-5xl font-black text-slate-900">About PriSEHAT-Pulse</h1>
         <p className="text-xs sm:text-base text-slate-500 max-w-xl mx-auto">
           &quot;Make Mumbai&apos;s civic cleanliness problems visible, trackable, and accountable.&quot;
         </p>
@@ -18,10 +18,10 @@ export default function AboutPage() {
       <div className="bg-slate-50 p-6 sm:p-8 rounded-2xl border border-slate-200 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
         <h2 className="text-xl font-bold text-slate-900">Core Product Mission</h2>
         <p>
-          FixMumbai is an independent civic-tech platform designed specifically for the unique administrative and geographic structure of Mumbai. It bridges the gap between fast citizen observation and municipal action across 24 Brihanmumbai Municipal Corporation (BMC) administrative wards and 36 Assembly Constituencies.
+          PriSEHAT-Pulse is an independent civic-tech platform designed specifically for the unique administrative and geographic structure of Mumbai. It bridges the gap between fast citizen observation and municipal action across 24 Brihanmumbai Municipal Corporation (BMC) administrative wards and 36 Assembly Constituencies.
         </p>
         <p>
-          Rather than being a generic complaint box, every report on FixMumbai becomes a structured, verifiable public case file with GIS mapping, immutable timeline logs, before/after evidence comparison, and citizen ground verification.
+          Rather than being a generic complaint box, every report on PriSEHAT-Pulse becomes a structured, verifiable public case file with GIS mapping, immutable timeline logs, before/after evidence comparison, and citizen ground verification.
         </p>
       </div>
 

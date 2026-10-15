@@ -46,7 +46,7 @@ export default function PublicReportDetailPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `FixMumbai Public Report ${report?.publicReportId}`,
+          title: `PriSEHAT-Pulse Public Report ${report?.publicReportId}`,
           text: `Civic issue report at ${report?.locality}`,
           url: shareUrl
         });

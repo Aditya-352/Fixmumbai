@@ -28,7 +28,7 @@ export default async function AdminDashboardPage() {
           <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
             <Shield className="w-4 h-4" /> Authority & Municipal Command Center
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">FixMumbai Admin Operations</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">PriSEHAT-Pulse Admin Operations</h1>
           <p className="text-xs text-slate-400 mt-1">
             Central operational workflow for BMC Solid Waste Management department & Ward Officers.
           </p>

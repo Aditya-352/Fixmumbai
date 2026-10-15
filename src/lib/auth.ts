@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fixmumbai-secure-civic-secret-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'prisehat-pulse-secure-secret-key-2026';
 
 export interface UserSession {
   id: string;
@@ -34,7 +34,7 @@ export function verifyJwtToken(token: string): UserSession | null {
 
 export async function getServerSession(): Promise<UserSession | null> {
   const cookieStore = cookies();
-  const token = cookieStore.get('fixmumbai_session')?.value;
+  const token = cookieStore.get('prisehat_pulse_session')?.value;
   if (!token) return null;
   return verifyJwtToken(token);
 }

@@ -780,7 +780,7 @@ export default function AirQualityPage() {
                 <Info className="w-4 h-4 text-red-600" /> Environmental Telemetry Infrastructure
               </div>
               <p className="leading-relaxed">
-                FixMumbai provides continuous nationwide air quality coverage across all Indian territories by
+                PriSEHAT-Pulse provides continuous nationwide air quality coverage across all Indian territories by
                 integrating the OpenWeather Air Pollution & Weather API with multi-sensor ground networks:
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">

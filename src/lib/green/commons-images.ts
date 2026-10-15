@@ -41,7 +41,7 @@ const GEOSEARCH_RADIUS_M = 300;
 export const COMMONS_USER_AGENT =
   process.env.WIKIMEDIA_USER_AGENT ||
   process.env.OPENSTREETMAP_USER_AGENT ||
-  'FixMumbai-CivicApp/1.0 (green-space imagery; contact@fixmumbai.org)';
+  'PriSEHAT-Pulse/1.0 (green-space imagery; healthrytixtech@gmail.com)';
 
 /** Licences we will not publish. Anything not clearly free is rejected. */
 const NON_FREE_MARKERS = ['fair use', 'non-free', 'copyrighted', 'permission granted only'];

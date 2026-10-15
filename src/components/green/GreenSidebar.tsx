@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * GreenSidebar — Clean white left sidebar with FixMumbai brand and Map Explorer nav.
+ * GreenSidebar — Clean white left sidebar with PriSEHAT-Pulse brand and Map Explorer nav.
  */
 
 import React from 'react';
@@ -130,7 +130,7 @@ export default function GreenSidebar(_props: GreenSidebarProps) {
       {/* ── Footer Attribution ────────────────────────────────────────────── */}
       <div className="p-3 border-t border-[#E5EBE7] bg-white flex-shrink-0">
         <p className="text-[9px] text-[#64746B] leading-snug font-medium">
-          FixMumbai Environmental Intelligence · Sentinel-2 NDVI &amp; BMC civic data.
+          PriSEHAT-Pulse Environmental Intelligence · Sentinel-2 NDVI &amp; BMC civic data.
         </p>
       </div>
     </aside>

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const returnedState = searchParams.get('state');
-  const savedState = req.cookies.get('fixmumbai_oauth_state')?.value;
+  const savedState = req.cookies.get('prisehat_pulse_oauth_state')?.value;
 
   if (!code || !returnedState || !savedState || returnedState !== savedState) {
     return NextResponse.redirect(
@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
       new URL(`${APP_BASE_PATH}/admin`, appUrl)
     );
 
-    response.cookies.set('fixmumbai_session', session, {
+    response.cookies.set('prisehat_pulse_session', session, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
       maxAge: 7 * 24 * 60 * 60,
     });
 
-    response.cookies.set('fixmumbai_oauth_state', '', {
+    response.cookies.set('prisehat_pulse_oauth_state', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

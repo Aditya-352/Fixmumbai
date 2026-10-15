@@ -28,7 +28,7 @@ export async function GET() {
   googleUrl.searchParams.set('prompt', 'select_account');
 
   const response = NextResponse.redirect(googleUrl);
-  response.cookies.set('fixmumbai_oauth_state', state, {
+  response.cookies.set('prisehat_pulse_oauth_state', state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

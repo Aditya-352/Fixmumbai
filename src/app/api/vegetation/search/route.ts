@@ -194,7 +194,7 @@ export async function GET(req: NextRequest) {
 
   // ── Tier 3: Live OpenStreetMap Geocoding (Photon & Nominatim bounded) ───────
   const [south, west, north, east] = city.bbox;
-  const userAgent = process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)';
+  const userAgent = process.env.OPENSTREETMAP_USER_AGENT || 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)';
 
   try {
     const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=${west},${south},${east},${north}&limit=6`;

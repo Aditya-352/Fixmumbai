@@ -86,7 +86,7 @@ interface AgroTarget {
 }
 let cachedTarget: { target: AgroTarget; expiresAt: number } | null = null;
 
-const AGRO_UA = 'FixMumbai/1.0 (civic green-space NDVI; contact@fixmumbai.org)';
+const AGRO_UA = 'PriSEHAT-Pulse/1.0 (civic green-space NDVI; healthrytixtech@gmail.com)';
 
 /**
  * Same-origin proxy template.

@@ -1,5 +1,5 @@
 /**
- * Shared types for the FixMumbai Air Quality service layer.
+ * Shared types for the PriSEHAT-Pulse Air Quality service layer.
  *
  * Design notes:
  * - CPCB and OpenAQ values are NEVER averaged or merged into a single number.

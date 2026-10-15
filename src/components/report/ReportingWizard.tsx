@@ -199,7 +199,7 @@ export default function ReportingWizard() {
 
         if (!isLocationInMumbai(lat, lng)) {
           setLocationStatus('DENIED');
-          setError('GPS location detected outside Mumbai. FixMumbai is strictly for Mumbai civic reporting (24 BMC Wards). Please select a Mumbai locality below.');
+          setError('GPS location detected outside Mumbai. PriSEHAT-Pulse is strictly for Mumbai civic reporting (24 BMC Wards). Please select a Mumbai locality below.');
         } else {
           const mapping = mapCoordinatesToCivicBoundary(lat, lng);
           setLocality(mapping.locality);
@@ -440,7 +440,7 @@ export default function ReportingWizard() {
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
               <div>
                 <span className="font-extrabold block text-sm">Location Outside Mumbai Boundary</span>
-                FixMumbai is restricted strictly to Mumbai municipal limits (24 BMC Wards). Please search your Mumbai area or pick a BMC Ward below to proceed.
+                PriSEHAT-Pulse is restricted strictly to Mumbai municipal limits (24 BMC Wards). Please search your Mumbai area or pick a BMC Ward below to proceed.
               </div>
             </div>
           )}

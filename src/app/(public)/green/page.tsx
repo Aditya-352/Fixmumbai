@@ -5,10 +5,10 @@ import GreenExplorer from '@/components/green/GreenExplorer';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Green Density Explorer | FixMumbai — Vegetation & Walkable Green Spaces',
+  title: 'Green Density Explorer | PriSEHAT-Pulse — Vegetation & Walkable Green Spaces',
   description:
     'Explore Mumbai\'s green spaces with satellite-derived NDVI vegetation density (Sentinel-2) and OpenStreetMap walkability evidence. Find walkable parks and nature areas near you.',
-  keywords: ['Mumbai green spaces', 'NDVI', 'parks', 'walkability', 'vegetation map', 'FixMumbai'],
+  keywords: ['Mumbai green spaces', 'NDVI', 'parks', 'walkability', 'vegetation map', 'PriSEHAT-Pulse'],
 };
 
 /**

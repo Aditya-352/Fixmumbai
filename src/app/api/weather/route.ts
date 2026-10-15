@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
       fetch(weatherUrl, { next: { revalidate: 300 }, headers: { Accept: 'application/json' } }),
       fetch(geoUrl, {
         headers: {
-          'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
+          'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
           'Accept-Language': 'en',
         },
       }),

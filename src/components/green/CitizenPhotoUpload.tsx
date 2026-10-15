@@ -534,7 +534,7 @@ export default function CitizenPhotoUpload({
               className="mt-0.5 w-4 h-4 accent-[#087F5B] rounded cursor-pointer shrink-0"
             />
             <span className="text-[11px] text-[#64746B] leading-snug">
-              I confirm this photo shows real greenery in Mumbai, I hold the right to share it, and I agree to it being displayed on FixMumbai under Creative Commons Attribution.
+              I confirm this photo shows real greenery in Mumbai, I hold the right to share it, and I agree to it being displayed on PriSEHAT-Pulse under Creative Commons Attribution.
             </span>
           </label>
 
