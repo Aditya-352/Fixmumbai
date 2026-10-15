@@ -367,7 +367,7 @@ export default function AirQualityMap({
                   click: () => onLocationSelect(hub.lat, hub.lon, `${hub.name}, ${hub.state}`),
                 }}
               >
-                <Popup className="fixmumbai-leaflet-popup">
+                <Popup className="prisehat-pulse-leaflet-popup">
                   <div className="p-2 space-y-2 text-xs font-sans max-w-[220px]">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                       <span className="font-black text-sm text-slate-900">{hub.name}</span>
@@ -398,7 +398,7 @@ export default function AirQualityMap({
             position={center}
             icon={createActiveMarkerIcon(categoryMeta.hex, markerDisplayVal)}
           >
-            <Popup className="fixmumbai-leaflet-popup">
+            <Popup className="prisehat-pulse-leaflet-popup">
               <div className="p-2 space-y-2 text-xs font-sans max-w-[250px]">
                 <div
                   className="p-3 rounded-2xl text-white space-y-1 shadow-sm"

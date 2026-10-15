@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET() {
   }
 
   const state = crypto.randomBytes(32).toString('hex');
-  const redirectUri = `${appUrl.replace(/\/$/, '')}/civic/api/auth/google/callback`;
+  const redirectUri = `${appUrl.replace(/\/$/, '')}${APP_BASE_PATH}/api/auth/google/callback`;
 
   const googleUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   googleUrl.searchParams.set('client_id', clientId);
@@ -27,11 +28,11 @@ export async function GET() {
   googleUrl.searchParams.set('prompt', 'select_account');
 
   const response = NextResponse.redirect(googleUrl);
-  response.cookies.set('fixmumbai_oauth_state', state, {
+  response.cookies.set('prisehat_pulse_oauth_state', state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    path: '/',
+    path: APP_BASE_PATH,
     maxAge: 10 * 60,
   });
 

@@ -17,7 +17,7 @@ export default async function DataSourcesPage() {
         </div>
         <h1 className="text-3xl font-black text-white mt-1">Official Government Data Sources</h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          FixMumbai uses verified government sources as the primary source of truth for administrative and electoral data.
+          PriSEHAT-Pulse uses verified government sources as the primary source of truth for administrative and electoral data.
         </p>
       </div>
 

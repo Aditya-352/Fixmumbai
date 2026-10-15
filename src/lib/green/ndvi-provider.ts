@@ -141,7 +141,7 @@ export function __resetNdviCaches() {
   selectionCache.clear();
 }
 
-const USER_AGENT = 'FixMumbai/1.0 (civic green-space NDVI; contact@fixmumbai.org)';
+const USER_AGENT = 'PriSEHAT-Pulse/1.0 (civic green-space NDVI; healthrytixtech@gmail.com)';
 
 /** Never log or echo the key. */
 function withKey(path: string, key: string): string {

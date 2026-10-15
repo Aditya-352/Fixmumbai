@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Shield, RefreshCw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export default function AdminReportsPage() {
   const [reports, setReports] = useState<any[]>([]);
@@ -21,7 +22,7 @@ export default function AdminReportsPage() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      let url = '/civic/api/reports?limit=100';
+      let url = `${APP_BASE_PATH}/api/reports?limit=100`;
       if (selectedWard) url += `&ward=${selectedWard}`;
       if (selectedStatus) url += `&status=${selectedStatus}`;
       const res = await fetch(url);
@@ -45,7 +46,7 @@ export default function AdminReportsPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch(`/civic/api/reports/${activeReport.id}`, {
+      const res = await fetch(`${APP_BASE_PATH}/api/reports/${activeReport.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,7 +82,7 @@ export default function AdminReportsPage() {
     if (!confirmed) return;
 
     try {
-      const res = await fetch(`/civic/api/reports/${report.id}`, {
+      const res = await fetch(`${APP_BASE_PATH}/api/reports/${report.id}`, {
         method: 'DELETE'
       });
 

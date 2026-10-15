@@ -18,13 +18,14 @@ import type { BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import { DEFAULT_RADIUS_M, ACTIVE_CITY, CityId, CITY_REGISTRY } from '@/lib/green/config';
 import mumbaiPlaces from '@/data/mumbai-places.json';
 import { buildVegetationUrl } from '@/lib/green/city-endpoints';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 // ── API base path ──────────────────────────────────────────────────────────
-// The app is deployed under /civic (basePath in next.config.js).
+// The app is deployed under /pulse (basePath in next.config.js).
 // All API calls must use the full path including the basePath so they resolve
-// correctly in both development (localhost:3001/civic/...) and production
-// (how-network.healthrytix.com/civic/...).
-const BASE = '/civic/api/vegetation';
+// correctly in both development (localhost:3000/pulse/...) and production
+// (prisehat.healthrytix.com/pulse/...).
+const BASE = `${APP_BASE_PATH}/api/vegetation`;
 
 export interface GeoNotice {
   type: 'INSIDE_MUMBAI' | 'OUTSIDE_MUMBAI' | 'DENIED' | 'ERROR';

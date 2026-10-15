@@ -13,6 +13,7 @@
  */
 
 import type { CityId } from './config';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 /** Handlers that resolve `?city=` and scope their response accordingly. */
 export const CITY_AWARE_ENDPOINTS = [
@@ -57,7 +58,7 @@ export function hasRegisteredNdviAoi(cityId: CityId): boolean {
   return CITIES_WITH_REGISTERED_NDVI_AOI.includes(cityId);
 }
 
-const BASE = '/civic/api/vegetation';
+const BASE = `${APP_BASE_PATH}/api/vegetation`;
 
 /**
  * Build a request URL for a Green Density endpoint.

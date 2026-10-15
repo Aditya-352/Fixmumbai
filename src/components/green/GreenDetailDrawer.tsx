@@ -22,6 +22,7 @@ import {
   AlertTriangle, CheckCircle2, Clock, Route,
   ChevronDown, ChevronUp, Car, Bike, Navigation2,
 } from 'lucide-react';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 interface GreenDetailDrawerProps {
   space: GreenSpaceDetail | null;
@@ -115,7 +116,7 @@ export default function GreenDetailDrawer({
         mode: travelMode,
       });
 
-      const res = await fetch(`/civic/api/vegetation/route?${params}`);
+      const res = await fetch(`${APP_BASE_PATH}/api/vegetation/route?${params}`);
       const json = await res.json();
 
       if (!res.ok || !json.ok) {

@@ -3,6 +3,7 @@ import type { ApiResponse, TilesResponse, TileProvenance } from '@/lib/green/typ
 import { GREEN_EXPLORER_ENABLED, DENSITY_META, ACTIVE_CITY } from '@/lib/green/config';
 import { resolveNdviObservation } from '@/lib/green/ndvi-provider';
 import { CityParamError, cityMeta, resolveCity, toErrorBody } from '@/lib/green/city-param';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 /**
  * GET /api/vegetation/tiles?city
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
   const responseData: TilesResponse = hasObservation && cityHasImagery
     ? {
         layers: (['HIGH', 'MEDIUM', 'LOW'] as const).map((cls) => ({
-          urlTemplate: '/civic/api/vegetation/ndvi-tile/{z}/{x}/{y}',
+          urlTemplate: `${APP_BASE_PATH}/api/vegetation/ndvi-tile/{z}/{x}/{y}`,
           densityClass: cls,
           label: DENSITY_META[cls].label,
           colour: DENSITY_META[cls].colour,

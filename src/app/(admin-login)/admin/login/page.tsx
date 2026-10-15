@@ -1,6 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { getServerSession } from '@/lib/auth';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 type LoginPageProps = {
   searchParams: {
@@ -29,7 +30,7 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
         <div className="mb-8">
           <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider">
-            FixMumbai Authority Portal
+            PriSEHAT-Pulse Authority Portal
           </div>
           <h1 className="text-3xl font-black text-white mt-2">
             Authority Login
@@ -47,7 +48,7 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
         )}
 
         <a
-          href="/civic/api/auth/google"
+          href={`${APP_BASE_PATH}/api/auth/google`}
           className="w-full inline-flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-xl transition"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">

@@ -36,7 +36,7 @@ function getCacheKey(lat: number, lon: number): string {
 }
 
 /**
- * GET /civic/api/weather?lat=19.076&lon=72.877
+ * GET /pulse/api/weather?lat=19.076&lon=72.877
  *
  * Fetches real-time dynamic weather parameters powered primarily by
  * OpenWeather Current Weather API, with Open-Meteo as high-reliability fallback.
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
       fetch(weatherUrl, { next: { revalidate: 300 }, headers: { Accept: 'application/json' } }),
       fetch(geoUrl, {
         headers: {
-          'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
+          'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
           'Accept-Language': 'en',
         },
       }),

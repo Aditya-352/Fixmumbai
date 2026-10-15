@@ -27,7 +27,7 @@ import { extractLayerId } from '@/lib/green/ndvi-provider';
 export const dynamic = 'force-dynamic';
 
 const UPSTREAM_BASE = 'https://api.agromonitoring.com/tile/1.0';
-const USER_AGENT = 'FixMumbai/1.0 (civic green-space NDVI; contact@fixmumbai.org)';
+const USER_AGENT = 'PriSEHAT-Pulse/1.0 (civic green-space NDVI; healthrytixtech@gmail.com)';
 
 /**
  * 1x1 fully transparent RGBA PNG.

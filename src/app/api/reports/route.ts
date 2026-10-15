@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (!gisInfo.isWithinMumbai) {
       return NextResponse.json({
         success: false,
-        error: 'Location restricted: FixMumbai only accepts civic reports located within Mumbai (24 BMC Wards).'
+        error: 'Location restricted: PriSEHAT-Pulse only accepts civic reports located within Mumbai (24 BMC Wards).'
       }, { status: 400 });
     }
 

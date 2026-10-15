@@ -162,7 +162,7 @@ export default function WeatherMap({
         'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         {
           maxZoom: 16,
-          attribution: '&copy; Esri &copy; OpenStreetMap contributors | FixMumbai',
+          attribution: '&copy; Esri &copy; OpenStreetMap contributors | PriSEHAT-Pulse',
         }
       ).addTo(map);
 

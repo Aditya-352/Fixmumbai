@@ -8,7 +8,7 @@ const pcsData = require('../src/data/mumbai-pcs.json');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting FixMumbai Database Seed...');
+  console.log('🌱 Starting PriSEHAT-Pulse Database Seed...');
 
   // 1. Data Sources
   const dataSources = [
@@ -213,11 +213,11 @@ async function main() {
   }
 
   // 6. System Users
-  const passwordHash = bcrypt.hashSync('FixMumbai2026!', 10);
+  const passwordHash = bcrypt.hashSync('PriSEHATPulse2026!', 10);
   const users = [
     {
-      email: 'superadmin@fixmumbai.org',
-      name: 'FixMumbai System Administrator',
+      email: 'healthrytix@gmail.com',
+      name: 'PriSEHAT-Pulse System Administrator',
       role: 'SUPER_ADMIN',
       passwordHash
     },
@@ -235,7 +235,7 @@ async function main() {
       passwordHash
     },
     {
-      email: 'moderator@fixmumbai.org',
+      email: 'healthrytixtech@gmail.com',
       name: 'Civic Content Moderator',
       role: 'MODERATOR',
       passwordHash
@@ -381,7 +381,7 @@ async function main() {
             {
               eventType: 'SUBMITTED',
               actorType: 'CITIZEN',
-              description: 'Report submitted by citizen via FixMumbai web app',
+              description: 'Report submitted by citizen via PriSEHAT-Pulse web app',
               timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000)
             },
             {
@@ -420,7 +420,7 @@ async function main() {
     }
   }
 
-  console.log('✅ FixMumbai Database Seed completed successfully!');
+  console.log('✅ PriSEHAT-Pulse Database Seed completed successfully!');
 }
 
 main()
