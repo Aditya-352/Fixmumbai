@@ -699,3 +699,4 @@ export const STATIC_GREEN_SPACES_BY_CITY: Partial<
   mumbai: STATIC_GREEN_SPACES_FALLBACK,
 };
 
+

@@ -11,7 +11,7 @@
  *   shapes.
  */
 
-export type AqiSource = 'CPCB' | 'OPENAQ' | 'OPENWEATHER' | 'AQICN';
+export type AqiSource = 'CPCB' | 'OPENAQ' | 'OPENWEATHER' | 'AQICN' | 'OPEN_METEO';
 
 /** Standard CPCB National AQI category buckets. */
 export type AqiCategory =
@@ -103,9 +103,10 @@ export interface AirQualityResponse {
     longitude: number;
   };
   /**
-   * The headline AQI. OpenWeather is primary so the AQI and pollutant list
-   * come from coordinate-level OpenWeather Air Pollution data when available.
-   * Falls back to CPCB/OpenAQ/AQICN only when OpenWeather has no usable data.
+   * The headline AQI. Priority order (highest → lowest): AQICN ground sensor →
+   * CPCB ground sensor → OpenWeather atmospheric simulation → OpenAQ.
+   * Ground sensors are preferred because they measure actual ambient air;
+   * OpenWeather is a fallback when no ground-truth station is available nearby.
    * `null` when no source has enough data.
    */
   aqi: {

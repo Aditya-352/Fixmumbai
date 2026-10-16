@@ -22,11 +22,14 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Camera,
 } from 'lucide-react';
 import { HEALTH_ADVISORIES } from '@/lib/air-quality/health-advisories';
 import type { AqiCategory, PollutantId, AirQualityResponse } from '@/lib/air-quality/types';
-import { POPULAR_INDIAN_HUBS, type CityHub, AQI_CATEGORY_COLORS, INDIA_NAQI_MAPPINGS } from '@/components/air-quality/AirQualityMap';
+import { AQI_CATEGORY_COLORS, INDIA_NAQI_MAPPINGS } from '@/components/air-quality/AirQualityMap';
 import { detectExactUserLocation, type DetectedLocation } from '@/lib/user-location';
+import { singlePollutantSubIndex, categoryForAqi } from '@/lib/air-quality/aqi-calculator';
+import AirQualityPhotoModal from '@/components/air-quality/AirQualityPhotoModal';
 
 // Dynamically import AirQualityMap to avoid SSR Leaflet window errors
 const AirQualityMap = dynamic(() => import('@/components/air-quality/AirQualityMap'), {
@@ -139,6 +142,7 @@ export default function AirQualityPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [showDetails, setShowDetails] = useState<boolean>(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
   const [, startTransition] = useTransition();
 
   const fetchAqiData = async (lat: number, lon: number, customLabel?: string) => {
@@ -217,11 +221,6 @@ export default function AirQualityPage() {
     acquireExactLocation(true);
   };
 
-  const handleCitySelect = (hub: CityHub) => {
-    startTransition(() => {
-      fetchAqiData(hub.lat, hub.lon, `${hub.name}, ${hub.state}`);
-    });
-  };
 
   const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,9 +262,10 @@ export default function AirQualityPage() {
         ? 3
         : currentAqi.value <= 300
         ? 4
-        : 5
+        : currentAqi.value <= 400
+        ? 5
+        : 6
       : 3);
-  const isGroundScore = Boolean(currentAqi && currentAqi.value > 5);
 
   const pollutantsToDisplay = { ...(airQualityData?.pollutants || {}) };
   if (airQualityData?.supplementary) {
@@ -342,41 +342,16 @@ export default function AirQualityPage() {
               )}
               {locating ? 'LOCATING...' : 'USE MY EXACT LOCATION'}
             </button>
-          </div>
 
-          {/* Quick City Selector Pills with Color Dots (representing location by color) */}
-          <div>
-            <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5" /> Major Indian Regional Centers (Color-Coded Status):
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {POPULAR_INDIAN_HUBS.map((hub) => {
-                const isSelected = activeCityName.includes(hub.name);
-                const hubColor = isSelected ? categoryTheme.hex : (AQI_CATEGORY_COLORS[hub.category]?.hex || '#F59E0B');
-
-                return (
-                  <button
-                    key={hub.name}
-                    onClick={() => handleCitySelect(hub)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-2 ${
-                      isSelected
-                        ? 'bg-slate-900 text-white shadow-md'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/60'
-                    }`}
-                  >
-                    {/* Color dot representing location air quality */}
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0"
-                      style={{ backgroundColor: hubColor }}
-                    />
-                    <span>{hub.name}</span>
-                    <span className={`text-[10px] font-extrabold ${isSelected ? 'text-amber-300' : 'text-slate-500'}`}>
-                      AQI {hub.approxAqi}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsPhotoModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-2xl transition shadow-sm active:scale-95 shrink-0"
+              title="Take a live photo with air quality watermark"
+            >
+              <Camera className="w-4 h-4 text-white" />
+              <span>TAKE PHOTO</span>
+            </button>
           </div>
         </div>
 
@@ -395,8 +370,17 @@ export default function AirQualityPage() {
               <Activity className="w-5 h-5 text-red-600" />
               Pan-India Air Quality Spatial Map
             </h2>
-            <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
-              <span>Selected Status:</span>
+            <div className="text-xs font-bold text-slate-500 flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs active:scale-95"
+                title="Take air quality photo"
+              >
+                <Camera className="w-3.5 h-3.5 text-white" />
+                <span>Take Photo</span>
+              </button>
+              <span className="hidden sm:inline">Selected Status:</span>
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-white text-[11px] font-black"
                 style={{ backgroundColor: categoryTheme.hex }}
@@ -720,7 +704,9 @@ export default function AirQualityPage() {
                   let valDisplay = 'N/A';
 
                   if (reading && reading.avg !== null) {
-                    category = currentCategory;
+                    // Derive category from this pollutant's own NAQI sub-index, not the overall AQI
+                    const pollIdx = singlePollutantSubIndex(pollutantId as PollutantId, reading.avg);
+                    category = pollIdx !== null ? categoryForAqi(pollIdx) : currentCategory;
                     valDisplay = Math.round(reading.avg * 10) / 10 + '';
                   }
 
@@ -828,6 +814,20 @@ export default function AirQualityPage() {
           </Link>
         </div>
       </div>
+
+      {/* Interactive Photo Capture Modal with Watermarked Air Quality Telemetry */}
+      <AirQualityPhotoModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        locationName={activeCityName}
+        lat={currentCoords[0]}
+        lon={currentCoords[1]}
+        aqiValue={currentAqi?.value ?? null}
+        category={currentCategory}
+        dominantPollutant={currentAqi?.dominantPollutant}
+        pm25={pollutantsToDisplay['PM2.5']?.avg}
+        pm10={pollutantsToDisplay['PM10']?.avg}
+      />
     </div>
   );
 }

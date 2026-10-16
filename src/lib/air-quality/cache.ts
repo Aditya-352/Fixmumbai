@@ -58,4 +58,5 @@ export const CACHE_TTL = {
   OPENAQ_MS: 15 * 60 * 1000,
   AQICN_MS: 15 * 60 * 1000,
   OPENWEATHER_MS: 15 * 60 * 1000,
+  OPEN_METEO_MS: 15 * 60 * 1000,
 } as const;

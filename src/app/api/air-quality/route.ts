@@ -5,9 +5,8 @@ import { AirQualityServiceError } from '@/lib/air-quality/types';
 /**
  * GET /api/air-quality?lat=<latitude>&lon=<longitude>
  *
- * Returns real-time air quality information near the given point across
- * all of India. Integrates OpenWeather atmospheric observations, AQICN ground
- * monitoring networks, CPCB official stations, and OpenAQ.
+ * Returns real-time air quality data (direct 0–500 standard AQI and all pollutants)
+ * directly from Open-Meteo Air Quality API (Copernicus CAMS & NOAA models).
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

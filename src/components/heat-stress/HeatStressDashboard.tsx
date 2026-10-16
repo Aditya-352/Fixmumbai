@@ -39,30 +39,22 @@ const WeatherMap = dynamic(() => import('@/components/heat-stress/HeatStressMap'
   ),
 });
 
-// Quick Regional Centers with realistic thermal benchmarks
-const REGIONAL_HUBS = [
-  { name: 'Mumbai', state: 'Maharashtra', lat: 19.0760, lon: 72.8777, temp: 34.0, wbgt: 30.5 },
-  { name: 'Pune', state: 'Maharashtra', lat: 18.5204, lon: 73.8567, temp: 31.5, wbgt: 27.8 },
-  { name: 'Nagpur', state: 'Maharashtra', lat: 21.1458, lon: 79.0882, temp: 35.8, wbgt: 31.2 },
-  { name: 'Nashik', state: 'Maharashtra', lat: 19.9975, lon: 73.7898, temp: 30.2, wbgt: 26.5 },
-  { name: 'Chhatrapati Sambhajinagar', state: 'Maharashtra', lat: 19.8762, lon: 75.3433, temp: 33.4, wbgt: 29.1 },
-  { name: 'Thane', state: 'Maharashtra', lat: 19.2183, lon: 72.9781, temp: 34.8, wbgt: 30.8 },
-  { name: 'Navi Mumbai', state: 'Maharashtra', lat: 19.0771, lon: 72.9986, temp: 35.0, wbgt: 31.0 },
-  { name: 'New Delhi', state: 'Delhi NCR', lat: 28.6139, lon: 77.2090, temp: 33.5, wbgt: 29.4 },
-  { name: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lon: 77.5946, temp: 27.8, wbgt: 24.5 },
-  { name: 'Hyderabad', state: 'Telangana', lat: 17.3850, lon: 78.4867, temp: 32.5, wbgt: 28.6 },
-  { name: 'Ahmedabad', state: 'Gujarat', lat: 23.0225, lon: 72.5714, temp: 36.4, wbgt: 31.5 },
-  { name: 'Kolkata', state: 'West Bengal', lat: 22.5726, lon: 88.3639, temp: 32.8, wbgt: 30.2 },
-  { name: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lon: 80.2707, temp: 33.2, wbgt: 30.8 },
-];
 
 export default function HeatStressDashboard() {
   // Currently inspected location (Default: Mumbai)
-  const [location, setLocation] = useState({
+  const [location, setLocation] = useState<{
+    lat: number;
+    lon: number;
+    name: string;
+    state?: string;
+    zoom?: number;
+    locateKey?: number;
+  }>({
     lat: 19.076,
     lon: 72.8777,
     name: 'Mumbai',
     state: 'Maharashtra',
+    zoom: 7,
   });
 
   // Search query & geocoding states
@@ -91,7 +83,7 @@ export default function HeatStressDashboard() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   // Fetch real-time weather & reverse-geocoded place details
-  const fetchLiveWeather = useCallback(async (lat: number, lon: number, customName?: string, customState?: string) => {
+  const fetchLiveWeather = useCallback(async (lat: number, lon: number, customName?: string, customState?: string, customZoom?: number) => {
     setLoadingWeather(true);
     try {
       // Support Next.js basePath /civic and fallback gracefully
@@ -123,12 +115,14 @@ export default function HeatStressDashboard() {
           setSunsetTime(new Date(d.sunset).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
 
-        setLocation({
+        setLocation(prev => ({
           lat,
           lon,
-          name: customName || d.placeName || 'Selected Location',
-          state: customState || d.adminName || '',
-        });
+          name: customName || d.placeName || prev.name || 'Selected Location',
+          state: customState || d.adminName || prev.state || '',
+          zoom: customZoom ?? prev.zoom,
+          locateKey: prev.locateKey,
+        }));
 
         setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       }
@@ -141,12 +135,20 @@ export default function HeatStressDashboard() {
 
   // Initial load
   useEffect(() => {
-    fetchLiveWeather(location.lat, location.lon, location.name, location.state);
+    fetchLiveWeather(location.lat, location.lon, location.name, location.state, 7);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle location selection from click on map or geocoding
   const handleSelectLocation = (lat: number, lon: number, name?: string, state?: string) => {
+    setLocation(prev => ({
+      lat,
+      lon,
+      name: name || 'Inspected Location',
+      state,
+      zoom: prev.zoom,
+      locateKey: Date.now(),
+    }));
     fetchLiveWeather(lat, lon, name, state);
   };
 
@@ -166,7 +168,7 @@ export default function HeatStressDashboard() {
       if (data.success && Array.isArray(data.results) && data.results.length > 0) {
         setSearchResults(data.results);
         const first = data.results[0];
-        fetchLiveWeather(first.lat, first.lon, first.name || first.displayName, first.state);
+        fetchLiveWeather(first.lat, first.lon, first.name || first.displayName, first.state, 14);
         if (data.results.length === 1) {
           setSearchResults([]);
         }
@@ -184,15 +186,7 @@ export default function HeatStressDashboard() {
   const handleSelectSearchResult = (resultItem: { name: string; displayName: string; lat: number; lon: number; state?: string }) => {
     setSearchResults([]);
     setSearchQuery(resultItem.displayName || resultItem.name);
-    fetchLiveWeather(resultItem.lat, resultItem.lon, resultItem.name, resultItem.state);
-  };
-
-  // Quick Hub selector click
-  const handleSelectHub = (hub: typeof REGIONAL_HUBS[0]) => {
-    setSearchQuery(`${hub.name}, ${hub.state}`);
-    setSearchResults([]);
-    setSearchError(null);
-    fetchLiveWeather(hub.lat, hub.lon, hub.name, hub.state);
+    fetchLiveWeather(resultItem.lat, resultItem.lon, resultItem.name, resultItem.state, 14);
   };
 
   // Locate user GPS or Network IP
@@ -200,9 +194,20 @@ export default function HeatStressDashboard() {
     setLocating(true);
     try {
       const loc = await detectExactUserLocation();
-      fetchLiveWeather(loc.lat, loc.lon, loc.name, loc.state);
+      // Instantly position the map and marker on the exact user location at zoom 16
+      setLocation({
+        lat: loc.lat,
+        lon: loc.lon,
+        name: loc.name,
+        state: loc.state,
+        zoom: 16,
+        locateKey: Date.now(),
+      });
       setSearchQuery(`${loc.name}${loc.state ? `, ${loc.state}` : ''}`);
       setSearchResults([]);
+
+      // Fetch live real-time weather
+      await fetchLiveWeather(loc.lat, loc.lon, loc.name, loc.state, 16);
     } catch (err) {
       console.warn('Location detection failed', err);
     } finally {
@@ -285,6 +290,7 @@ export default function HeatStressDashboard() {
               )}
               <span>{locating ? 'LOCATING...' : 'USE GPS'}</span>
             </button>
+
             <button
               type="button"
               onClick={() => fetchLiveWeather(location.lat, location.lon, location.name, location.state)}
@@ -332,42 +338,7 @@ export default function HeatStressDashboard() {
             </button>
           </div>
         )}
-
-        {/* Quick Regional Centers / Hub Pills */}
-        <div>
-          <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-rose-500" /> Quick Regional Centers (WBGT Thermal Status):
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {REGIONAL_HUBS.map((hub) => {
-              const isSelected = location.name.toLowerCase().includes(hub.name.toLowerCase());
-              const dotColor = hub.wbgt >= 31 ? '#EF4444' : hub.wbgt >= 28 ? '#F97316' : hub.wbgt >= 25 ? '#EAB308' : '#10B981';
-
-              return (
-                <button
-                  key={hub.name}
-                  type="button"
-                  onClick={() => handleSelectHub(hub)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-2 ${
-                    isSelected
-                      ? 'bg-slate-900 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/60'
-                  }`}
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shadow-xs shrink-0"
-                    style={{ backgroundColor: dotColor }}
-                  />
-                  <span>{hub.name}</span>
-                  <span className={`text-[10px] font-extrabold ${isSelected ? 'text-amber-300' : 'text-slate-500'}`}>
-                    {Math.round(hub.temp)}°C
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
-      </div>
 
       {/* Grid: Map + Clean Right-Side Telemetry Card */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -547,31 +518,22 @@ export default function HeatStressDashboard() {
                   Biophysical Heat Stress Engine
                 </span>
                 <span className="text-xs font-mono font-bold text-rose-400">
-                  Stull Empirical Model
+                  Thermal Analysis
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 block uppercase">
-                    Calculated WBGT
-                  </span>
-                  <span className="text-3xl font-extrabold font-mono text-white">
-                    {wbgtResult.wbgt}°C
+              <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-mono text-slate-400 block uppercase font-bold">
+                    Calculated WBGT Index
                   </span>
                   <span className="text-[10px] text-slate-400 block mt-0.5">
-                    True Thermal Strain
+                    True Microclimatic Thermal Strain
                   </span>
                 </div>
-                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 block uppercase">
-                    Stull Wet-Bulb (Tw)
-                  </span>
-                  <span className="text-3xl font-extrabold font-mono text-blue-400">
-                    {wbgtResult.tw}°C
-                  </span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
-                    Sweat Evaporation Limit
+                <div className="text-right">
+                  <span className="text-3xl sm:text-4xl font-black font-mono text-white">
+                    {wbgtResult.wbgt}°C
                   </span>
                 </div>
               </div>

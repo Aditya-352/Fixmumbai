@@ -7,7 +7,14 @@ import { calculateWbgt } from '@/lib/wbgt/calculator';
 import { Flame, Thermometer, Droplets, Wind, Layers, MapPin, Eye, Info } from 'lucide-react';
 
 interface HeatStressMapProps {
-  selectedLocation: { lat: number; lon: number; name: string; state?: string };
+  selectedLocation: {
+    lat: number;
+    lon: number;
+    name: string;
+    state?: string;
+    zoom?: number;
+    locateKey?: number;
+  };
   onSelectLocation: (lat: number, lon: number, name?: string, state?: string) => void;
   result: WbgtCalculationResult;
   currentTemp: number;
@@ -153,8 +160,8 @@ export default function HeatStressMap({
   const targetMarkerRef = useRef<any>(null);
   const LRef = useRef<any>(null);
 
-  // Active heatmap layer mode: 'wbgt' (default) or 'temp'
-  const [heatmapMode, setHeatmapMode] = useState<'wbgt' | 'temp'>('wbgt');
+  // Active heatmap layer mode: 'temp' (Surface Temperature)
+  const heatmapMode = 'temp';
 
   // Compute thermal values & WBGT biophysical score for all regional stations
   const computedStations = useMemo(() => {
@@ -220,7 +227,7 @@ export default function HeatStressMap({
         return;
       }
 
-      const activeColor = heatmapMode === 'wbgt' ? st.wbgtColor : st.tempColor;
+      const activeColor = st.tempColor;
       const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, baseRadius);
 
       grad.addColorStop(0, hexToRgba(activeColor, 0.72));
@@ -248,8 +255,8 @@ export default function HeatStressMap({
     computedStations
       .filter((c) => c.isMajor)
       .forEach((c) => {
-        const activeColor = heatmapMode === 'wbgt' ? c.wbgtColor : c.tempColor;
-        const displayVal = heatmapMode === 'wbgt' ? `${Math.round(c.wbgt)}°` : `${Math.round(c.temp)}°`;
+        const activeColor = c.tempColor;
+        const displayVal = `${Math.round(c.temp)}°`;
 
         const cityIcon = L.divIcon({
           className: 'wbgt-heatmap-circular-badge',
@@ -284,14 +291,14 @@ export default function HeatStressMap({
           <div style="font-family: system-ui, sans-serif; font-size: 12px; line-height: 1.4;">
             <div style="font-weight: 800; font-size: 13px; color: #0F172A;">${c.name}, ${c.state}</div>
             <div style="color: #475569; margin-top: 2px;">
-              <strong>${heatmapMode === 'wbgt' ? 'WBGT Heat Index' : 'Air Temp'}:</strong> 
+              <strong>Surface Temp:</strong> 
               <span style="font-weight: 800; color: ${activeColor};">${displayVal}C</span>
             </div>
             <div style="color: #64748B; font-size: 11px;">
               Temp: ${c.temp}°C | Humidity: ${c.rh}%
             </div>
             <div style="font-size: 10px; font-weight: 700; color: #059669; margin-top: 2px;">
-              ${heatmapMode === 'wbgt' ? c.wbgtLabel : c.tempLabel}
+              ${c.tempLabel}
             </div>
           </div>
         `,
@@ -318,7 +325,7 @@ export default function HeatStressMap({
       targetMarkerRef.current = null;
     }
 
-    const valDisplay = heatmapMode === 'wbgt' ? `WBGT ${result.wbgt}°C` : `${currentTemp}°C`;
+    const valDisplay = `${currentTemp}°C`;
 
     const iconHtml = `
       <div style="
@@ -384,12 +391,12 @@ export default function HeatStressMap({
 
       if (!isMounted || !containerRef.current) return;
 
-      // 1. Create Base Map centered on Maharashtra & Western India
+      // 1. Create Base Map centered on location or Maharashtra & Western India
       const map = L.map(containerRef.current, {
-        center: [19.076, 72.8777],
-        zoom: 7,
-        minZoom: 4,
-        maxZoom: 15,
+        center: [selectedLocation.lat || 19.076, selectedLocation.lon || 72.8777],
+        zoom: selectedLocation.zoom || 7,
+        minZoom: 3,
+        maxZoom: 18,
         zoomControl: false,
         attributionControl: false,
       });
@@ -398,7 +405,7 @@ export default function HeatStressMap({
       L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         {
-          maxZoom: 16,
+          maxZoom: 18,
           attribution: '&copy; Esri &copy; OpenStreetMap contributors | FixMumbai',
         }
       ).addTo(map);
@@ -407,7 +414,7 @@ export default function HeatStressMap({
       L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
         {
-          maxZoom: 16,
+          maxZoom: 18,
           zIndex: 400,
         }
       ).addTo(map);
@@ -479,13 +486,20 @@ export default function HeatStressMap({
   useEffect(() => {
     if (mapRef.current && LRef.current) {
       createOrUpdateTargetMarker(mapRef.current, LRef.current, selectedLocation.lat, selectedLocation.lon);
-      mapRef.current.flyTo([selectedLocation.lat, selectedLocation.lon], Math.max(mapRef.current.getZoom(), 8), {
+      const targetZoom = selectedLocation.zoom ?? Math.max(mapRef.current.getZoom(), 15);
+      mapRef.current.flyTo([selectedLocation.lat, selectedLocation.lon], targetZoom, {
         animate: true,
-        duration: 1.2,
+        duration: 1.5,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocation.lat, selectedLocation.lon, heatmapMode, result.wbgt, currentTemp]);
+  }, [
+    selectedLocation.lat,
+    selectedLocation.lon,
+    selectedLocation.zoom,
+    selectedLocation.locateKey,
+    currentTemp,
+  ]);
 
   return (
     <div className="relative w-full h-[540px] sm:h-[660px] rounded-3xl overflow-hidden border border-slate-300 shadow-xl bg-slate-100">
@@ -508,37 +522,16 @@ export default function HeatStressMap({
         </div>
       </div>
 
-      {/* Top Right: Status Badge & Heat Map Mode Switcher */}
+      {/* Top Right: Status Badge & Surface Temp Mode Indicator */}
       <div className="absolute top-4 right-4 z-[500] flex flex-col items-end gap-2 pointer-events-auto">
         <div className="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200 shadow-xl flex items-center gap-2 text-xs font-bold text-slate-800">
-          <Flame className="w-4 h-4 text-rose-500 animate-pulse" />
-          <span>India WBGT Heat Map</span>
+          <Thermometer className="w-4 h-4 text-blue-500 animate-pulse" />
+          <span>Surface Temperature Heat Map</span>
         </div>
 
-        {/* Heatmap Mode Selector Pills */}
-        <div className="bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200 shadow-xl flex items-center gap-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setHeatmapMode('wbgt')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition text-xs ${
-              heatmapMode === 'wbgt'
-                ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5" /> WBGT Index
-          </button>
-          <button
-            type="button"
-            onClick={() => setHeatmapMode('temp')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition text-xs ${
-              heatmapMode === 'temp'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Thermometer className="w-3.5 h-3.5" /> Surface Temp
-          </button>
+        <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1.5 text-xs font-bold text-blue-700">
+          <Thermometer className="w-3.5 h-3.5 text-blue-600" />
+          <span>Surface Temp</span>
         </div>
       </div>
 
@@ -546,43 +539,25 @@ export default function HeatStressMap({
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] bg-white/95 backdrop-blur-md border border-slate-200 px-5 py-3 rounded-2xl shadow-2xl pointer-events-auto max-w-[94%] sm:max-w-lg w-full">
         <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1.5">
           <span className="flex items-center gap-1.5">
-            {heatmapMode === 'wbgt' ? (
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-            ) : (
-              <Thermometer className="w-3.5 h-3.5 text-blue-500" />
-            )}
-            <span>{heatmapMode === 'wbgt' ? 'WBGT Heat Stress Gradient' : 'Ambient Air Temperature Gradient'}</span>
+            <Thermometer className="w-3.5 h-3.5 text-blue-500" />
+            <span>Surface Temperature Gradient</span>
           </span>
-          <span className="text-[10px] text-emerald-700 font-mono font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-            {heatmapMode === 'wbgt' ? 'Biophysical Strain' : 'Atmospheric °C'}
+          <span className="text-[10px] text-blue-700 font-mono font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+            Ambient Air / Surface °C
           </span>
         </div>
 
         {/* Color Gradient Strip */}
-        {heatmapMode === 'wbgt' ? (
-          <div className="w-full h-3 rounded-full bg-gradient-to-r from-[#10B981] via-[#EAB308] via-[#F97316] via-[#EF4444] to-[#991B1B] shadow-inner" />
-        ) : (
-          <div className="w-full h-3 rounded-full bg-gradient-to-r from-[#2563EB] via-[#10B981] via-[#EAB308] via-[#EA580C] to-[#DC2626] shadow-inner" />
-        )}
+        <div className="w-full h-3 rounded-full bg-gradient-to-r from-[#2563EB] via-[#10B981] via-[#EAB308] via-[#EA580C] to-[#DC2626] shadow-inner" />
 
-        {/* Dynamic Legend Labels */}
-        {heatmapMode === 'wbgt' ? (
-          <div className="flex justify-between text-[10px] font-mono font-bold text-slate-600 mt-1">
-            <span className="text-emerald-700">&lt; 25°C (Safe)</span>
-            <span className="text-amber-700">25-28°C (Caution)</span>
-            <span className="text-orange-700">28-31°C (High)</span>
-            <span className="text-rose-700">31-34°C (Very High)</span>
-            <span className="text-red-900">&gt; 34°C (Danger)</span>
-          </div>
-        ) : (
-          <div className="flex justify-between text-[10px] font-mono font-bold text-slate-600 mt-1">
-            <span className="text-blue-700">&lt; 24°C (Cool)</span>
-            <span className="text-emerald-700">24-28°C (Mild)</span>
-            <span className="text-amber-700">28-32°C (Warm)</span>
-            <span className="text-orange-700">32-36°C (Hot)</span>
-            <span className="text-red-700">&gt; 36°C (Extreme)</span>
-          </div>
-        )}
+        {/* Legend Temperature Labels */}
+        <div className="flex justify-between text-[10px] font-mono font-bold text-slate-600 mt-1">
+          <span className="text-blue-700">&lt; 24°C (Cool)</span>
+          <span className="text-emerald-700">24-28°C (Mild)</span>
+          <span className="text-amber-700">28-32°C (Warm)</span>
+          <span className="text-orange-700">32-36°C (Hot)</span>
+          <span className="text-red-700">&gt; 36°C (Extreme)</span>
+        </div>
       </div>
     </div>
   );

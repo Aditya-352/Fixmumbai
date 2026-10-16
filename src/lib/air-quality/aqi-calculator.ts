@@ -94,11 +94,10 @@ function subIndex(pollutantId: PollutantId, concentration: number): number | nul
     }
   }
 
-  // Above the top band: extrapolate off the last band rather than dropping the reading.
+  // Above the top band — cap at 500 per CPCB methodology (never extrapolate beyond 500).
   const last = bands[bands.length - 1];
   if (clamped > last.concHi) {
-    const { concLo, concHi, indexLo, indexHi } = last;
-    return Math.round(((indexHi - indexLo) / (concHi - concLo)) * (clamped - concLo) + indexLo);
+    return 500;
   }
   return null;
 }
@@ -116,6 +115,10 @@ export function categoryForAqi(value: number): AqiCategory {
  * Computes the overall CPCB-style AQI from a set of pollutant readings at
  * one station. Returns null when there isn't at least one usable pollutant
  * concentration — never fabricates a number from nothing.
+ *
+ * Note: `pollutantsUsed` may be < MIN_POLLUTANTS_FOR_VALID_AQI when only partial
+ * readings are available. The caller should check `hasMinimumPollutantsForValidAqi`
+ * to determine if the result meets CPCB's validity threshold.
  */
 export function calculateAqi(
   pollutants: Partial<Record<PollutantId, PollutantReading>>
@@ -136,7 +139,7 @@ export function calculateAqi(
   if (!worst) return null;
 
   return {
-    value: worst.index,
+    value: Math.min(500, worst.index),
     category: categoryForAqi(worst.index),
     dominantPollutant: worst.pollutantId,
     pollutantsUsed: used,
@@ -148,3 +151,12 @@ export function hasMinimumPollutantsForValidAqi(pollutantsUsed: PollutantId[]): 
   const hasParticulate = pollutantsUsed.includes('PM2.5') || pollutantsUsed.includes('PM10');
   return hasParticulate && pollutantsUsed.length >= MIN_POLLUTANTS_FOR_VALID_AQI;
 }
+
+/**
+ * Returns the India NAQI sub-index for a single pollutant concentration.
+ * Useful for computing per-pollutant category in the UI without a full calculateAqi call.
+ */
+export function singlePollutantSubIndex(pollutantId: PollutantId, concentration: number): number | null {
+  return subIndex(pollutantId, concentration);
+}
+

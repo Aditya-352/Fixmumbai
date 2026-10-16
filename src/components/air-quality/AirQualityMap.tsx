@@ -68,11 +68,21 @@ export const INDIA_NAQI_MAPPINGS: Record<number, NaqiLevelInfo> = {
     level: 5,
     openWeatherCategory: 'Very Poor',
     naqiCategory: 'Very Poor',
-    naqiRange: '301 – 400+',
+    naqiRange: '301 – 400',
     healthImpact: 'Can cause respiratory illness on prolonged exposure.',
     hex: '#EF4444',
     bg: 'bg-rose-500',
     text: 'text-rose-700',
+  },
+  6: {
+    level: 6,
+    openWeatherCategory: 'Severe',
+    naqiCategory: 'Severe',
+    naqiRange: '401 – 500',
+    healthImpact: 'Severe health impacts; affects even healthy individuals.',
+    hex: '#881337',
+    bg: 'bg-red-900',
+    text: 'text-red-900',
   },
 };
 
@@ -466,9 +476,8 @@ export default function AirQualityMap({
           </div>
 
           {/* Color Gradient Swatches representing location status by color */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5">
             {Object.entries(AQI_CATEGORY_COLORS)
-              .filter(([cat]) => cat !== 'Severe')
               .map(([cat, meta]) => (
                 <div
                   key={cat}

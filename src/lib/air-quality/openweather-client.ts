@@ -1,7 +1,5 @@
 import { airQualityCache, CACHE_TTL, coordinateCacheKey } from './cache';
-import { isLocationInMumbai, reverseGeocodeLocation } from './station-resolver';
-import { calculateAqi } from './aqi-calculator';
-import type { PollutantId, PollutantReading, RawStationReading } from './types';
+import type { PollutantReading, RawStationReading } from './types';
 
 const OPENWEATHER_AIR_POLLUTION_URL = 'https://api.openweathermap.org/data/2.5/air_pollution';
 
@@ -15,38 +13,23 @@ interface OpenWeatherPollutionResponse {
       aqi: number; // 1 = Good, 2 = Fair, 3 = Moderate, 4 = Poor, 5 = Very Poor
     };
     components: {
-      co: number; // μg/m3
-      no?: number; // μg/m3
-      no2: number; // μg/m3
-      o3: number; // μg/m3
-      so2: number; // μg/m3
-      pm2_5: number; // μg/m3
-      pm10: number; // μg/m3
-      nh3?: number; // μg/m3
+      co: number;     // μg/m3
+      no?: number;    // μg/m3
+      no2: number;    // μg/m3
+      o3: number;     // μg/m3
+      so2: number;    // μg/m3
+      pm2_5: number;  // μg/m3
+      pm10: number;   // μg/m3
+      nh3?: number;   // μg/m3
     };
     dt: number;
   }>;
 }
 
 /**
- * Finds the dominant pollutant based on which component is highest relative to clean air thresholds.
- */
-function findDominantPollutant(comps: OpenWeatherPollutionResponse['list'][0]['components']): PollutantId {
-  const scores: Array<{ id: PollutantId; ratio: number }> = [
-    { id: 'PM2.5', ratio: (comps.pm2_5 || 0) / 10 },
-    { id: 'PM10', ratio: (comps.pm10 || 0) / 20 },
-    { id: 'NO2', ratio: (comps.no2 || 0) / 40 },
-    { id: 'OZONE', ratio: (comps.o3 || 0) / 60 },
-    { id: 'SO2', ratio: (comps.so2 || 0) / 20 },
-    { id: 'CO', ratio: (comps.co || 0) / 4400 },
-  ];
-  scores.sort((a, b) => b.ratio - a.ratio);
-  return scores[0]?.id || 'PM2.5';
-}
-
-/**
- * Fetches real-time atmospheric air quality data from OpenWeather Air Pollution API for specific coordinates.
- * Gives directly the official OpenWeather Air Quality Index (AQI 1 to 5) without artificial custom calculations.
+ * Fetches real-time air quality data from OpenWeather Air Pollution API.
+ * Returns raw AQI (1–5) and all pollutant concentrations directly from the API.
+ * No calculations are applied — all values are taken as-is from OpenWeather.
  */
 export async function getOpenWeatherAirQualityForLocation(
   lat: number,
@@ -77,124 +60,53 @@ export async function getOpenWeatherAirQualityForLocation(
       const record = data.list[0];
       const comps = record.components;
 
+      // Collect all pollutants directly from OpenWeather response — raw values, no calculations
       const pollutants: PollutantReading[] = [];
 
       if (typeof comps.pm2_5 === 'number') {
-        pollutants.push({
-          pollutantId: 'PM2.5',
-          unit: 'µg/m³',
-          avg: Math.round(comps.pm2_5 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'PM2.5', unit: 'µg/m³', avg: comps.pm2_5, min: null, max: null });
       }
 
       if (typeof comps.pm10 === 'number') {
-        pollutants.push({
-          pollutantId: 'PM10',
-          unit: 'µg/m³',
-          avg: Math.round(comps.pm10 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'PM10', unit: 'µg/m³', avg: comps.pm10, min: null, max: null });
       }
 
       if (typeof comps.no2 === 'number') {
-        pollutants.push({
-          pollutantId: 'NO2',
-          unit: 'µg/m³',
-          avg: Math.round(comps.no2 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'NO2', unit: 'µg/m³', avg: comps.no2, min: null, max: null });
       }
 
       if (typeof comps.so2 === 'number') {
-        pollutants.push({
-          pollutantId: 'SO2',
-          unit: 'µg/m³',
-          avg: Math.round(comps.so2 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'SO2', unit: 'µg/m³', avg: comps.so2, min: null, max: null });
       }
 
       if (typeof comps.o3 === 'number') {
-        pollutants.push({
-          pollutantId: 'OZONE',
-          unit: 'µg/m³',
-          avg: Math.round(comps.o3 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'OZONE', unit: 'µg/m³', avg: comps.o3, min: null, max: null });
       }
 
       if (typeof comps.co === 'number') {
-        pollutants.push({
-          pollutantId: 'CO',
-          unit: 'mg/m³',
-          avg: Math.round((comps.co / 1000) * 100) / 100,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'CO', unit: 'µg/m³', avg: comps.co, min: null, max: null });
       }
 
       if (typeof comps.nh3 === 'number') {
-        pollutants.push({
-          pollutantId: 'NH3',
-          unit: 'µg/m³',
-          avg: Math.round(comps.nh3 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'NH3', unit: 'µg/m³', avg: comps.nh3, min: null, max: null });
       }
 
-      // Compute official Indian National Air Quality Index (0-500) from component concentrations
-      const pollutantMap: Partial<Record<PollutantId, PollutantReading>> = {};
-      for (const p of pollutants) pollutantMap[p.pollutantId] = p;
-      const calculatedNaqi = calculateAqi(pollutantMap);
-
-      const defaultNaqiForLevel: Record<number, number> = {
-        1: 35,
-        2: 75,
-        3: 150,
-        4: 250,
-        5: 350,
-      };
-
-      const measuredAqi =
-        calculatedNaqi?.value ??
-        (record.main.aqi <= 5 ? defaultNaqiForLevel[record.main.aqi] || 150 : record.main.aqi);
-      const dominantPollutant = calculatedNaqi?.dominantPollutant ?? findDominantPollutant(comps);
-
-      let city = 'India';
-      let state = 'India';
-
-      if (isLocationInMumbai(lat, lon)) {
-        city = 'Mumbai';
-        state = 'Maharashtra';
-      } else {
-        const geo = await reverseGeocodeLocation(lat, lon);
-        if (geo.city) city = geo.city;
-        if (geo.state) state = geo.state;
-      }
+      // Raw OpenWeather AQI 1–5 — used as-is
+      const rawAqi = record.main.aqi;
 
       const reading: RawStationReading = {
         source: 'OPENWEATHER',
         stationId: `ow-${lat.toFixed(3)}-${lon.toFixed(3)}`,
-        stationName:
-          city && city !== 'India'
-            ? `OpenWeather Atmospheric Observation (${city})`
-            : 'OpenWeather Atmospheric Observation',
+        stationName: 'OpenWeather Air Pollution API',
         latitude: lat,
         longitude: lon,
-        city,
-        state,
+        city: null,
+        state: null,
         lastUpdated: record.dt ? new Date(record.dt * 1000).toISOString() : new Date().toISOString(),
         pollutants,
-        measuredAqi,
-        openWeatherIndex: record.main.aqi,
-        dominantPollutant,
+        measuredAqi: rawAqi,
+        openWeatherIndex: rawAqi,
+        dominantPollutant: 'PM2.5',
         distanceKm: 0,
         coordinatesResolvedFrom: 'upstream',
       };
