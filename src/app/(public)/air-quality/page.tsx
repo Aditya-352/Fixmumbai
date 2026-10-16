@@ -30,6 +30,7 @@ import { AQI_CATEGORY_COLORS, INDIA_NAQI_MAPPINGS } from '@/components/air-quali
 import { detectExactUserLocation, type DetectedLocation } from '@/lib/user-location';
 import { singlePollutantSubIndex, categoryForAqi } from '@/lib/air-quality/aqi-calculator';
 import AirQualityPhotoModal from '@/components/air-quality/AirQualityPhotoModal';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 // Dynamically import AirQualityMap to avoid SSR Leaflet window errors
 const AirQualityMap = dynamic(() => import('@/components/air-quality/AirQualityMap'), {
@@ -152,10 +153,7 @@ export default function AirQualityPage() {
 
     try {
       // 1. Fetch Air Quality data (Weather API primary)
-      let res = await fetch(`/civic/api/air-quality?lat=${lat}&lon=${lon}`);
-      if (!res.ok && res.status === 404) {
-        res = await fetch(`/api/air-quality?lat=${lat}&lon=${lon}`);
-      }
+      const res = await fetch(`${APP_BASE_PATH}/api/air-quality?lat=${lat}&lon=${lon}`);
 
       const json = await res.json();
       if (json.success && json.data) {
@@ -173,10 +171,7 @@ export default function AirQualityPage() {
 
       // 2. Fetch synchronous Live Weather telemetry from OpenWeather
       try {
-        let weatherRes = await fetch(`/civic/api/weather?lat=${lat}&lon=${lon}`);
-        if (!weatherRes.ok && weatherRes.status === 404) {
-          weatherRes = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
-        }
+        const weatherRes = await fetch(`${APP_BASE_PATH}/api/weather?lat=${lat}&lon=${lon}`);
         const weatherJson = await weatherRes.json();
         if (weatherJson.success && weatherJson.data) {
           setWeatherData(weatherJson.data);
@@ -228,10 +223,7 @@ export default function AirQualityPage() {
 
     setIsSearching(true);
     try {
-      let res = await fetch(`/civic/api/geocode?q=${encodeURIComponent(searchQuery.trim())}`);
-      if (!res.ok && res.status === 404) {
-        res = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery.trim())}`);
-      }
+      const res = await fetch(`${APP_BASE_PATH}/api/geocode?q=${encodeURIComponent(searchQuery.trim())}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.results) && data.results.length > 0) {
         const first = data.results[0];
@@ -774,7 +766,7 @@ export default function AirQualityPage() {
                 <Info className="w-4 h-4 text-red-600" /> Environmental Telemetry Infrastructure
               </div>
               <p className="leading-relaxed">
-                FixMumbai provides continuous nationwide air quality coverage across all Indian territories by
+                PriSEHAT-Pulse provides continuous nationwide air quality coverage across all Indian territories by
                 integrating the OpenWeather Air Pollution & Weather API with multi-sensor ground networks:
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">

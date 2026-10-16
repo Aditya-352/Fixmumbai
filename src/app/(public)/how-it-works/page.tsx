@@ -9,7 +9,7 @@ export default function HowItWorksPage() {
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase">
           <HelpCircle className="w-3.5 h-3.5" /> Platform Governance & UX
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-white">How FixMumbai Works</h1>
+        <h1 className="text-3xl sm:text-5xl font-black text-white">How PriSEHAT-Pulse Works</h1>
         <p className="text-xs sm:text-base text-slate-400 max-w-2xl mx-auto">
           Fast public reporting built for transparency, automated ward GIS boundary mapping, and ground citizen verification.
         </p>
@@ -22,7 +22,7 @@ export default function HowItWorksPage() {
             step: '01',
             icon: Camera,
             title: 'Spot & Capture Evidence Photo',
-            desc: 'When you see a garbage pile, overflowing bin, open dumping, or construction debris, open FixMumbai and snap a photo. Photos are compressed client-side instantly for ultra-fast performance under 30 seconds.'
+            desc: 'When you see a garbage pile, overflowing bin, open dumping, or construction debris, open PriSEHAT-Pulse and snap a photo. Photos are compressed client-side instantly for ultra-fast performance under 30 seconds.'
           },
           {
             step: '02',

@@ -9,7 +9,8 @@
  *  - Boolean fields are stored as 0/1 integers → converted to true/false
  *
  * Usage:
- *   node scripts/migrate-sqlite-to-pg.mjs
+ *   PG_DATABASE_URL=postgresql://prisehat_pulse_user:<password>@<host>:5432/prisehat_pulse \
+ *     node scripts/migrate-sqlite-to-pg.mjs
  */
 
 import Database from 'better-sqlite3';
@@ -19,9 +20,11 @@ import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.resolve(__dirname, '../prisma/dev.db');
-const PG_URL =
-  process.env.PG_DATABASE_URL ||
-  'postgresql://fixmumbai_user:fixmumbai_prod_2024@172.18.0.4:5432/fixmumbai';
+const PG_URL = process.env.PG_DATABASE_URL;
+if (!PG_URL) {
+  console.error('PG_DATABASE_URL is not set (e.g. postgresql://prisehat_pulse_user:<password>@<host>:5432/prisehat_pulse)');
+  process.exit(1);
+}
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: PG_URL });

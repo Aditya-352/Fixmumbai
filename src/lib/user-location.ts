@@ -1,3 +1,4 @@
+import { APP_BASE_PATH } from '@/lib/base-path';
 /**
  * High-accuracy multi-tier user location detector.
  * 1. Tries high-accuracy browser hardware GPS (HTML5 Geolocation) with an adequate 10s timeout.
@@ -27,14 +28,9 @@ export async function reverseGeocode(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
 
-    let res = await fetch(`/civic/api/geocode?lat=${lat}&lon=${lon}`, {
+    const res = await fetch(`${APP_BASE_PATH}/api/geocode?lat=${lat}&lon=${lon}`, {
       signal: controller.signal,
     });
-    if (!res.ok && res.status === 404) {
-      res = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`, {
-        signal: controller.signal,
-      });
-    }
     clearTimeout(timeout);
 
     if (res.ok) {
@@ -66,10 +62,7 @@ export async function detectLocationViaIp(): Promise<DetectedLocation | null> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3500);
 
-    let res = await fetch('/civic/api/locate', { signal: controller.signal });
-    if (!res.ok && res.status === 404) {
-      res = await fetch('/api/locate', { signal: controller.signal });
-    }
+    const res = await fetch(`${APP_BASE_PATH}/api/locate`, { signal: controller.signal });
     clearTimeout(timeout);
 
     if (res.ok) {

@@ -160,7 +160,7 @@ describe('regression: global green-density constants', () => {
   });
 
   it('pins app-level constants', () => {
-    expect(APP_BASE_PATH).toBe('/civic');
+    expect(APP_BASE_PATH).toBe('/pulse');
     expect(GREEN_EXPLORER_ENABLED).toBe(true);
     expect(WALK_SPEED_KMH).toBe(4.8);
     expect(MIN_PATH_LENGTH_M).toBe(100);

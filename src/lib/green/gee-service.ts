@@ -18,6 +18,7 @@
 
 import { ACTIVE_CITY, NDVI, NDVI_WINDOW_DAYS } from './config';
 import type { TilesResponse, DensityClass, TileLayerInfo } from './types';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export type GeeAuthStatus =
   | 'REAL_NDVI_AVAILABLE'
@@ -85,7 +86,7 @@ interface AgroTarget {
 }
 let cachedTarget: { target: AgroTarget; expiresAt: number } | null = null;
 
-const AGRO_UA = 'FixMumbai/1.0 (civic green-space NDVI; contact@fixmumbai.org)';
+const AGRO_UA = 'PriSEHAT-Pulse/1.0 (civic green-space NDVI; healthrytixtech@gmail.com)';
 
 /**
  * Same-origin proxy template.
@@ -96,7 +97,7 @@ const AGRO_UA = 'FixMumbai/1.0 (civic green-space NDVI; contact@fixmumbai.org)';
  * visitor, so the client is always given our own key-free proxy path instead.
  */
 function proxyTemplate(): string {
-  return '/civic/api/vegetation/ndvi-tile/{z}/{x}/{y}';
+  return `${APP_BASE_PATH}/api/vegetation/ndvi-tile/{z}/{x}/{y}`;
 }
 
 /**

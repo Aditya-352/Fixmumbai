@@ -22,7 +22,7 @@ import { classifyAccess, classifyWalkClass } from './classifier';
 
 const USER_AGENT =
   process.env.OVERPASS_USER_AGENT ??
-  'FixMumbai/1.0 (civic green-space data; contact@fixmumbai.org)';
+  'PriSEHAT-Pulse/1.0 (civic green-space data; healthrytixtech@gmail.com)';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

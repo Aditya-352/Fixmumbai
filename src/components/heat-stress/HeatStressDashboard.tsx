@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { calculateWbgt } from '@/lib/wbgt/calculator';
 import { detectExactUserLocation } from '@/lib/user-location';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 // Dynamically load the Heat Stress Map component
 const WeatherMap = dynamic(() => import('@/components/heat-stress/HeatStressMap'), {
@@ -86,11 +87,7 @@ export default function HeatStressDashboard() {
   const fetchLiveWeather = useCallback(async (lat: number, lon: number, customName?: string, customState?: string, customZoom?: number) => {
     setLoadingWeather(true);
     try {
-      // Support Next.js basePath /civic and fallback gracefully
-      let res = await fetch(`/civic/api/weather?lat=${lat}&lon=${lon}`);
-      if (!res.ok && res.status === 404) {
-        res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
-      }
+      const res = await fetch(`${APP_BASE_PATH}/api/weather?lat=${lat}&lon=${lon}`);
       const json = await res.json();
       if (json.success && json.data) {
         const d = json.data;

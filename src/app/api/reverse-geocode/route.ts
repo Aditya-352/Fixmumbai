@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
         {
           headers: {
-            'User-Agent': 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
+            'User-Agent': 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
             'Accept-Language': 'en'
           },
           signal: controller.signal

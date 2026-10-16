@@ -26,7 +26,7 @@ export async function reverseGeocodeLocation(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
         {
           headers: {
-            'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
+            'User-Agent': process.env.OPENSTREETMAP_USER_AGENT || 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
             'Accept-Language': 'en',
           },
           signal: controller.signal,

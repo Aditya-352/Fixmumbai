@@ -26,7 +26,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingProviderConfig = {
     walking: 'foot',
     cycling: 'bicycle',
   },
-  userAgent: 'FixMumbai-GreenExplorer/1.0 (civic green-space routing; contact@fixmumbai.org)',
+  userAgent: 'PriSEHAT-Pulse-GreenExplorer/1.0 (civic green-space routing; healthrytixtech@gmail.com)',
   timeoutMs: 15000,
 };
 

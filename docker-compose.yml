@@ -1,10 +1,10 @@
 services:
-  fixmumbai:
+  prisehat-pulse:
     build:
       context: .
       dockerfile: Dockerfile
 
-    container_name: fixmumbai
+    container_name: prisehat-pulse
 
     restart: unless-stopped
 

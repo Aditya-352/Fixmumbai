@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`,
         {
           headers: {
-            'User-Agent': 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)',
+            'User-Agent': 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
             'Accept-Language': 'en'
           },
           signal: controller.signal

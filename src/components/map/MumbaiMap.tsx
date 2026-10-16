@@ -19,6 +19,7 @@ import {
 import wardsData from '@/data/mumbai-wards.json';
 import type { AirQualityResponse, AqiCategory } from '@/lib/air-quality/types';
 import { detectLocationViaIp } from '@/lib/user-location';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 export interface ReportMarker {
   id: string;
@@ -52,7 +53,7 @@ const AQI_CATEGORY_COLORS: Record<AqiCategory, string> = {
   Severe: '#7F1D1D'
 };
 
-const AIR_QUALITY_API_PATH = '/civic/api/air-quality';
+const AIR_QUALITY_API_PATH = `${APP_BASE_PATH}/api/air-quality`;
 
 type AqStatus = 'idle' | 'locating' | 'loading' | 'ready' | 'error';
 
@@ -289,7 +290,7 @@ export default function MumbaiMap({
         style={{ height: '100%', width: '100%', zIndex: 1 }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | FixMumbai'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | PriSEHAT-Pulse'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -300,7 +301,7 @@ export default function MumbaiMap({
             position={[w.centerLatitude, w.centerLongitude]}
             icon={createWardBadgeIcon(w.wardCode, idx)}
           >
-            <Popup className="fixmumbai-leaflet-popup">
+            <Popup className="prisehat-pulse-leaflet-popup">
               <div className="p-2 space-y-1 font-sans text-xs max-w-[240px]">
                 <div className="text-[10px] font-black text-red-600 uppercase tracking-wider">
                   {w.regionZone} • BMC WARD {w.wardCode}
@@ -325,7 +326,7 @@ export default function MumbaiMap({
               click: () => onMarkerSelect && onMarkerSelect(report)
             }}
           >
-            <Popup className="fixmumbai-leaflet-popup">
+            <Popup className="prisehat-pulse-leaflet-popup">
               <div className="p-1 space-y-2 max-w-[260px] text-slate-900 font-sans">
                 {/* Photo Preview */}
                 {report.photoUrl && (
@@ -378,7 +379,7 @@ export default function MumbaiMap({
             position={userLocation}
             icon={createAqiIcon(airQuality.aqi.category, airQuality.aqi.value)}
           >
-            <Popup className="fixmumbai-leaflet-popup">
+            <Popup className="prisehat-pulse-leaflet-popup">
               <div className="p-1 space-y-2 max-w-[260px] text-slate-900 font-sans">
                 <div className="flex items-center justify-between border-b pb-1.5 border-slate-200">
                   <span className="text-sm font-black text-slate-900">
@@ -445,7 +446,7 @@ export default function MumbaiMap({
             iconAnchor: [17, 34],
             popupAnchor: [0, -34]
           })}>
-            <Popup className="fixmumbai-leaflet-popup">
+            <Popup className="prisehat-pulse-leaflet-popup">
               <div className="p-1 text-xs text-slate-700 max-w-[220px]">
                 No monitoring station data is currently available near your location.
               </div>

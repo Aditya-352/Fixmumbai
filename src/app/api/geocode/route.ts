@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
       const nomRes = await fetch(nomUrl, {
         headers: {
-          'User-Agent': 'FixMumbai-CivicLocation/1.0 (contact@fixmumbai.org)',
+          'User-Agent': 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
           'Accept-Language': 'en',
         },
         signal: AbortSignal.timeout(4000),
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
       const nomSearchUrl = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&limit=5&q=${encodeURIComponent(query)}`;
       const nomRes = await fetch(nomSearchUrl, {
         headers: {
-          'User-Agent': 'FixMumbai-CivicLocation/1.0 (contact@fixmumbai.org)',
+          'User-Agent': 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)',
           'Accept-Language': 'en',
         },
         signal: AbortSignal.timeout(4000),
