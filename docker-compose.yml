@@ -14,6 +14,9 @@ services:
     environment:
       NODE_ENV: production
 
+    volumes:
+      - /root/Fixmumbai/uploads:/app/public/uploads
+
     networks:
       - app_network
 
