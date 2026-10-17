@@ -5,7 +5,6 @@ import {
   MapPin,
   Navigation,
   Wind,
-  Maximize2,
   Sparkles,
   Layers,
 } from 'lucide-react';
@@ -316,14 +315,6 @@ export default function AirQualityMap({
             <span className="hidden sm:inline">Pollution Halo</span>
           </button>
 
-          <button
-            onClick={() => onLocationSelect(20.5937, 78.9629, 'India Overview')}
-            className="px-3 py-2 rounded-2xl text-xs font-extrabold bg-white/95 text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-md backdrop-blur-md transition flex items-center gap-1.5"
-            title="Fit to All-India view"
-          >
-            <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">All-India</span>
-          </button>
         </div>
       </div>
 
