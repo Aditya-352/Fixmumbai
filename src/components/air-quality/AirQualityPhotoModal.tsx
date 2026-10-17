@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 interface AirQualityPhotoModalProps {
   isOpen: boolean;
@@ -104,7 +105,7 @@ export default function AirQualityPhotoModal({
   };
 
   // Watermark details onto captured photo canvas
-  const applyWatermarkAndSave = (sourceCanvas: HTMLCanvasElement) => {
+  const applyWatermarkAndSave = async (sourceCanvas: HTMLCanvasElement) => {
     const ctx = sourceCanvas.getContext('2d');
     if (!ctx) return;
 
@@ -161,6 +162,23 @@ export default function AirQualityPhotoModal({
     const watermarkedDataUrl = sourceCanvas.toDataURL('image/jpeg', 0.92);
     setPhotoUrl(watermarkedDataUrl);
     stopCamera();
+
+    // Upload the watermarked image so it is saved on the VPS bind-mounted directory.
+    try {
+      const response = await fetch(`${APP_BASE_PATH}/api/air-quality/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoDataUrl: watermarkedDataUrl }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.imageUrl) {
+        throw new Error(result.error || 'Photo upload failed.');
+      }
+      setPhotoUrl(result.imageUrl);
+    } catch (error) {
+      console.error('[AQI_PHOTO] Upload failed:', error);
+      setCameraError('Photo captured, but upload to the server failed. Please check your connection and retake the photo.');
+    }
   };
 
   // Capture current video frame
