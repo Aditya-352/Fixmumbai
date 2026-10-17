@@ -91,7 +91,7 @@ export function classifyObservation(row: {
   return 'MEASURED';
 }
 
-type NdviConfidenceAlias = 'HIGH' | 'MEDIUM' | 'LOW';
+type NdviConfidenceAlias = 'HIGH' | 'MEDIUM' | 'LOW' | number;
 
 /**
  * Build the client-facing NDVI summary, suppressing fabricated metadata for
@@ -163,7 +163,7 @@ export function normaliseNdvi(input: {
     max: numberOrNull(input.max),
     pixelCount: numberOrNull(input.pixelCount),
     densityClass: input.densityClass ?? 'UNAVAILABLE',
-    confidence: (input.confidence as NdviConfidenceAlias) ?? null,
+    confidence: (typeof input.confidence === 'string' ? input.confidence : null) as NdviSummary['confidence'],
     compositeType: (input.compositeType as NdviSummary['compositeType']) ?? null,
     observationStart,
     observationEnd,

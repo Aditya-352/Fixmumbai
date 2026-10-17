@@ -85,7 +85,7 @@ export default async function MapPage({
           ⚠️ Civic Risk Map
         </Link>
         <Link
-          href="/map"
+          href="/air-quality"
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white/60 transition"
         >
           <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px]">2</span>

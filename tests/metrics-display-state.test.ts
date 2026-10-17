@@ -102,9 +102,9 @@ describe('C.2 path 2: API success carries the server validation status', () => {
     // 'PUBLISHED' without the corroborating flag, or the flag without the
     // status, must NOT read as validated.
     for (const validation of [
-      { availability: 'AVAILABLE', status: 'PUBLISHED' as const },
-      { availability: 'AVAILABLE', independentlyValidated: true },
-      { availability: 'AVAILABLE', status: 'UNVALIDATED' as const, independentlyValidated: true },
+      { availability: 'AVAILABLE' as const, status: 'PUBLISHED' as const },
+      { availability: 'AVAILABLE' as const, independentlyValidated: true },
+      { availability: 'AVAILABLE' as const, status: 'UNVALIDATED' as const, independentlyValidated: true },
     ]) {
       const s = metricsStateFromResponse({ ok: true, data: {}, meta: { validation } });
       expect(s.status).not.toBe('VALIDATED');
