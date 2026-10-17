@@ -5,7 +5,7 @@ import HeatStressDashboard from '@/components/heat-stress/HeatStressDashboard';
 export const metadata: Metadata = {
   title: 'WBGT Heat Stress Map | PriSEHAT-Pulse — Empirical Biophysical Modeling',
   description:
-    'Monitor real-time Wet-Bulb Globe Temperature (WBGT) and thermal load across Mumbai. Powered by Stull-modified natural wet-bulb formulations and live satellite telemetry.',
+    'Monitor real-time Wet-Bulb Globe Temperature (WBGT) and thermal load across Mumbai. Powered by empirical biophysical heat stress modeling and live weather telemetry.',
   keywords: ['Mumbai WBGT', 'Heat stress map', 'Wet Bulb Globe Temperature', 'Thermal strain', 'PriSEHAT-Pulse'],
 };
 
