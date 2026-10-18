@@ -163,7 +163,7 @@ const DEFAULT_FILTERS: ExplorerFilters = {
     ndvi: false,            // Removed from UI — kept off
     hexGrid: false,         // OFF by default — enable via Map Layers & Grid
     greenSpaces: true,      // Always on — toggle removed from UI but markers always visible
-    nurseries: true,
+    nurseries: false,       // OFF by default — enable via Map Layers & Grid
   },
 };
 

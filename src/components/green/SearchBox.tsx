@@ -101,7 +101,7 @@ export default function SearchBox({
             setSelectedIndex(-1);
           }}
           onKeyDown={handleKeyDown}
-          placeholder={`Search any ${cityName} area, ward, park, or locality...`}
+          placeholder={`Search ${cityName} areas, parks...`}
           className="flex-1 text-xs text-slate-800 bg-transparent outline-none placeholder:text-slate-400 font-medium"
           aria-label={`Search ${cityName} locality or park`}
           aria-autocomplete="list"
