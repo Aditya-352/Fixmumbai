@@ -38,6 +38,11 @@ import { getNurseriesForCity, cityHasNurseries, type BmcNurseryRecord } from '@/
 import MapLayerControl from './MapLayerControl';
 import { Plus, Minus, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DEFAULT_CITY, type CityConfig } from '@/lib/green/config';
+import {
+  getGreenDensityTier,
+  getGreenDensityColor,
+  getGreenDensityTextColor,
+} from '@/lib/green/density-scale';
 
 interface GreenMapProps {
   /**
@@ -67,7 +72,10 @@ interface GreenMapProps {
   /** Route destination coordinates and label */
   routeDestination?: { lat: number; lon: number; label: string } | null;
   /** Highlight marker for selected feature */
+  /** Highlight marker for selected feature */
   highlightMarker?: { lat: number; lon: number; name: string } | null;
+  /** Callback to open mobile layers bottom sheet */
+  onOpenMobileLayers?: () => void;
 }
 
 // ── SVG Icons ───────────────────────────────────────────────────────────────
@@ -110,6 +118,7 @@ export default function GreenMap({
   routeOrigin = null,
   routeDestination = null,
   highlightMarker = null,
+  onOpenMobileLayers,
 }: GreenMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -335,13 +344,13 @@ export default function GreenMap({
       hexPane.style.zIndex = '420';
 
       map.attributionControl.setPrefix(
-        '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · ' +
-        'Esri · Copernicus Sentinel-2 / AgroMonitoring'
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &middot; ' +
+        '<a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a> &middot; AgroMonitoring / Copernicus'
       );
 
       // Light/White Basemap: High-Contrast CARTO Positron (Zero watermarks, full Mumbai coverage)
       const lightBase = L.tileLayer(BASEMAP_LIGHT_URL, {
-        attribution: BASEMAP_LIGHT_ATTRIBUTION,
+        attribution: '',
         subdomains: 'abc',
         maxZoom: 19,
         keepBuffer: 6,
@@ -365,7 +374,7 @@ export default function GreenMap({
 
       // Satellite Basemap: Esri World Imagery
       satLayerRef.current = L.tileLayer(BASEMAP_SAT_URL, {
-        attribution: BASEMAP_SAT_ATTRIBUTION,
+        attribution: '',
         maxZoom: 19,
         keepBuffer: 6,
       });
@@ -406,8 +415,21 @@ export default function GreenMap({
       }, 150);
     });
 
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && container) {
+      resizeObserver = new ResizeObserver(() => {
+        if (!cancelled && mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      });
+      resizeObserver.observe(container);
+    }
+
     return () => {
       cancelled = true;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (mapRef.current) {
         try { mapRef.current.remove(); } catch (_) {}
         mapRef.current = null;
@@ -492,7 +514,7 @@ export default function GreenMap({
           zIndex: 8,
           crossOrigin: true,
           ...(tileBounds ? { bounds: tileBounds } : {}),
-          attribution: 'Sentinel-2 NDVI &copy; AgroMonitoring / Copernicus',
+          attribution: '',
         });
 
         layer.on('tileload', () => {
@@ -803,62 +825,11 @@ export default function GreenMap({
       );
 
       /**
-       * Fallback marker set.
-       *
-       * `isBigOrReserve` below applies an absolute hectare threshold that was
-       * tuned against Mumbai, where genuinely large reserves exist. Cities whose
-       * records are uniformly small (Pune's municipal gardens are well under a
-       * hectare) therefore matched nothing at low zoom and rendered no markers at
-       * all, leaving those maps empty and their markers unclickable.
-       *
-       * If the size rule selects nothing for the current records, fall back to
-       * that city's own largest records. This is additive: when the normal rule
-       * already selects something — Mumbai's case — behaviour is unchanged.
+       * Render individual space marker with polygon outline and interactive popup.
        */
-      const haOf = (sp: any) =>
-        (sp.areaM2 ? sp.areaM2 / 10000 : 0) || (sp.areaHectares ?? 0);
-      const sizeRuleSelectsSomething = spaces.some((sp: any) => {
-        if (sp.id === selectedSpaceId) return true;
-        const h = haOf(sp);
-        const n = (sp.name || '').toLowerCase();
-        return (
-          h >= 20 ||
-          sp.category === 'Nature Reserve' ||
-          sp.category === 'National Park' ||
-          n.includes('sanjay gandhi') ||
-          n.includes('sgnp') ||
-          n.includes('aarey') ||
-          n.includes('mahim') ||
-          n.includes('hanging garden')
-        );
-      });
-      const fallbackIds = new Set<string>();
-      if (!sizeRuleSelectsSomething && spaces.length > 0) {
-        [...spaces]
-          .sort((a: any, b: any) => haOf(b) - haOf(a))
-          .slice(0, 25)
-          .forEach((sp: any) => fallbackIds.add(sp.id));
-      }
-
-      spaces.forEach((space) => {
+      const renderIndividualMarker = (space: GreenSpaceSummary) => {
         const isSelected = space.id === selectedSpaceId;
         const isWalkable = space.walkClass === 'WALKABLE_VERIFIED';
-        const isPublic = space.accessStatus === 'PUBLIC_TAGGED';
-        const ha = (space.areaM2 ? space.areaM2 / 10000 : 0) || (space.areaHectares ?? 0);
-        const nameLower = (space.name || '').toLowerCase();
-
-        const isBigOrReserve =
-          ha >= 20 ||
-          space.category === 'Nature Reserve' ||
-          space.category === 'National Park' ||
-          nameLower.includes('sanjay gandhi') ||
-          nameLower.includes('sgnp') ||
-          nameLower.includes('aarey') ||
-          nameLower.includes('mahim') ||
-          nameLower.includes('hanging garden');
-
-        // All walkable & green space records are shown on the map
-        const showMarker = true;
 
         // Draw polygon outline when a space is selected
         if (isSelected && space.geometry && (space.geometry.type === 'Polygon' || space.geometry.type === 'MultiPolygon')) {
@@ -877,66 +848,171 @@ export default function GreenMap({
           } catch (_) {}
         }
 
-        // Marker Badges
-        if (showMarker) {
-          const fillBg = isWalkable ? '#2563EB' : '#1F6B3A';
-          const badgeSize = isSelected ? 30 : zoomLevel <= 11 ? 16 : zoomLevel <= 13 ? 20 : 24;
-          const iconPx = badgeSize <= 16 ? 10 : badgeSize <= 20 ? 13 : 16;
-          const svgIcon = isWalkable
-            ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${iconPx}" height="${iconPx}" fill="white" aria-hidden="true">
-                <circle cx="12" cy="4" r="2.2"/>
-                <path d="M15.5 8.5l-1.5-1.5-2 1-2-1-1.5 1.5L7 14h2.2l.5-3 1.5 1.5V17h2v-5.5L11.5 10l.5-1.5 2 1.5L16 12h2.2l-2.7-3.5z"/>
-              </svg>`
-            : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${iconPx}" height="${iconPx}" fill="white" aria-hidden="true">
-                <path d="M12 2L6.5 10h2.8L5 15h4.5v5h5v-5H19l-4.3-5h2.8L12 2z"/>
-              </svg>`;
-          const borderWidth = isSelected ? '3px' : '2px';
+        // Blue spaces keep #2563EB; individual green spaces use tier for count 1 (Light Green #5bba6f)
+        const fillBg = isWalkable ? '#2563EB' : getGreenDensityColor(1);
+        const iconColor = '#ffffff';
+        const badgeSize = isSelected ? 30 : zoomLevel <= 11 ? 18 : zoomLevel <= 13 ? 22 : 24;
+        const iconPx = badgeSize <= 18 ? 11 : badgeSize <= 22 ? 13 : 15;
+        const svgIcon = isWalkable
+          ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${iconPx}" height="${iconPx}" fill="${iconColor}" aria-hidden="true">
+              <circle cx="12" cy="4" r="2.2"/>
+              <path d="M15.5 8.5l-1.5-1.5-2 1-2-1-1.5 1.5L7 14h2.2l.5-3 1.5 1.5V17h2v-5.5L11.5 10l.5-1.5 2 1.5L16 12h2.2l-2.7-3.5z"/>
+            </svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${iconPx}" height="${iconPx}" fill="${iconColor}" aria-hidden="true">
+              <path d="M12 2L6.5 10h2.8L5 15h4.5v5h5v-5H19l-4.3-5h2.8L12 2z"/>
+            </svg>`;
+        const borderWidth = isSelected ? '3px' : '2px';
 
-          const markerHtml = `
-            <div class="green-marker-badge" style="
-              width:${badgeSize}px;
-              height:${badgeSize}px;
-              border-radius:50%;
-              background:${fillBg};
-              box-shadow:0 0 0 ${borderWidth} #ffffff, 0 3px 10px rgba(0,0,0,0.22);
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              cursor:pointer;
-              transition:transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-              ${isSelected ? 'transform:scale(1.15); animation:greenBadgePulse 2s infinite ease-in-out;' : ''}
-            " onmouseover="if(!${isSelected})this.style.transform='scale(1.15)'" onmouseout="if(!${isSelected})this.style.transform='scale(1)'">
-              ${svgIcon}
-            </div>`;
+        const markerHtml = `
+          <div class="green-marker-badge" style="
+            width:${badgeSize}px;
+            height:${badgeSize}px;
+            border-radius:50%;
+            background:${fillBg};
+            box-shadow:0 0 0 ${borderWidth} #ffffff, 0 3px 10px rgba(0,0,0,0.22);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            transition:transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+            ${isSelected ? 'transform:scale(1.15); animation:greenBadgePulse 2s infinite ease-in-out;' : ''}
+          " onmouseover="if(!${isSelected})this.style.transform='scale(1.15)'" onmouseout="if(!${isSelected})this.style.transform='scale(1)'">
+            ${svgIcon}
+          </div>`;
 
-          const icon = L.divIcon({
-            className: '',
-            html: markerHtml,
-            iconSize: [badgeSize, badgeSize],
-            iconAnchor: [badgeSize / 2, badgeSize / 2],
-          });
+        const icon = L.divIcon({
+          className: '',
+          html: markerHtml,
+          iconSize: [badgeSize, badgeSize],
+          iconAnchor: [badgeSize / 2, badgeSize / 2],
+        });
 
-          const wMin = space.walkMinutes ?? Math.round(space.distanceM / 80);
-          const walkLabel = space.walkMinutesEstimated !== false ? `~${wMin} min (est.)` : `${wMin} min walk`;
+        const wMin = space.walkMinutes ?? Math.round(space.distanceM / 80);
+        const walkLabel = space.walkMinutesEstimated !== false ? `~${wMin} min (est.)` : `${wMin} min walk`;
 
-          const popupHtml =
-            `<div style="min-width:190px;font-family:system-ui,sans-serif">` +
-            `<div style="font:900 13px/1.3 system-ui;color:#0f172a;margin-bottom:4px">${space.name || 'Unnamed'}</div>` +
-            `<div style="font:600 11px/1 system-ui;color:${isWalkable ? '#2563eb' : '#1f6b3a'};margin-bottom:3px">${space.category} · ${isWalkable ? '✓ Walkable' : 'Green space'}</div>` +
-            `<div style="font-size:11px;color:#64748b;margin-bottom:7px">${(space.distanceM / 1000).toFixed(2)} km · ${walkLabel}</div>` +
-            `<button onclick="window._greenSpaceClick&&window._greenSpaceClick('${space.id}')" ` +
-            `style="width:100%;padding:7px 12px;background:${fillBg};color:#fff;border:none;border-radius:8px;` +
-            `font:800 11px/1 system-ui;cursor:pointer;letter-spacing:.03em">View Details →</button>` +
-            `</div>`;
+        const popupHtml =
+          `<div style="min-width:190px;font-family:system-ui,sans-serif">` +
+          `<div style="font:900 13px/1.3 system-ui;color:#0f172a;margin-bottom:4px">${space.name || 'Unnamed'}</div>` +
+          `<div style="font:600 11px/1 system-ui;color:${isWalkable ? '#2563eb' : '#166534'};margin-bottom:3px">${space.category} · ${isWalkable ? '✓ Walkable Blue Space' : 'Green space (Density: 1)'}</div>` +
+          `<div style="font-size:11px;color:#64748b;margin-bottom:7px">${(space.distanceM / 1000).toFixed(2)} km · ${walkLabel}</div>` +
+          `<button onclick="window._greenSpaceClick&&window._greenSpaceClick('${space.id}')" ` +
+          `style="width:100%;padding:7px 12px;background:${isWalkable ? '#2563EB' : '#15803d'};color:#fff;border:none;border-radius:8px;` +
+          `font:800 11px/1 system-ui;cursor:pointer;letter-spacing:.03em">View Details →</button>` +
+          `</div>`;
 
-          const mkr = L.marker([space.centroid.lat, space.centroid.lon], { icon })
-            .bindPopup(popupHtml, { maxWidth: 230 })
-            .on('click', () => onSpaceClick(space.id))
-            .addTo(map);
+        const mkr = L.marker([space.centroid.lat, space.centroid.lon], { icon })
+          .bindPopup(popupHtml, { maxWidth: 230 })
+          .on('click', () => onSpaceClick(space.id))
+          .addTo(map);
 
-          spaceLayersRef.current.push(mkr);
+        spaceLayersRef.current.push(mkr);
+      };
+
+      // Zoom-dependent aggregation:
+      // Clusters active up to zoom 14 so users see density gradient at city/ward/local levels,
+      // and split naturally into smaller cells down to individual markers at street zoom >= 15.
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const clusterThreshold = isMobile ? 15 : 14;
+      const shouldCluster = zoomLevel <= clusterThreshold && spaces.length > 25;
+
+      if (!shouldCluster) {
+        spaces.forEach((space) => renderIndividualMarker(space));
+      } else {
+        const gridCellSizePx = isMobile ? 52 : 48;
+        const gridMap = new Map<string, typeof spaces>();
+        const soloSpaces: typeof spaces = [];
+
+        for (const sp of spaces) {
+          if (sp.id === selectedSpaceId) {
+            soloSpaces.push(sp);
+            continue;
+          }
+          try {
+            // Project to EPSG:3857 world pixels at current zoomLevel for a deterministic, stable geographic grid
+            const pt = map.project([sp.centroid.lat, sp.centroid.lon], zoomLevel);
+            const gx = Math.floor(pt.x / gridCellSizePx);
+            const gy = Math.floor(pt.y / gridCellSizePx);
+            const key = `${gx}_${gy}`;
+            const list = gridMap.get(key) ?? [];
+            list.push(sp);
+            gridMap.set(key, list);
+          } catch (_) {
+            soloSpaces.push(sp);
+          }
         }
-      });
+
+        for (const group of gridMap.values()) {
+          if (group.length === 1) {
+            soloSpaces.push(group[0]);
+          } else {
+            let sumLat = 0;
+            let sumLon = 0;
+            for (const sp of group) {
+              sumLat += sp.centroid.lat;
+              sumLon += sp.centroid.lon;
+            }
+            const avgLat = sumLat / group.length;
+            const avgLon = sumLon / group.length;
+            const count = group.length;
+
+            // Ordered green density scale:
+            // 100+ -> Forest Green (#228B22)
+            // 52-99 -> Emerald Green (#50C878)
+            // 25-51 -> Lime Green (#32CD32)
+            // 10-24 -> Sage Green (#8A9A5B)
+            // 1-9   -> Mint Green (#98FB98)
+            const tier = getGreenDensityTier(count);
+            const badgeColor = tier?.color ?? '#98FB98';
+            const textColor = tier?.textColor ?? '#14231D';
+
+            const clusterSize = count < 10 ? 28 : count < 25 ? 32 : count < 52 ? 36 : count < 100 ? 40 : 44;
+            const fontSize = count < 10 ? 11 : count < 100 ? 12 : 13;
+
+            const clusterHtml = `
+              <div class="green-cluster-badge" style="
+                width:${clusterSize}px;
+                height:${clusterSize}px;
+                border-radius:50%;
+                background:${badgeColor};
+                color:${textColor};
+                font-family:system-ui, -apple-system, sans-serif;
+                font-weight:900;
+                font-size:${fontSize}px;
+                line-height:1;
+                border:2.5px solid #ffffff;
+                box-shadow:0 3px 10px rgba(0,0,0,0.22), 0 1px 3px rgba(0,0,0,0.12);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                cursor:pointer;
+                transition:transform 0.15s ease;
+              " onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'">
+                ${count}
+              </div>`;
+
+            const icon = L.divIcon({
+              className: '',
+              html: clusterHtml,
+              iconSize: [clusterSize, clusterSize],
+              iconAnchor: [clusterSize / 2, clusterSize / 2],
+            });
+
+            const clusterMkr = L.marker([avgLat, avgLon], { icon })
+              .bindTooltip(`${count} green spaces (${tier?.densityLevel ?? 'Green'} Density: ${tier?.name ?? ''}) · Tap to zoom`, {
+                direction: 'top',
+                offset: [0, -clusterSize / 2],
+              })
+              .on('click', () => {
+                map.flyTo([avgLat, avgLon], Math.min(zoomLevel + 2, 16), { duration: 0.5 });
+              })
+              .addTo(map);
+
+            spaceLayersRef.current.push(clusterMkr);
+          }
+        }
+
+        soloSpaces.forEach((space) => renderIndividualMarker(space));
+      }
     });
   }, [
     spaces,
@@ -960,6 +1036,34 @@ export default function GreenMap({
           0%, 100% { box-shadow: 0 0 0 4px #ffffff, 0 4px 14px rgba(0,0,0,0.25); }
           50%      { box-shadow: 0 0 0 4px #ffffff, 0 0 0 8px rgba(37,99,235,0.45), 0 6px 20px rgba(0,0,0,0.3); }
         }
+        @media (max-width: 1023px) {
+          .leaflet-bottom {
+            bottom: 58px !important;
+            pointer-events: none;
+          }
+          .leaflet-bottom .leaflet-control {
+            pointer-events: auto;
+          }
+          .leaflet-bottom.leaflet-left {
+            left: 10px !important;
+          }
+          .leaflet-bottom.leaflet-right {
+            right: 0px !important;
+          }
+          .leaflet-control-attribution {
+            font-size: 8.5px !important;
+            line-height: 1.15 !important;
+            padding: 1px 6px !important;
+            background: rgba(255, 255, 255, 0.82) !important;
+            backdrop-filter: blur(4px);
+            border-radius: 4px 0 0 0;
+            margin: 0 !important;
+            max-width: calc(100vw - 130px) !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+        }
       `}</style>
 
       {/* Leaflet container */}
@@ -970,64 +1074,53 @@ export default function GreenMap({
         layerVisibility={filters.layerVisibility}
         onToggleLayer={onToggleLayerVisibility}
         onSetBasemap={onSetBasemap}
+        onOpenMobileLayers={onOpenMobileLayers}
       />
 
-      {/* Bottom-left Controls Stack (Zoom + / -, Locate-Me, Scale Bar) */}
-      <div className="absolute bottom-4 left-4 z-[1000] flex flex-col gap-2.5">
-        <div className="flex flex-col gap-1.5">
-          <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.12)] border border-slate-200/90 overflow-hidden flex flex-col w-9">
-            <button
-              onClick={handleZoomIn}
-              className="w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-50 font-bold transition focus:outline-none"
-              title="Zoom In"
-              aria-label="Zoom in"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <div className="border-t border-slate-100" />
-            <button
-              onClick={handleZoomOut}
-              className="w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-50 font-bold transition focus:outline-none"
-              title="Zoom Out"
-              aria-label="Zoom out"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Zoom Controls (+ / -)
+          Mobile: Positioned slightly down from top search bar (top-[60px] left-2.5)
+          with smaller dimensions (w-8 h-8 buttons) to prevent overlap with bottom controls.
+          Desktop (sm+): Kept at bottom-left (bottom-16 left-4, w-9 h-9 buttons). */}
+      <div className="absolute top-[60px] sm:top-auto sm:bottom-16 left-2.5 sm:left-4 z-[1000]">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.10)] sm:shadow-[0_2px_12px_rgba(0,0,0,0.12)] border border-slate-200/90 overflow-hidden flex flex-col w-8 sm:w-9">
+          <button
+            onClick={handleZoomIn}
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:bg-slate-100 font-bold transition focus:outline-none"
+            title="Zoom In"
+            aria-label="Zoom in"
+          >
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+          <div className="border-t border-slate-100" />
+          <button
+            onClick={handleZoomOut}
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:bg-slate-100 font-bold transition focus:outline-none"
+            title="Zoom Out"
+            aria-label="Zoom out"
+          >
+            <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
         </div>
+      </div>
 
-        {/* Scale Bar */}
-        <div className="bg-white/90 backdrop-blur-xs px-2 py-1 rounded-lg border border-slate-200/80 shadow-xs select-none pointer-events-none w-32">
-          <div className="flex justify-between text-[9.5px] font-bold text-slate-700 w-full px-0.5 mb-0.5">
+      {/* Scale Bar — bottom-left, safely above bottom navigation (58px) and attribution bar */}
+      <div className="absolute bottom-[76px] sm:bottom-4 left-2.5 sm:left-4 z-[1000]">
+        <div className="bg-white/90 backdrop-blur-xs px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg border border-slate-200/80 shadow-xs select-none pointer-events-none w-24 sm:w-32">
+          <div className="flex justify-between text-[8px] sm:text-[9.5px] font-bold text-slate-700 w-full px-0.5 mb-0.5">
             <span>0</span>
             <span>2.5</span>
             <span>5 km</span>
           </div>
-          <div className="h-1.5 border-l-2 border-r-2 border-b-2 border-slate-700 w-full relative">
+          <div className="h-1 sm:h-1.5 border-l-2 border-r-2 border-b-2 border-slate-700 w-full relative">
             <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-700 -translate-x-1/2" />
           </div>
         </div>
       </div>
 
 
-      {/* City-level data honesty banner.
-          Shown regardless of the NDVI toggle, because the reason a city has no
-          vegetation layer is the absence of a registered AOI — not a user
-          setting. */}
-      {!ndviSupportedCity && (
-        <div className="absolute top-16 left-4 z-[1000] bg-amber-900/90 backdrop-blur-sm text-white text-[11px] px-3 py-2 rounded-xl shadow-lg max-w-[280px] border border-amber-700">
-          <p className="font-black">No satellite vegetation layer for this city</p>
-          <p className="mt-1 leading-snug">
-            Vegetation imagery is served per registered AOI polygon. None is registered
-            for this city, so the NDVI layer is disabled. The map framing shown is a
-            provisional measured envelope, not an official municipal boundary.
-          </p>
-        </div>
-      )}
-
       {/* NDVI unavailable honest state */}
       {ndviUnavailable && filters.layerVisibility.ndvi && (
-        <div className="absolute top-16 left-4 z-[1000] bg-slate-800/90 backdrop-blur-sm text-white text-[11px] px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 max-w-[240px] border border-slate-700">
+        <div className="absolute top-28 sm:top-16 left-2.5 sm:left-4 z-[1000] bg-slate-800/90 backdrop-blur-sm text-white text-[11px] px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 max-w-[240px] border border-slate-700">
           <span className="text-base leading-none">🛰️</span>
           <div>
             <div className="font-bold leading-tight">Satellite NDVI</div>
@@ -1040,7 +1133,7 @@ export default function GreenMap({
 
       {/* Hex grid zoom hint — only show when grid is ON but zoom too low */}
       {filters.layerVisibility.hexGrid && zoomLevel < 13 && (
-        <div className="absolute bottom-20 left-4 z-[1000] bg-white/90 backdrop-blur-sm text-slate-600 text-[10.5px] px-2.5 py-1.5 rounded-lg shadow border border-slate-200 flex items-center gap-1.5 select-none pointer-events-none">
+        <div className="absolute bottom-28 sm:bottom-20 left-3 sm:left-4 z-[1000] bg-white/90 backdrop-blur-sm text-slate-600 text-[10.5px] px-2.5 py-1.5 rounded-lg shadow border border-slate-200 flex items-center gap-1.5 select-none pointer-events-none">
           <span>⬡</span>
           <span>Zoom in (≥13) to see 100m hex grid</span>
         </div>

@@ -129,44 +129,80 @@ export default function CitizenPhotoUpload({
     };
   }, [cameraStream]);
 
+  // Stop camera tracks cleanly
+  const stopCamera = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+    }
+    setCameraStream(null);
+    setIsCameraActive(false);
+  }, [cameraStream]);
+
+  const handleClose = useCallback(() => {
+    stopCamera();
+    onClose();
+  }, [stopCamera, onClose]);
+
+  // Prevent background scrolling while modal is active
+  useEffect(() => {
+    if (!isModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isModal]);
+
   const startCamera = async () => {
     setCameraError(null);
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error('Camera not supported on this browser.');
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
+      
+      const isPortrait = typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : true;
+      let stream: MediaStream;
+      try {
+        // Attempt portrait constraints with 3:4 aspect ratio where supported
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            aspectRatio: { ideal: 3 / 4 },
+            width: { ideal: isPortrait ? 720 : 1280 },
+            height: { ideal: isPortrait ? 960 : 720 },
+          },
+          audio: false,
+        });
+      } catch (_) {
+        // Fallback to basic environment camera if specific resolution/aspect is rejected
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+      }
+
       setCameraStream(stream);
       setIsCameraActive(true);
     } catch (err: any) {
       console.warn('Camera stream error, falling back to file input:', err);
-      setCameraError('Direct camera preview unavailable. Opening device camera picker…');
-      cameraInputRef.current?.click();
+      const isPermissionDenied =
+        err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError';
+      const errMsg = isPermissionDenied
+        ? 'Camera permission was denied. Please allow camera access in browser settings or use "Upload File".'
+        : 'Direct camera preview unavailable. Opening device camera picker…';
+      setCameraError(errMsg);
+      if (!isPermissionDenied) {
+        cameraInputRef.current?.click();
+      }
     }
   };
-
-  const stopCamera = useCallback(() => {
-    cameraStream?.getTracks().forEach((t) => t.stop());
-    setCameraStream(null);
-    setIsCameraActive(false);
-  }, [cameraStream]);
-
-  // If initial mode is camera, auto-start camera
-  useEffect(() => {
-    if (initialMode === 'camera' && !selectedFile) {
-      startCamera();
-    }
-  }, [initialMode]);
 
   const capturePhoto = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    canvas.width = video.videoWidth || 720;
+    canvas.height = video.videoHeight || 960;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -178,7 +214,7 @@ export default function CitizenPhotoUpload({
         stopCamera();
       },
       'image/jpeg',
-      0.88
+      0.90
     );
   }, [validateAndSetFile, stopCamera]);
 
@@ -263,28 +299,29 @@ export default function CitizenPhotoUpload({
   }, [selectedFile, consentGiven, description, category, defaultLat, defaultLon, greenSpaceId, onSuccess]);
 
   const content = (
-    <div className="w-full h-full max-w-lg bg-white rounded-3xl shadow-xl border border-[#E5EBE7] flex flex-col overflow-hidden text-[#14231D]">
-      {/* ── Modal Header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E5EBE7] bg-white flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#EAF7F0] text-[#087F5B] flex items-center justify-center font-bold">
+    <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border-t sm:border border-[#E5EBE7] flex flex-col h-[94dvh] sm:h-auto sm:max-h-[88vh] overflow-hidden text-[#14231D] animate-fadeIn">
+      {/* ── 1. Modal Header ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-3.5 border-b border-[#E5EBE7] bg-white flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-[#EAF7F0] text-[#087F5B] flex items-center justify-center font-bold flex-shrink-0">
             <Camera className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="font-black text-sm text-[#14231D] leading-tight">
+          <div className="min-w-0">
+            <h3 className="font-black text-sm text-[#14231D] leading-tight truncate">
               Add Photo Evidence
             </h3>
-            <p className="text-[11px] text-[#64746B]">
+            <p className="text-[11px] text-[#64746B] truncate">
               Contribute verified visual evidence of Mumbai greenery
             </p>
           </div>
         </div>
         <button
-          onClick={onClose}
-          className="p-1.5 rounded-xl hover:bg-slate-100 text-[#64746B] hover:text-[#14231D] transition-colors"
+          type="button"
+          onClick={handleClose}
+          className="p-1.5 rounded-xl hover:bg-slate-100 text-[#64746B] hover:text-[#14231D] transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           aria-label="Close photo upload"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -304,10 +341,10 @@ export default function CitizenPhotoUpload({
         </div>
       )}
 
-      {/* ── Form Body ─────────────────────────────────────────────────────── */}
+      {/* ── Form Body (Independently Scrollable) ───────────────────────────── */}
       {uploadState.status !== 'success' && (
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-          {/* Location context chip */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3.5 sm:py-4 space-y-3.5 sm:space-y-4 overscroll-contain">
+          {/* 2. Location information and coordinates */}
           <div className="bg-[#EAF7F0] border border-[#087F5B]/20 rounded-2xl p-3 flex items-start gap-2.5">
             <MapPin className="w-4 h-4 text-[#087F5B] flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
@@ -320,7 +357,7 @@ export default function CitizenPhotoUpload({
             </div>
           </div>
 
-          {/* Mode Switcher: Take Photo vs Upload File */}
+          {/* 3. Take Photo and Upload File controls */}
           {!selectedFile && (
             <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#F7F9F8] border border-[#E5EBE7] rounded-2xl">
               <button
@@ -329,7 +366,7 @@ export default function CitizenPhotoUpload({
                   setActiveMode('camera');
                   startCamera();
                 }}
-                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] ${
                   activeMode === 'camera'
                     ? 'bg-white text-[#087F5B] shadow-xs border border-[#E5EBE7]'
                     : 'text-[#64746B] hover:text-[#14231D]'
@@ -345,7 +382,7 @@ export default function CitizenPhotoUpload({
                   stopCamera();
                   fileInputRef.current?.click();
                 }}
-                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] ${
                   activeMode === 'upload'
                     ? 'bg-white text-[#087F5B] shadow-xs border border-[#E5EBE7]'
                     : 'text-[#64746B] hover:text-[#14231D]'
@@ -357,12 +394,12 @@ export default function CitizenPhotoUpload({
             </div>
           )}
 
-          {/* Capture / Drop Area */}
+          {/* 4. Portrait camera preview / Image Dropzone / Selected Preview */}
           {!selectedFile ? (
             <div>
               {isCameraActive ? (
-                /* Live Camera Stream */
-                <div className="relative rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+                /* Live Portrait Camera Stream */
+                <div className="relative rounded-2xl overflow-hidden bg-black w-full aspect-[3/4] max-h-[380px] flex items-center justify-center shadow-inner">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -370,22 +407,52 @@ export default function CitizenPhotoUpload({
                     muted
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-2.5 px-3">
+                  <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3 px-3 z-10">
                     <button
                       type="button"
-                      onClick={stopCamera}
-                      className="px-3.5 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full text-xs font-bold"
+                      onClick={() => {
+                        stopCamera();
+                        setActiveMode('upload');
+                      }}
+                      className="px-4 py-2 bg-black/70 hover:bg-black/90 active:scale-95 text-white rounded-full text-xs font-bold backdrop-blur-xs transition min-h-[38px]"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
                       onClick={capturePhoto}
-                      className="px-5 py-2 bg-[#087F5B] hover:bg-[#076B4D] text-white rounded-full text-xs font-black flex items-center gap-2 shadow-lg active:scale-95 transition"
+                      className="px-5 py-2.5 bg-[#087F5B] hover:bg-[#076B4D] active:scale-95 text-white rounded-full text-xs font-black flex items-center gap-2 shadow-lg transition min-h-[40px]"
                     >
                       <Camera className="w-4 h-4" /> Capture Photo
                     </button>
                   </div>
+                </div>
+              ) : activeMode === 'camera' ? (
+                /* Camera Prompt State */
+                <div className="border-2 border-dashed border-[#087F5B]/30 rounded-2xl p-6 text-center bg-[#EAF7F0]/30 w-full aspect-[3/4] max-h-[320px] flex flex-col items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-[#E5EBE7] flex items-center justify-center mb-3 text-[#087F5B] shadow-sm">
+                    <Camera className="w-7 h-7" />
+                  </div>
+                  <p className="text-xs font-black text-[#14231D]">
+                    Portrait Camera
+                  </p>
+                  <p className="text-[11px] text-[#64746B] mt-1 max-w-[220px]">
+                    Take a live vertical photo of greenery for verified civic mapping
+                  </p>
+                  <button
+                    type="button"
+                    onClick={startCamera}
+                    className="mt-4 px-5 py-2.5 bg-[#087F5B] hover:bg-[#076B4D] active:scale-95 text-white rounded-full text-xs font-black flex items-center gap-2 shadow-sm transition min-h-[40px]"
+                  >
+                    <Camera className="w-4 h-4" /> Open Camera
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="text-[11px] font-bold text-[#087F5B] hover:underline mt-2.5"
+                  >
+                    Or use device camera app
+                  </button>
                 </div>
               ) : (
                 /* Drag and drop zone */
@@ -393,7 +460,7 @@ export default function CitizenPhotoUpload({
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-[#E5EBE7] hover:border-[#087F5B] rounded-2xl p-6 text-center cursor-pointer bg-[#F7F9F8] hover:bg-[#EAF7F0]/30 transition group"
+                  className="border-2 border-dashed border-[#E5EBE7] hover:border-[#087F5B] rounded-2xl p-6 text-center cursor-pointer bg-[#F7F9F8] hover:bg-[#EAF7F0]/30 transition group min-h-[160px] flex flex-col items-center justify-center"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-white border border-[#E5EBE7] flex items-center justify-center mx-auto mb-2 text-[#087F5B] group-hover:scale-105 transition-transform">
                     <ImageIcon className="w-6 h-6" />
@@ -413,7 +480,7 @@ export default function CitizenPhotoUpload({
                 </p>
               )}
 
-              {/* Hidden file inputs */}
+              {/* Hidden file inputs with environment camera fallback */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -431,35 +498,45 @@ export default function CitizenPhotoUpload({
               />
             </div>
           ) : (
-            /* Selected File Preview */
+            /* Selected File Portrait Preview */
             <div className="space-y-2">
-              <div className="relative rounded-2xl overflow-hidden border border-[#E5EBE7] aspect-video bg-slate-900">
+              <div className="relative rounded-2xl overflow-hidden border border-[#E5EBE7] w-full aspect-[3/4] max-h-[340px] sm:max-h-[360px] bg-slate-950 flex items-center justify-center shadow-inner">
                 <img
                   src={previewUrl!}
                   alt="Photo preview"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
                 <button
+                  type="button"
                   onClick={clearFile}
-                  className="absolute top-2.5 right-2.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition"
+                  className="absolute top-2.5 right-2.5 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition shadow-md min-w-[36px] min-h-[36px] flex items-center justify-center"
                   aria-label="Remove photo"
                 >
                   <X className="w-4 h-4" />
                 </button>
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white text-[11px] flex justify-between items-end">
-                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
-                  <span className="font-mono text-[10px]">
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 text-white text-[11px] flex justify-between items-end">
+                  <span className="truncate max-w-[200px] font-medium">{selectedFile.name}</span>
+                  <span className="font-mono text-[10px] text-slate-300">
                     {(selectedFile.size / 1024).toFixed(0)} KB
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs font-bold text-[#087F5B] hover:underline"
-              >
-                Change photo
-              </button>
+              <div className="flex items-center justify-between px-1">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-bold text-[#087F5B] hover:underline"
+                >
+                  Choose different photo
+                </button>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           )}
 
@@ -470,7 +547,7 @@ export default function CitizenPhotoUpload({
             </div>
           )}
 
-          {/* Category selection */}
+          {/* 5. Greenery category selector */}
           <div>
             <label
               htmlFor="evidence-category"
@@ -482,7 +559,7 @@ export default function CitizenPhotoUpload({
               id="evidence-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-white border border-[#E5EBE7] rounded-xl px-3 py-2 text-xs font-bold text-[#14231D] focus:outline-none focus:ring-2 focus:ring-[#087F5B]"
+              className="w-full bg-white border border-[#E5EBE7] rounded-xl px-3 py-2.5 text-xs font-bold text-[#14231D] focus:outline-none focus:ring-2 focus:ring-[#087F5B]"
             >
               {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -492,7 +569,7 @@ export default function CitizenPhotoUpload({
             </select>
           </div>
 
-          {/* Optional description */}
+          {/* 6. Optional description & guidelines */}
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label
@@ -526,7 +603,7 @@ export default function CitizenPhotoUpload({
           </div>
 
           {/* Consent Checkbox */}
-          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <label className="flex items-start gap-2.5 cursor-pointer select-none pb-2">
             <input
               type="checkbox"
               checked={consentGiven}
@@ -548,13 +625,13 @@ export default function CitizenPhotoUpload({
         </div>
       )}
 
-      {/* ── Submit Footer ─────────────────────────────────────────────────── */}
+      {/* ── 7. Submit Photo for Review (Dedicated Sticky Footer) ───────────── */}
       {uploadState.status !== 'success' && (
-        <div className="p-4 border-t border-[#E5EBE7] bg-white flex-shrink-0">
+        <div className="p-3 sm:p-4 border-t border-[#E5EBE7] bg-white flex-shrink-0 safe-area-bottom pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
           <button
             onClick={handleSubmit}
             disabled={!selectedFile || !consentGiven || uploadState.status === 'uploading'}
-            className="w-full flex items-center justify-center gap-2 bg-[#087F5B] hover:bg-[#076B4D] disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold py-3 rounded-2xl shadow-xs transition active:scale-95"
+            className="w-full flex items-center justify-center gap-2 bg-[#087F5B] hover:bg-[#076B4D] disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold py-3.5 rounded-2xl shadow-xs transition active:scale-95 min-h-[44px]"
           >
             {uploadState.status === 'uploading' ? (
               <>
@@ -579,9 +656,12 @@ export default function CitizenPhotoUpload({
 
   return (
     <div
-      className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4"
       role="dialog"
       aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
     >
       {content}
     </div>

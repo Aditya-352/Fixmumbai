@@ -287,6 +287,7 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
 
   // ── Try DB first (only for the city the DB actually contains) ────────────
   if (requestedCity === dbHoldsCity) {
+    const spacesStart = Date.now();
     try {
       const mod = await import('@/lib/db');
       const db = mod.db;
@@ -300,9 +301,14 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
         take: candidateLimit + 1,
       });
       dbSpaces = rows;
+      console.log(
+        `[spaces-service] findMany greenSpace: city=${requestedCity} rows=${rows.length} ${Date.now() - spacesStart}ms`
+      );
     } catch (dbErr: any) {
       // DB unreachable — fall through to static fallback
-      console.error('[spaces-service] DB query failed, using static fallback:', dbErr?.message);
+      console.error(
+        `[spaces-service] findMany greenSpace failed: city=${requestedCity} ${Date.now() - spacesStart}ms error=${dbErr?.message}`
+      );
     }
   } else {
     // Another city's records are not in this database. Go straight to that
@@ -317,17 +323,6 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
   // borrowing Mumbai's. When no city is specified, fall back to Mumbai's dataset
   // so existing callers that omit `?city=` continue to work unchanged.
   //
-  // A separate city‑fallback map is used here so that `STATIC_GREEN_SPACES_BY_CITY`
-  // (used by cityDataStatus/assessMetrics) stays unchanged — Pune and Bengaluru
-  // remain EMPTY for metrics and city‑status purposes, even though their static
-  // space datasets are served when the city is explicitly requested.
-  // A separate city‑fallback map is used here so that `STATIC_GREEN_SPACES_BY_CITY`
-  // (used by cityDataStatus/assessMetrics) stays unchanged — Pune and Bengaluru
-  // remain EMPTY for metrics and city‑status purposes, even though their static
-  // space datasets are served when the city is explicitly requested.
-  //
-  // The type is kept compatible with `staticToDbShape` mapping; the actual values
-  // are the normalized GeoJSON datasets from Phase D.
   // A separate city‑fallback map is used here so that `STATIC_GREEN_SPACES_BY_CITY`
   // (used by cityDataStatus/assessMetrics) stays unchanged — Pune and Bengaluru
   // remain EMPTY for metrics and city‑status purposes, even though their static
@@ -348,6 +343,78 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
   const candidateCount = candidateTruncated ? candidateLimit : dbSpaces.length;
   const spaces = candidateTruncated ? dbSpaces.slice(0, candidateLimit) : dbSpaces;
 
+  // ── Batch-fetch observations and images to eliminate N+1 queries ──────────
+  // Static fallback spaces carry inline `_staticNdvi` / `_staticImage` and never
+  // need a DB lookup. Only real database rows (no `_staticNdvi`) need batching.
+  // We collect their IDs, issue TWO queries (one for observations, one for images),
+  // and build in-memory maps so the loop below does zero per-space DB calls.
+
+  const dbSpaceIds: string[] = [];
+  if (!usingStaticFallback) {
+    for (const s of spaces) {
+      // Spaces from the DB won't have `_staticNdvi`; static fallback ones will.
+      if (!s._staticNdvi) dbSpaceIds.push(s.id);
+    }
+  }
+
+  // Maps: greenSpaceId → latest observation / latest image
+  const obsMap = new Map<string, any>();
+  const imgMap = new Map<string, any>();
+
+  if (dbSpaceIds.length > 0) {
+    let db: any;
+    try {
+      const mod = await import('@/lib/db');
+      db = mod.db;
+    } catch {
+      // DB unreachable — maps stay empty, spaces will get SATELLITE_UNAVAILABLE
+    }
+
+    if (db) {
+      // ── Batch observations ───────────────────────────────────────────────
+      const obsStart = Date.now();
+      try {
+        const allObs: any[] = await (db as any).greenVegetationObservation.findMany({
+          where: { greenSpaceId: { in: dbSpaceIds } },
+          orderBy: { processedAt: 'desc' },
+        });
+        // Keep only the latest observation per greenSpaceId (first seen wins
+        // because the result is ordered by processedAt DESC).
+        for (const obs of allObs) {
+          if (obs.greenSpaceId && !obsMap.has(obs.greenSpaceId)) {
+            obsMap.set(obs.greenSpaceId, obs);
+          }
+        }
+        console.log(
+          `[spaces-service] batch observations: city=${requestedCity} ids=${dbSpaceIds.length} rows=${allObs.length} unique=${obsMap.size} ${Date.now() - obsStart}ms`
+        );
+      } catch (err: any) {
+        console.error(`[spaces-service] batch observations failed: city=${requestedCity} ${Date.now() - obsStart}ms error=${err?.message}`);
+      }
+
+      // ── Batch images ─────────────────────────────────────────────────────
+      const imgStart = Date.now();
+      try {
+        const allImgs: any[] = await (db as any).greenSpaceImage.findMany({
+          where: { greenSpaceId: { in: dbSpaceIds } },
+          orderBy: { createdAt: 'desc' },
+        });
+        // Keep only the latest image per greenSpaceId.
+        for (const img of allImgs) {
+          if (img.greenSpaceId && !imgMap.has(img.greenSpaceId)) {
+            imgMap.set(img.greenSpaceId, img);
+          }
+        }
+        console.log(
+          `[spaces-service] batch images: city=${requestedCity} ids=${dbSpaceIds.length} rows=${allImgs.length} unique=${imgMap.size} ${Date.now() - imgStart}ms`
+        );
+      } catch (err: any) {
+        console.error(`[spaces-service] batch images failed: city=${requestedCity} ${Date.now() - imgStart}ms error=${err?.message}`);
+      }
+    }
+  }
+
+  // ── Build results ────────────────────────────────────────────────────────
   const results: GreenSpaceSummary[] = [];
 
   for (const space of spaces) {
@@ -401,30 +468,23 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
         satelliteSource: null,
       });
     } else {
-      try {
-        const { db } = await import('@/lib/db');
-        const obs = await (db as any).greenVegetationObservation?.findFirst({
-          where: { greenSpaceId: space.id },
-          orderBy: { processedAt: 'desc' },
+      // Use the pre-fetched batch map instead of a per-space DB query
+      const obs = obsMap.get(space.id);
+      if (obs) {
+        ndvi = normaliseNdvi({
+          mean: obs.ndviMean,
+          min: obs.ndviMin,
+          max: obs.ndviMax,
+          pixelCount: obs.pixelCount,
+          densityClass: obs.densityClass,
+          confidence: obs.confidence,
+          compositeType: obs.compositeType,
+          observationStart: obs.observationStart,
+          observationEnd: obs.observationEnd,
+          imageCount: obs.imageCount,
+          cloudCoverage: obs.cloudCoverage,
+          satelliteSource: obs.satelliteSource,
         });
-        if (obs) {
-          ndvi = normaliseNdvi({
-            mean: obs.ndviMean,
-            min: obs.ndviMin,
-            max: obs.ndviMax,
-            pixelCount: obs.pixelCount,
-            densityClass: obs.densityClass,
-            confidence: obs.confidence,
-            compositeType: obs.compositeType,
-            observationStart: obs.observationStart,
-            observationEnd: obs.observationEnd,
-            imageCount: obs.imageCount,
-            cloudCoverage: obs.cloudCoverage,
-            satelliteSource: obs.satelliteSource,
-          });
-        }
-      } catch {
-        // No observations yet — provider unavailable or DB unreachable
       }
     }
 
@@ -432,31 +492,23 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
       ndvi = unavailableNdvi('SATELLITE_UNAVAILABLE');
     }
 
-    // Image — use static seed data if available, otherwise try DB
+    // Image — use static seed data if available, otherwise use batch map
     let image: GreenSpaceSummary['image'] = null;
     if (space._staticImage) {
       image = space._staticImage;
     } else {
-      try {
-        const { db } = await import('@/lib/db');
-        const img = await (db as any).greenSpaceImage?.findFirst({
-          where: { greenSpaceId: space.id },
-          orderBy: { createdAt: 'desc' },
-        });
-        if (img) {
-          image = {
-            imageUrl: img.imageUrl,
-            thumbUrl: img.thumbUrl ?? undefined,
-            sourceUrl: img.sourceUrl,
-            attribution: img.attribution,
-            licence: img.licence,
-            verificationTier: img.verificationTier,
-            source: img.source,
-            caption: img.caption ?? undefined,
-          };
-        }
-      } catch {
-        // No images yet
+      const img = imgMap.get(space.id);
+      if (img) {
+        image = {
+          imageUrl: img.imageUrl,
+          thumbUrl: img.thumbUrl ?? undefined,
+          sourceUrl: img.sourceUrl,
+          attribution: img.attribution,
+          licence: img.licence,
+          verificationTier: img.verificationTier,
+          source: img.source,
+          caption: img.caption ?? undefined,
+        };
       }
     }
 

@@ -20,6 +20,7 @@ import GreenSidebar from './GreenSidebar';
 import GreenRightPanel from './GreenRightPanel';
 import GreenLegend from './GreenLegend';
 import SearchBox from './SearchBox';
+import { MapLayerControlContent } from './MapLayerControl';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -31,7 +32,6 @@ import {
   X,
 } from 'lucide-react';
 import { DEFAULT_CITY, type CityId } from '@/lib/green/config';
-import { cityHasNurseries } from '@/lib/green/nurseries-service';
 import { CitySelectionProvider, useCitySelection, type CityOption } from './CitySelection';
 
 // Citizen photo upload — loaded lazily
@@ -69,9 +69,34 @@ const TODAY = new Date().toLocaleDateString('en-IN', {
  * unwind every piece of state by hand.
  */
 export default function GreenExplorer() {
-  const [cityId, setCityId] = React.useState<CityId>(DEFAULT_CITY.id);
+  const [cityId, setCityId] = React.useState<CityId>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const c = p.get('city')?.toLowerCase();
+        if (c === 'pune' || c === 'bengaluru') return c as CityId;
+      } catch (_) {}
+    }
+    return DEFAULT_CITY.id;
+  });
+
+  const handleSelectCity = React.useCallback((id: CityId) => {
+    setCityId(id);
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        if (id === DEFAULT_CITY.id) {
+          url.searchParams.delete('city');
+        } else {
+          url.searchParams.set('city', id);
+        }
+        window.history.replaceState({}, '', url.toString());
+      } catch (_) {}
+    }
+  }, []);
+
   return (
-    <CitySelectionProvider cityId={cityId} onSelect={setCityId}>
+    <CitySelectionProvider cityId={cityId} onSelect={handleSelectCity}>
       <ExplorerBody key={cityId} cityId={cityId} />
     </CitySelectionProvider>
   );
@@ -220,40 +245,31 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
 
   return (
     <div
-      className="flex flex-col overflow-hidden select-none bg-[#F7F9F8]"
-      style={{ height: 'calc(100vh - 64px)' }}
+      className="flex flex-col overflow-hidden select-none bg-[#F7F9F8] h-[calc(100dvh-56px)] sm:h-[calc(100dvh-64px)]"
     >
       {/* ── Premium White Header ────────────────────────────────────────────── */}
-      <header className="flex flex-wrap items-center justify-between px-5 py-2.5 bg-white border-b border-[#E5EBE7] flex-shrink-0 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#087F5B] text-white flex items-center justify-center font-black shadow-sm text-sm">
+      <header className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 bg-white border-b border-[#E5EBE7] flex-shrink-0 gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#087F5B] text-white flex items-center justify-center font-black shadow-sm text-xs sm:text-sm flex-shrink-0">
             🌿
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-black text-[#14231D] leading-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <h1 className="text-[13px] sm:text-base font-black text-[#14231D] leading-tight whitespace-nowrap">
                 Green Density
               </h1>
-              <span className="bg-[#EAF7F0] text-[#087F5B] text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#087F5B]/20">
+              <span className="bg-[#EAF7F0] text-[#087F5B] text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border border-[#087F5B]/20 flex-shrink-0">
                 Live
               </span>
             </div>
-            <p className="text-xs text-[#64746B] font-medium">
+            <p className="text-xs text-[#64746B] font-medium hidden sm:block truncate">
               Discover greener spaces across {city.name}
             </p>
           </div>
         </div>
 
-        {/* Right side: photo button + status + city */}
-        <div className="flex items-center gap-3 text-xs">
-          {/* Add Photo Evidence button — prominent CTA */}
-          <button
-            onClick={() => handleOpenPhotoModal('upload')}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-[#087F5B] hover:bg-[#076B4D] text-white text-xs font-bold rounded-xl shadow-sm transition-all active:scale-95"
-          >
-            <Camera className="w-3.5 h-3.5" />
-            Add Photo Evidence
-          </button>
+        {/* Right side: status + city */}
+        <div className="flex items-center gap-2 sm:gap-3 text-xs flex-shrink-0">
 
           {/* Status badge */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F7F9F8] border border-[#E5EBE7]">
@@ -284,12 +300,12 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
             )}
           </div>
 
-          <div className="text-right">
+          <div className="text-right flex flex-col items-end">
             <CitySelector options={options} current={city.id} onSelect={selectCity} />
-            <p className="text-xs font-bold text-[#14231D] flex items-center gap-1 justify-end mt-1">
+            <p className="text-xs font-bold text-[#14231D] hidden sm:flex items-center gap-1 justify-end mt-1">
               <span>📍</span> {centre.name}
             </p>
-            <p className="text-[10.5px] text-[#64746B] font-mono">
+            <p className="text-[10.5px] text-[#64746B] font-mono hidden sm:block">
               <Calendar className="w-3 h-3 inline mr-1" />
               Obs Date: {isNdviProcessed ? `${tiles?.observationStart}` : TODAY}
             </p>
@@ -317,8 +333,8 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
 
         {/* Central Map Area */}
         <div className="flex-1 relative overflow-hidden h-full">
-          {/* Floating Search Bar */}
-          <div className="absolute top-3.5 left-3.5 z-[1000] w-80">
+          {/* Floating Search Bar — Responsive width that doesn't collide with the mobile layers button */}
+          <div className="absolute top-2.5 sm:top-3.5 left-2.5 sm:left-3.5 z-[1000] w-[calc(100%-62px)] sm:w-80">
             <SearchBox
               query={searchQuery}
               onQueryChange={setSearchQuery}
@@ -343,13 +359,13 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
             selectedHexId={selectedHex?.hexId}
             onSelectNursery={handleSelectNursery}
             selectedNurseryId={selectedNursery?.id}
-            
             onToggleLayerVisibility={toggleLayerVisibility}
             onSetBasemap={setBasemap}
             activeRoute={activeRoute?.geojson ?? null}
             routeOrigin={routeOrigin}
             routeDestination={routeDestination}
             highlightMarker={highlightMarker}
+            onOpenMobileLayers={() => setMobileView('layers')}
           />
 
           {/* Map Legend (Bottom-right) */}
@@ -418,12 +434,12 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
       </div>
 
       {/* ── Mobile Bottom Navigation (< lg) ─────────────────────────────────── */}
-      <nav className="lg:hidden flex-shrink-0 flex items-center justify-around bg-white border-t border-[#E5EBE7] px-1 py-1.5 safe-area-bottom">
+      <nav className="lg:hidden flex-shrink-0 grid grid-cols-4 items-center bg-white border-t border-[#E5EBE7] px-1 py-1.5 safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
         {([
           { id: 'map' as MobileView, label: 'Map', icon: Map },
           { id: 'explore' as MobileView, label: 'Explore', icon: Trees },
+          { id: 'photo' as MobileView, label: 'Evidence', icon: Camera },
           { id: 'layers' as MobileView, label: 'Layers', icon: Layers },
-          { id: 'photo' as MobileView, label: 'Photo', icon: Camera },
         ]).map(({ id, label, icon: Icon }) => {
           const active = mobileView === id;
           return (
@@ -436,25 +452,30 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
                   setMobileView(id);
                 }
               }}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all ${
+              className={`w-full flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl transition-all ${
                 active
                   ? 'text-[#087F5B] bg-[#EAF7F0]'
                   : 'text-[#64746B] hover:text-[#14231D]'
               }`}
+              aria-label={label}
             >
               <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-bold">{label}</span>
+              <span className="text-[10px] font-bold mt-0.5 truncate max-w-full text-center">{label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* ── Mobile Bottom Sheet / Drawer (< lg) ────────────────────────────── */}
+      {/* ── Mobile Explore Bottom Sheet (< lg) ────────────────────────────────── */}
       {mobileView === 'explore' && (
-        <div className="lg:hidden fixed inset-x-0 bottom-[60px] z-[2000] max-h-[65vh] overflow-y-auto bg-white border-t border-[#E5EBE7] rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] animate-fadeIn safe-area-bottom">
+        <div className="lg:hidden fixed inset-x-0 bottom-[58px] z-[2000] max-h-[70vh] overflow-y-auto bg-white border-t border-[#E5EBE7] rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.14)] animate-fadeIn safe-area-bottom">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5EBE7] sticky top-0 bg-white z-10">
             <h2 className="text-sm font-black text-[#14231D]">Explore Green Spaces</h2>
-            <button onClick={() => setMobileView('map')} className="text-[#64746B] hover:text-[#14231D] p-1 rounded-lg transition">
+            <button
+              onClick={() => setMobileView('map')}
+              className="text-[#64746B] hover:text-[#14231D] p-1.5 rounded-lg transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Close explore sheet"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -478,7 +499,10 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
               onToggleNdviLayer={toggleNdviLayer}
               tiles={tiles}
               selectedSpaceId={selectedSpaceId}
-              onSpaceClick={handleSpaceClick}
+              onSpaceClick={(id) => {
+                handleSpaceClick(id);
+                setMobileView('map');
+              }}
               onZoomTo5km={() => activateCentre()}
               compositeType={compositeType}
               onCompositeTypeChange={setCompositeType}
@@ -487,7 +511,10 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
               selectedHex={selectedHex}
               onCloseHex={() => setSelectedHex(null)}
               selectedNursery={selectedNursery}
-              onSelectNursery={handleSelectNursery}
+              onSelectNursery={(n) => {
+                handleSelectNursery(n);
+                setMobileView('map');
+              }}
               onCloseNursery={() => setSelectedNursery(null)}
               categoryFilter={filters.categoryFilter}
               onCategoryFilterChange={setCategoryFilter}
@@ -495,6 +522,50 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
               onNurseryWardChange={setNurseryWard}
             />
           </div>
+        </div>
+      )}
+
+      {/* ── Mobile Layers Bottom Sheet (< lg) ────────────────────────────────── */}
+      {mobileView === 'layers' && (
+        <div className="lg:hidden fixed inset-x-0 bottom-[58px] z-[2000] max-h-[70vh] overflow-y-auto bg-white border-t border-[#E5EBE7] rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.14)] animate-fadeIn safe-area-bottom">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5EBE7] sticky top-0 bg-white z-10">
+            <h2 className="text-sm font-black text-[#14231D]">Map Layers &amp; Overlays</h2>
+            <button
+              onClick={() => setMobileView('map')}
+              className="text-[#64746B] hover:text-[#14231D] p-1.5 rounded-lg transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Close layers sheet"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-4">
+            <MapLayerControlContent
+              layerVisibility={filters.layerVisibility}
+              onToggleLayer={toggleLayerVisibility}
+              onSetBasemap={setBasemap}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile Space Detail Full Drawer (< lg) ───────────────────────────── */}
+      {(detailLoading || selectedSpace) && (
+        <div className="lg:hidden fixed inset-x-0 bottom-[58px] top-14 z-[2000] bg-white overflow-hidden flex flex-col shadow-[0_-4px_24px_rgba(0,0,0,0.18)] animate-fadeIn">
+          <GreenDetailDrawer
+            space={selectedSpace}
+            loading={detailLoading}
+            onClose={() => {
+              closeDetail();
+              setSelectedSpaceId(null);
+              setActiveRoute(null);
+              setRouteOrigin(null);
+              setRouteDestination(null);
+            }}
+            userLat={centre.lat}
+            userLon={centre.lon}
+            onRouteReady={handleRouteReady}
+            onHighlightOnMap={handleHighlightOnMap}
+          />
         </div>
       )}
 
@@ -515,45 +586,8 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
         />
       )}
 
-      {/* ── Footer Provenance & Data Sources ───────────────────────────────── */}
-      <footer className="hidden sm:flex flex-shrink-0 bg-white border-t border-[#E5EBE7] px-5 py-2 flex-wrap gap-8 text-xs text-[#64746B]">
+      <footer className="hidden sm:flex flex-shrink-0 bg-white border-t border-[#E5EBE7] px-5 py-2.5 items-center justify-end text-xs text-[#64746B]">
         <div className="flex items-center gap-2">
-          <span className="text-base" aria-hidden>
-            🛰
-          </span>
-          <div>
-            <p className="font-bold text-[#14231D] leading-tight">Sentinel-2 NDVI</p>
-            <p className="text-[11px] leading-tight">Copernicus S2_SR_HARMONIZED via Google Earth Engine</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-base" aria-hidden>
-            🗺
-          </span>
-          <div>
-            <p className="font-bold text-[#14231D] leading-tight">High-Contrast Canvas &amp; Boundaries</p>
-            <p className="text-[11px] leading-tight">Esri Light Gray Canvas + OSM (© ODbL)</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-base" aria-hidden>
-            {cityHasNurseries(cityId) ? '🌱' : '🚫'}
-          </span>
-          <div>
-            <p className="font-bold text-[#14231D] leading-tight">
-              {cityHasNurseries(cityId) ? 'BMC Nurseries' : 'Nurseries'}
-            </p>
-            <p className="text-[11px] leading-tight">
-              {cityHasNurseries(cityId)
-                ? 'Greening Mumbai Citizen\u2019s Handbook (pp. 82\u201383) \u00b7 BMC & WRI India'
-                : `No nursery dataset registered for ${city.name}`}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto">
           <span className="text-base" aria-hidden>
             ⬡
           </span>

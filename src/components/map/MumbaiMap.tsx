@@ -14,6 +14,11 @@ import {
 } from 'lucide-react';
 
 import wardsData from '@/data/mumbai-wards.json';
+import type { AirQualityResponse, AqiCategory } from '@/lib/air-quality/types';
+import {
+  BASEMAP_LIGHT_URL,
+  BASEMAP_LIGHT_REF_URL,
+} from '@/lib/green/config';
 
 export interface ReportMarker {
   id: string;
@@ -121,9 +126,19 @@ export default function MumbaiMap({
   };
 
   return (
-    <div className="relative w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl" style={{ height }}>
-      {/* Map data controls */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[400] w-[calc(100%-1.5rem)] sm:w-auto max-w-full bg-white/95 backdrop-blur border border-slate-200 shadow-xl rounded-2xl p-2 flex flex-wrap justify-center items-center gap-2 text-xs font-bold text-slate-800">
+    <div className="relative w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl fixmumbai-map" style={{ height }}>
+      <style>{`
+        .fixmumbai-map .leaflet-control-attribution {
+          font-size: 9px !important;
+          line-height: 1.2 !important;
+          padding: 2px 8px !important;
+          background: rgba(255, 255, 255, 0.85) !important;
+          backdrop-filter: blur(4px);
+          border-radius: 6px 0 0 0;
+        }
+      `}</style>
+      {/* Ward Boundaries Toggle Overlay */}
+      <div className="absolute top-3 right-3 z-[400] bg-white/95 backdrop-blur border border-slate-200 shadow-lg rounded-2xl p-1.5 flex items-center gap-2 text-xs font-bold text-slate-800">
         <button
           type="button"
           onClick={() => setShowWards(!showWards)}
@@ -157,14 +172,31 @@ export default function MumbaiMap({
         center={center}
         zoom={zoom}
         scrollWheelZoom={true}
+        preferCanvas={true}
         style={{ height: '100%', width: '100%', zIndex: 1 }}
       >
+        {/* Esri World Light Gray Canvas Basemap (matching Green Density map style) */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | PriSEHAT-Pulse'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &middot; <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a> &middot; FixMumbai'
+          url={BASEMAP_LIGHT_URL}
+          maxZoom={19}
+          keepBuffer={6}
+          updateWhenIdle={false}
+          updateWhenZooming={true}
         />
 
-        {/* 24 BMC Ward Markers */}
+        {/* Transparent Reference Overlay for neighborhood labels, roads, and boundaries */}
+        {BASEMAP_LIGHT_REF_URL && (
+          <TileLayer
+            attribution=""
+            url={BASEMAP_LIGHT_REF_URL}
+            maxZoom={20}
+            keepBuffer={6}
+            zIndex={4}
+          />
+        )}
+
+        {/* 24 BMC Ward Polygon Outlines & Circular Ward Badges (Exact match to reference image) */}
         {showWards && wardsData.map((w, idx) => (
           <Marker
             key={w.wardCode}
