@@ -448,17 +448,7 @@ export function describeCityPublication(city: CityConfig): {
 export const ACTIVE_CITY = DEFAULT_CITY;
 
 // ── App base path ────────────────────────────────────────────────────────────
-// Mirrors `basePath` in next.config.js. The app is served under /civic, so any
-// absolute URL handed to the browser must include it or it 404s in production.
-export const APP_BASE_PATH = '/civic';
-
-/** Join a root-relative path onto the app base path (idempotent). */
-export function withBasePath(path: string): string {
-  if (!path.startsWith('/')) return path;
-  const base = APP_BASE_PATH;
-  if (path === base || path.startsWith(`${base}/`)) return path;
-  return `${base}${path}`;
-}
+export { APP_BASE_PATH, withBasePath } from '@/lib/base-path';
 
 // ── Feature flag ────────────────────────────────────────────────────
 export const GREEN_EXPLORER_ENABLED =

@@ -1,9 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
-import { PlusCircle, MapPin, Shield, CheckCircle2, ArrowRight, Eye, Calendar, Sparkles, Filter } from 'lucide-react';
+import { PlusCircle, MapPin, Sparkles } from 'lucide-react';
 import MumbaiMap from '@/components/map/MumbaiMap';
 import { db } from '@/lib/db';
-import { StatusBadge } from '@/components/ui/Badge';
+
+export const dynamic = 'force-dynamic';
 
 async function getHomepageData() {
   try {
@@ -102,69 +103,6 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* QUICK MAP FILTERS & RECENT REPORTS FEED */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Recent Civic Reports</h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Click any report card or map marker to view ground evidence and status.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/map"
-              className="text-xs font-extrabold text-red-600 hover:underline flex items-center gap-1"
-            >
-              View All Reports on Map <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Reports Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reports.map((report) => (
-            <div key={report.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col justify-between group">
-              <div>
-                <div className="relative h-48 bg-slate-100 overflow-hidden">
-                  <img
-                    src={report.photos[0]?.storagePath || 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=800&auto=format&fit=crop&q=60'}
-                    alt={report.category.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-3 left-3">
-                    <StatusBadge status={report.status} size="sm" />
-                  </div>
-                  <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-md text-slate-900 font-mono font-bold text-[11px] px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-                    {report.publicReportId}
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-2">
-                  <div className="text-xs font-black text-red-600 uppercase tracking-wider">{report.category.name}</div>
-                  <h3 className="text-lg font-black text-slate-900 line-clamp-1">{report.locality}</h3>
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">{report.description}</p>
-                </div>
-              </div>
-
-              <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 text-slate-500 font-medium">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{new Date(report.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                </div>
-                <Link
-                  href={`/report/${report.publicReportId}`}
-                  className="bg-slate-900 hover:bg-red-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-full flex items-center gap-1 transition shadow-sm"
-                >
-                  View Case <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 

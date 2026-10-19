@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
+import fs from 'fs/promises';
+import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { mapCoordinatesToCivicBoundary } from '@/lib/gis';
 import { generatePublicReportId } from '@/lib/id-generator';
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
     if (!gisInfo.isWithinMumbai) {
       return NextResponse.json({
         success: false,
-        error: 'Location restricted: FixMumbai only accepts civic reports located within Mumbai (24 BMC Wards).'
+        error: 'Location restricted: PriSEHAT-Pulse only accepts civic reports located within Mumbai (24 BMC Wards).'
       }, { status: 400 });
     }
 
@@ -112,7 +115,33 @@ export async function POST(req: NextRequest) {
     const reportCount = await db.report.count();
     const publicReportId = generatePublicReportId(reportCount + 188);
 
-    // 4. Create database report
+    // 4. Persist camera/file uploads to public/uploads/waste before storing the path.
+    // Demo photos supplied as ordinary HTTP(S) URLs remain external URLs.
+    let persistedPhotoPath: string | null = null;
+    if (typeof photoPath === 'string' && photoPath.startsWith('data:image/')) {
+      const match = photoPath.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/);
+      if (!match) {
+        return NextResponse.json({ success: false, error: 'Invalid photo data. Please capture the photo again.' }, { status: 400 });
+      }
+
+      const mimeType = match[1];
+      const imageBuffer = Buffer.from(match[2], 'base64');
+      const maxPhotoBytes = 10 * 1024 * 1024;
+      if (imageBuffer.length === 0 || imageBuffer.length > maxPhotoBytes) {
+        return NextResponse.json({ success: false, error: 'Photo must be smaller than 10 MB.' }, { status: 400 });
+      }
+
+      const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${crypto.randomUUID()}.${extension}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'waste');
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(path.join(uploadDir, fileName), imageBuffer);
+      persistedPhotoPath = `waste/${fileName}`;
+    } else if (typeof photoPath === 'string' && photoPath.trim()) {
+      persistedPhotoPath = photoPath;
+    }
+
+    // 5. Create database report
     const newReport = await db.report.create({
       data: {
         publicReportId,
@@ -129,11 +158,15 @@ export async function POST(req: NextRequest) {
         reporterName,
         reporterEmail,
         reporterPhone,
-        photos: photoPath ? {
+        photos: persistedPhotoPath ? {
           create: {
-            storagePath: photoPath,
-            mimeType: 'image/jpeg',
-            fileSize: 300000
+            storagePath: persistedPhotoPath,
+            mimeType: typeof photoPath === 'string' && photoPath.startsWith('data:image/png') ? 'image/png'
+              : typeof photoPath === 'string' && photoPath.startsWith('data:image/webp') ? 'image/webp'
+              : 'image/jpeg',
+            fileSize: typeof photoPath === 'string' && photoPath.startsWith('data:image/')
+              ? Buffer.from(photoPath.split(',')[1] || '', 'base64').length
+              : 300000
           }
         } : undefined,
         timelineEvents: {
@@ -152,7 +185,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 5. Trigger automatic duplicate detection
+    // 6. Trigger automatic duplicate detection
     await detectAndLinkDuplicate(newReport.id, categoryId, latitude, longitude);
 
     return NextResponse.json({ success: true, data: newReport });

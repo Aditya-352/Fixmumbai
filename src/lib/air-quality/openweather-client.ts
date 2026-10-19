@@ -1,6 +1,5 @@
-import { calculateAqi } from './aqi-calculator';
 import { airQualityCache, CACHE_TTL, coordinateCacheKey } from './cache';
-import type { PollutantId, PollutantReading, RawStationReading } from './types';
+import type { PollutantReading, RawStationReading } from './types';
 
 const OPENWEATHER_AIR_POLLUTION_URL = 'https://api.openweathermap.org/data/2.5/air_pollution';
 
@@ -14,41 +13,23 @@ interface OpenWeatherPollutionResponse {
       aqi: number; // 1 = Good, 2 = Fair, 3 = Moderate, 4 = Poor, 5 = Very Poor
     };
     components: {
-      co: number; // μg/m3
-      no?: number; // μg/m3
-      no2: number; // μg/m3
-      o3: number; // μg/m3
-      so2: number; // μg/m3
-      pm2_5: number; // μg/m3
-      pm10: number; // μg/m3
-      nh3?: number; // μg/m3
+      co: number;     // μg/m3
+      no?: number;    // μg/m3
+      no2: number;    // μg/m3
+      o3: number;     // μg/m3
+      so2: number;    // μg/m3
+      pm2_5: number;  // μg/m3
+      pm10: number;   // μg/m3
+      nh3?: number;   // μg/m3
     };
     dt: number;
   }>;
 }
 
 /**
- * Maps OpenWeather 1-5 index to typical mid-range CPCB AQI numbers if component calculation is unavailable.
- */
-function defaultAqiFromOpenWeatherIndex(idx: number): number {
-  switch (idx) {
-    case 1:
-      return 35; // Good (0-50)
-    case 2:
-      return 75; // Fair / Satisfactory (51-100)
-    case 3:
-      return 150; // Moderate (101-200)
-    case 4:
-      return 250; // Poor (201-300)
-    case 5:
-      return 350; // Very Poor (301-400)
-    default:
-      return 100;
-  }
-}
-
-/**
- * Fetches real-time atmospheric air quality data from OpenWeather Air Pollution API for specific coordinates.
+ * Fetches real-time air quality data from OpenWeather Air Pollution API.
+ * Returns raw AQI (1–5) and all pollutant concentrations directly from the API.
+ * No calculations are applied — all values are taken as-is from OpenWeather.
  */
 export async function getOpenWeatherAirQualityForLocation(
   lat: number,
@@ -79,100 +60,53 @@ export async function getOpenWeatherAirQualityForLocation(
       const record = data.list[0];
       const comps = record.components;
 
+      // Collect all pollutants directly from OpenWeather response — raw values, no calculations
       const pollutants: PollutantReading[] = [];
 
       if (typeof comps.pm2_5 === 'number') {
-        pollutants.push({
-          pollutantId: 'PM2.5',
-          unit: 'µg/m³',
-          avg: Math.round(comps.pm2_5 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'PM2.5', unit: 'µg/m³', avg: comps.pm2_5, min: null, max: null });
       }
 
       if (typeof comps.pm10 === 'number') {
-        pollutants.push({
-          pollutantId: 'PM10',
-          unit: 'µg/m³',
-          avg: Math.round(comps.pm10 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'PM10', unit: 'µg/m³', avg: comps.pm10, min: null, max: null });
       }
 
       if (typeof comps.no2 === 'number') {
-        pollutants.push({
-          pollutantId: 'NO2',
-          unit: 'µg/m³',
-          avg: Math.round(comps.no2 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'NO2', unit: 'µg/m³', avg: comps.no2, min: null, max: null });
       }
 
       if (typeof comps.so2 === 'number') {
-        pollutants.push({
-          pollutantId: 'SO2',
-          unit: 'µg/m³',
-          avg: Math.round(comps.so2 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'SO2', unit: 'µg/m³', avg: comps.so2, min: null, max: null });
       }
 
       if (typeof comps.o3 === 'number') {
-        pollutants.push({
-          pollutantId: 'OZONE',
-          unit: 'µg/m³',
-          avg: Math.round(comps.o3 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'OZONE', unit: 'µg/m³', avg: comps.o3, min: null, max: null });
       }
 
       if (typeof comps.co === 'number') {
-        // Convert OpenWeather μg/m³ to mg/m³ for Indian CPCB standard (1 mg = 1000 μg)
-        pollutants.push({
-          pollutantId: 'CO',
-          unit: 'mg/m³',
-          avg: Math.round((comps.co / 1000) * 100) / 100,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'CO', unit: 'µg/m³', avg: comps.co, min: null, max: null });
       }
 
       if (typeof comps.nh3 === 'number') {
-        pollutants.push({
-          pollutantId: 'NH3',
-          unit: 'µg/m³',
-          avg: Math.round(comps.nh3 * 10) / 10,
-          min: null,
-          max: null,
-        });
+        pollutants.push({ pollutantId: 'NH3', unit: 'µg/m³', avg: comps.nh3, min: null, max: null });
       }
 
-      const pollutantMap: Partial<Record<PollutantId, PollutantReading>> = {};
-      for (const p of pollutants) {
-        pollutantMap[p.pollutantId] = p;
-      }
-
-      const calculated = calculateAqi(pollutantMap);
-      const measuredAqi = calculated?.value ?? defaultAqiFromOpenWeatherIndex(record.main.aqi);
-      const dominantPollutant: PollutantId = calculated?.dominantPollutant ?? 'PM2.5';
+      // Raw OpenWeather AQI 1–5 — used as-is
+      const rawAqi = record.main.aqi;
 
       const reading: RawStationReading = {
         source: 'OPENWEATHER',
         stationId: `ow-${lat.toFixed(3)}-${lon.toFixed(3)}`,
-        stationName: `OpenWeather Atmospheric Observation`,
+        stationName: 'OpenWeather Air Pollution API',
         latitude: lat,
         longitude: lon,
-        city: 'Mumbai',
-        state: 'Maharashtra',
+        city: null,
+        state: null,
         lastUpdated: record.dt ? new Date(record.dt * 1000).toISOString() : new Date().toISOString(),
         pollutants,
-        measuredAqi,
-        dominantPollutant,
+        measuredAqi: rawAqi,
+        openWeatherIndex: rawAqi,
+        dominantPollutant: 'PM2.5',
         distanceKm: 0,
         coordinatesResolvedFrom: 'upstream',
       };

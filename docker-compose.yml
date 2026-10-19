@@ -1,10 +1,10 @@
 services:
-  fixmumbai:
+  prisehat-pulse:
     build:
       context: .
       dockerfile: Dockerfile
 
-    container_name: fixmumbai
+    container_name: prisehat-pulse
 
     restart: unless-stopped
 
@@ -15,7 +15,7 @@ services:
       NODE_ENV: production
 
     volumes:
-      - fixmumbai_prisma:/app/prisma
+      - /root/Fixmumbai/uploads:/app/public/uploads
 
     networks:
       - app_network
@@ -27,6 +27,3 @@ networks:
   app_network:  # Compose's internal/reference name
     external: true
     name: ${DOCKER_NETWORK}  # actual docker network name
-
-volumes:
-  fixmumbai_prisma:

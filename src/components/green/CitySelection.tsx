@@ -9,7 +9,7 @@
  * route forces Next to either error at build time ("should be wrapped in a
  * suspense boundary") or to opt the route into dynamic rendering, which would
  * change a route that is currently prerendered and served from cache. A path
- * segment (`/green/[city]`) would break the deployed `/civic/green` URL that
+ * segment (`/green/[city]`) would break the deployed `/pulse/green` URL that
  * existing links and navigation point at.
  *
  * So the selected city lives in shared client state, owned in exactly one place

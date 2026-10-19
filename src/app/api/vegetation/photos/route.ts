@@ -173,7 +173,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const buffer = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(fullPath, buffer);
 
-    // Must include the app basePath (/civic) or the browser gets a 404.
+    // Must include the app basePath (/pulse) or the browser gets a 404.
     const imageUrl = withBasePath(`/uploads/greenery/${fileName}`);
 
     // ── 9. Save record to database ───────────────────────────────────────────

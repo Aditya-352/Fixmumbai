@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import Link from 'next/link';
 import { Building2, ArrowRight, UserCheck, PhoneCall, ExternalLink } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function WardsDirectoryPage() {
   const wards = await db.bmcWard.findMany({
     orderBy: { wardCode: 'asc' },

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Eye } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MyReportsPage() {
   const reports = await db.report.findMany({
     take: 10,

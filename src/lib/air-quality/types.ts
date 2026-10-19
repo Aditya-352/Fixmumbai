@@ -1,5 +1,5 @@
 /**
- * Shared types for the FixMumbai Air Quality service layer.
+ * Shared types for the PriSEHAT-Pulse Air Quality service layer.
  *
  * Design notes:
  * - CPCB and OpenAQ values are NEVER averaged or merged into a single number.
@@ -11,7 +11,7 @@
  *   shapes.
  */
 
-export type AqiSource = 'CPCB' | 'OPENAQ' | 'AQICN' | 'OPENWEATHER';
+export type AqiSource = 'CPCB' | 'OPENAQ' | 'OPENWEATHER' | 'AQICN' | 'OPEN_METEO';
 
 /** Standard CPCB National AQI category buckets. */
 export type AqiCategory =
@@ -56,6 +56,8 @@ export interface RawStationReading {
   pollutants: PollutantReading[];
   /** Precomputed AQI from the source, when the upstream feed reports one. */
   measuredAqi?: number | null;
+  /** Official OpenWeather 1-5 index when source is OPENWEATHER. */
+  openWeatherIndex?: number;
   /** Dominant pollutant reported or inferred by the source, when available. */
   dominantPollutant?: PollutantId | null;
   /**
@@ -101,9 +103,11 @@ export interface AirQualityResponse {
     longitude: number;
   };
   /**
-   * The headline AQI. Always CPCB when a valid CPCB-derived AQI exists for a
-   * nearby station; falls back to an OpenAQ-derived indicative AQI only when
-   * no CPCB station is available. `null` when neither source has enough data.
+   * The headline AQI. Priority order (highest → lowest): AQICN ground sensor →
+   * CPCB ground sensor → OpenWeather atmospheric simulation → OpenAQ.
+   * Ground sensors are preferred because they measure actual ambient air;
+   * OpenWeather is a fallback when no ground-truth station is available nearby.
+   * `null` when no source has enough data.
    */
   aqi: {
     value: number;
@@ -119,6 +123,7 @@ export interface AirQualityResponse {
      * source that does return a precomputed value is represented honestly.
      */
     valueType: 'measured' | 'calculated';
+    openWeatherIndex?: number;
   } | null;
   station: StationSummary | null;
   /** Every pollutant reading contributing to `aqi`, from the same station. */

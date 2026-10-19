@@ -102,7 +102,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
           <div>
-            &copy; {new Date().getFullYear()} FixMumbai Civic Platform. Built for civic cleanliness in Mumbai.
+            &copy; {new Date().getFullYear()} PriSEHAT-Pulse Civic Platform. Built for civic cleanliness in Mumbai.
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <Link href="/how-it-works" className="hover:text-white">How It Works</Link>

@@ -5,10 +5,8 @@ import { AirQualityServiceError } from '@/lib/air-quality/types';
 /**
  * GET /api/air-quality?lat=<latitude>&lon=<longitude>
  *
- * Returns the best available air quality information near the given point,
- * scoped strictly to the Mumbai service area for this phase. CPCB (via
- * data.gov.in) is treated as the primary, authoritative source; OpenAQ is
- * supplementary. The two are never averaged or merged into one number.
+ * Returns real-time air quality data (direct 0–500 standard AQI and all pollutants)
+ * directly from Open-Meteo Air Quality API (Copernicus CAMS & NOAA models).
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

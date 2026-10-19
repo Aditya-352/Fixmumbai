@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * GreenSidebar — Clean white left sidebar with FixMumbai brand and Map Explorer nav.
+ * GreenSidebar — Clean white left sidebar with PriSEHAT-Pulse brand and Map Explorer nav.
  */
 
 import React from 'react';
@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Compass, Wind, Trees, Camera } from 'lucide-react';
 import type { LayerVisibilityState } from '@/lib/green/types';
+import { APP_BASE_PATH } from '@/lib/base-path';
 
 const MODES = [
   {
@@ -21,7 +22,7 @@ const MODES = [
   {
     number: 2,
     label: 'Air Quality Map',
-    sublabel: 'CPCB & OpenAQ real-time',
+    sublabel: 'CPCB, AQICN & Live Telemetry',
     href: '/map',
     icon: Wind,
   },
@@ -53,7 +54,7 @@ export interface GreenSidebarProps {
 export default function GreenSidebar(props: GreenSidebarProps) {
   const { onOpenPhotoModal } = props;
   const pathname = usePathname();
-  const isGreenActive = pathname === '/green' || pathname === '/civic/green';
+  const isGreenActive = pathname === '/green' || pathname === `${APP_BASE_PATH}/green`;
 
   return (
     <aside
@@ -92,7 +93,7 @@ export default function GreenSidebar(props: GreenSidebarProps) {
             (mode.href === '/green' && isGreenActive) ||
             (mode.href !== '/green' &&
               !isGreenActive &&
-              (pathname === mode.href || pathname === `/civic${mode.href}`));
+              (pathname === mode.href || pathname === `${APP_BASE_PATH}${mode.href}`));
 
           return (
             <Link
@@ -142,7 +143,7 @@ export default function GreenSidebar(props: GreenSidebarProps) {
       {/* ── Footer Attribution ────────────────────────────────────────────── */}
       <div className="px-3 pb-3 border-t border-[#E5EBE7] bg-white flex-shrink-0 pt-2.5">
         <p className="text-[9px] text-[#64746B] leading-snug font-medium">
-          FixMumbai Environmental Intelligence · Sentinel-2 NDVI &amp; BMC civic data.
+          PriSEHAT-Pulse Environmental Intelligence · Sentinel-2 NDVI &amp; BMC civic data.
         </p>
       </div>
     </aside>

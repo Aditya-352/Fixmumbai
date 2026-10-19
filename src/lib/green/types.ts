@@ -125,7 +125,7 @@ export interface NdviSummary {
    * pixel count, cloud coverage or confidence. Defaults to UNAVAILABLE so a
    * missing value fails closed rather than being assumed genuine.
    */
-  provenance: NdviProvenance;
+  provenance?: NdviProvenance;
   reason?: string; // 'SATELLITE_UNAVAILABLE', 'SYNTHETIC_ESTIMATE_NOT_SATELLITE' etc.
 }
 

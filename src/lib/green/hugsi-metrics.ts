@@ -20,7 +20,7 @@
  *    Then: Green Space Distribution (%) = Median of Green Cover % across all valid cells.
  *    Does not count missing satellite observations as zero vegetation.
  *
- * NOTE: FixMumbai computational engine; independent civic methodology inspired by HUGSI.
+ * NOTE: PriSEHAT-Pulse computational engine; independent civic methodology inspired by HUGSI.
  * Not an official Husqvarna Urban Green Space Index certification.
  */
 
@@ -775,7 +775,7 @@ export function calculateComprehensiveHugsiMetrics(options: {
       tooltip: {
         formula:
           'For every valid hexagonal cell: Green Cover (%) = (Mapped Green Area in Cell / Valid Cell Area) × 100. Then: Distribution (%) = Median(Green Cover % across all valid cells).',
-        dataSource: 'FixMumbai 100m Geospatial Hexagonal Engine clipped against verified OSM/BMC green polygons.',
+        dataSource: 'PriSEHAT-Pulse 100m Geospatial Hexagonal Engine clipped against verified OSM/BMC green polygons.',
         referenceYear: `${year} (Calculated live on ${nowIso.split('T')[0]})`,
         geographicExtent: `${boundary.name} (${validCellsCount} valid cells analyzed, ${partialBoundaryCellsCount} partial boundary cells clipped).`,
         calculationMethod:
@@ -869,7 +869,7 @@ export function calculateComprehensiveHugsiMetrics(options: {
     wardBreakdown,
     categoriesBreakdown,
     disclaimer:
-      'HUGSI-Inspired Urban Green Metrics — FixMumbai computational engine. These indicators are computed on actual spatial polygons using peer-reviewed urban forestry formulas. Not an official Husqvarna Urban Green Space Index (HUGSI) certification.',
+      'HUGSI-Inspired Urban Green Metrics — PriSEHAT-Pulse computational engine. These indicators are computed on actual spatial polygons using peer-reviewed urban forestry formulas. Not an official Husqvarna Urban Green Space Index (HUGSI) certification.',
   };
 
   // Cache up to 20 computations

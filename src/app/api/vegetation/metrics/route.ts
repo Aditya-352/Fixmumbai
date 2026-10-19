@@ -17,6 +17,8 @@ import {
   type ResolvedCity,
 } from '@/lib/green/city-param';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/vegetation/metrics?ward=ALL&year=2024&dimension=PARALLEL_SIDES_100M&city=mumbai
  *

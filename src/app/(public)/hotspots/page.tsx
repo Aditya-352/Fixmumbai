@@ -4,6 +4,8 @@ import { calculatePlatformActivityScore } from '@/lib/activity-score';
 import { Flame, Info, ArrowUpRight, Building2, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HotspotsPage() {
   const wards = await db.bmcWard.findMany({
     include: {

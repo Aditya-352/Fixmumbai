@@ -54,7 +54,7 @@ describe('D: Mumbai is the default and stays backward compatible', () => {
     // The client always passes a city id, but the endpoint must stay usable
     // without one so existing callers and bookmarks keep working.
     const url = buildVegetationUrl('nearby', { lat: 19.06, lon: 72.83, radius: 5000 });
-    expect(url).toBe('/civic/api/vegetation/nearby?lat=19.06&lon=72.83&radius=5000');
+    expect(url).toBe('/pulse/api/vegetation/nearby?lat=19.06&lon=72.83&radius=5000');
     expect(url).not.toContain('city=');
   });
 
@@ -97,13 +97,13 @@ describe('D: city propagates to every city-aware request', () => {
 
   it('builds the paths the client actually calls', () => {
     expect(buildVegetationUrl('nearby', { lat: 1, lon: 2 }, 'mumbai')).toBe(
-      '/civic/api/vegetation/nearby?lat=1&lon=2&city=mumbai'
+      '/pulse/api/vegetation/nearby?lat=1&lon=2&city=mumbai'
     );
     expect(buildVegetationUrl('search', { q: 'bandra park' }, 'bengaluru')).toBe(
-      '/civic/api/vegetation/search?q=bandra%20park&city=bengaluru'
+      '/pulse/api/vegetation/search?q=bandra%20park&city=bengaluru'
     );
     expect(buildVegetationUrl('areas/{id}', { id: 'static_way_1' }, 'pune')).toBe(
-      '/civic/api/vegetation/areas/static_way_1?city=pune'
+      '/pulse/api/vegetation/areas/static_way_1?city=pune'
     );
     expect(buildVegetationUrl('metrics', { ward: 'ALL', year: '2024' }, 'mumbai')).toContain(
       'ward=ALL&year=2024&city=mumbai'
@@ -322,7 +322,7 @@ describe('D: vegetation raster layer is gated on a registered AOI', () => {
   it('the tiles endpoints stay city-agnostic, so the client cannot imply otherwise', () => {
     expect(CITY_AGNOSTIC_ENDPOINTS).toContain('tiles');
     expect(CITY_AGNOSTIC_ENDPOINTS).toContain('ndvi-tile');
-    expect(buildVegetationUrl('tiles', {}, 'pune')).toBe('/civic/api/vegetation/tiles');
+    expect(buildVegetationUrl('tiles', {}, 'pune')).toBe('/pulse/api/vegetation/tiles');
   });
 
   it('no invented polygon or imagery accompanies a new city', () => {

@@ -81,7 +81,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const userAgent =
-    process.env.OPENSTREETMAP_USER_AGENT || 'FixMumbai-CivicApp/1.0 (contact@fixmumbai.org)';
+    process.env.OPENSTREETMAP_USER_AGENT || 'PriSEHAT-Pulse/1.0 (healthrytixtech@gmail.com)';
 
   const warnings: string[] = [];
   let result: ReverseGeocodeResult = { label: null, city: null, state: null, country: null };
