@@ -31,6 +31,10 @@ import { STATIC_GREEN_SPACES_FALLBACK, type StaticGreenSpaceSeed } from './stati
 import { PUNA_BOUNDARIES_STATIC } from './puna-boundaries-static';
 import { PUNA_LOCATIONS_STATIC } from './puna-locations-static';
 import { BENGALURU_STATIC } from './bengaluru-static';
+import { DELHI_STATIC } from './delhi-static';
+import { KOLKATA_STATIC } from './kolkata-static';
+import { NAGPUR_STATIC } from './nagpur-static';
+import { HYDERABAD_STATIC } from './hyderabad-static';
 import { getCity, type CityConfig } from '@/lib/green/config';
 
 /**
@@ -42,6 +46,10 @@ const STATIC_SPACES_BY_CITY: Record<CityId, unknown[]> = {
   mumbai: STATIC_GREEN_SPACES_FALLBACK,
   pune: [...PUNA_BOUNDARIES_STATIC, ...PUNA_LOCATIONS_STATIC],
   bengaluru: BENGALURU_STATIC,
+  delhi: DELHI_STATIC,
+  kolkata: KOLKATA_STATIC,
+  nagpur: NAGPUR_STATIC,
+  hyderabad: HYDERABAD_STATIC,
 };
 
 /** True when an id was minted from a static dataset rather than a database row. */
@@ -107,6 +115,8 @@ interface NearbyOptions {
   candidateLimit?: number;
   /** When DB has zero records, use this city's static dataset instead of Mumbai's. */
   city?: CityId;
+  /** Force the use of the static fallback dataset, bypassing the database. */
+  forceStaticFallback?: boolean;
 }
 
 /**
@@ -285,8 +295,8 @@ export async function getNearbyGreenSpacesPaged(opts: NearbyOptions): Promise<{
   const requestedCity: CityId = opts.city ?? 'mumbai';
   const dbHoldsCity: CityId = 'mumbai';
 
-  // ── Try DB first (only for the city the DB actually contains) ────────────
-  if (requestedCity === dbHoldsCity) {
+  // ── Try DB first (only for the city the DB actually contains, unless fallback is forced) ────────────
+  if (requestedCity === dbHoldsCity && !opts.forceStaticFallback) {
     const spacesStart = Date.now();
     try {
       const mod = await import('@/lib/db');

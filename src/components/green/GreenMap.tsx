@@ -36,7 +36,7 @@ import {
 import { generate100mHexGrid, type HexCellMetric } from '@/lib/green/hex-grid-service';
 import { getNurseriesForCity, cityHasNurseries, type BmcNurseryRecord } from '@/lib/green/nurseries-service';
 import MapLayerControl from './MapLayerControl';
-import { Plus, Minus, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, X, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
 import { DEFAULT_CITY, type CityConfig } from '@/lib/green/config';
 import {
   getGreenDensityTier,
@@ -76,6 +76,9 @@ interface GreenMapProps {
   highlightMarker?: { lat: number; lon: number; name: string } | null;
   /** Callback to open mobile layers bottom sheet */
   onOpenMobileLayers?: () => void;
+  /** Callback to fetch user GPS position */
+  onFetchLocation?: () => void;
+  geoLoading?: boolean;
 }
 
 // ── SVG Icons ───────────────────────────────────────────────────────────────
@@ -119,6 +122,8 @@ export default function GreenMap({
   routeDestination = null,
   highlightMarker = null,
   onOpenMobileLayers,
+  onFetchLocation,
+  geoLoading = false,
 }: GreenMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -1081,7 +1086,7 @@ export default function GreenMap({
           Mobile: Positioned slightly down from top search bar (top-[60px] left-2.5)
           with smaller dimensions (w-8 h-8 buttons) to prevent overlap with bottom controls.
           Desktop (sm+): Kept at bottom-left (bottom-16 left-4, w-9 h-9 buttons). */}
-      <div className="absolute top-[60px] sm:top-auto sm:bottom-16 left-2.5 sm:left-4 z-[1000]">
+      <div className="absolute top-[60px] sm:top-auto sm:bottom-16 left-2.5 sm:left-4 z-[1000] flex flex-col gap-1.5">
         <div className="bg-white rounded-lg sm:rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.10)] sm:shadow-[0_2px_12px_rgba(0,0,0,0.12)] border border-slate-200/90 overflow-hidden flex flex-col w-8 sm:w-9">
           <button
             onClick={handleZoomIn}
@@ -1101,6 +1106,22 @@ export default function GreenMap({
             <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
+
+        {onFetchLocation && (
+          <button
+            onClick={onFetchLocation}
+            disabled={geoLoading}
+            className="w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-lg sm:rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.10)] sm:shadow-[0_2px_12px_rgba(0,0,0,0.12)] border border-slate-200/90 flex items-center justify-center text-slate-700 hover:text-[#087F5B] hover:bg-emerald-50 active:bg-emerald-100 font-bold transition focus:outline-none"
+            title="Fetch My Location & Check City"
+            aria-label="Fetch my current location"
+          >
+            {geoLoading ? (
+              <div className="w-3.5 h-3.5 border-2 border-[#087F5B] border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#087F5B]" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Scale Bar — bottom-left, safely above bottom navigation (58px) and attribution bar */}

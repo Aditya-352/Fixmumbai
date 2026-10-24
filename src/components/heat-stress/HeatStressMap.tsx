@@ -385,8 +385,6 @@ export default function HeatStressMap({
       if (!containerRef.current || mapRef.current) return;
 
       const L = await import('leaflet');
-      // @ts-ignore
-      await import('leaflet/dist/leaflet.css');
       LRef.current = L;
 
       if (!isMounted || !containerRef.current) return;

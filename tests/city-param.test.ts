@@ -187,7 +187,7 @@ describe('Phase C: unknown city ids are rejected', () => {
       })()
     );
     expect(err.error.code).toBe('UNKNOWN_CITY');
-    expect(err.error.validCityIds?.sort()).toEqual(['bengaluru', 'mumbai', 'pune']);
+    expect(err.error.validCityIds?.sort()).toEqual(['bengaluru', 'delhi', 'hyderabad', 'kolkata', 'mumbai', 'nagpur', 'pune']);
     expect(err.ok).toBe(false);
     expect(err.data).toBeNull();
   });
@@ -204,7 +204,7 @@ describe('Phase C: unknown city ids are rejected', () => {
   });
 
   it('rejects near-misses', () => {
-    for (const bad of ['mum-bai', 'mumbaii', 'punee', 'bengalur', ' delhi', 'mumbai ']) {
+    for (const bad of ['mum-bai', 'mumbaii', 'punee', 'bengalur', ' delhii', 'mumbai ']) {
       const v = bad.trim();
       if (v === 'mumbai') continue; // whitespace-only difference is normalised
       expect(() => resolveCity(p(`city=${encodeURIComponent(bad)}`))).toThrow(
@@ -248,19 +248,18 @@ describe('Phase C: unknown city ids are rejected', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Phase C: cities with no records never borrow Mumbai data', () => {
-  it('classifies only Mumbai as data-available', () => {
+  it('classifies registered cities with datasets as data-available', () => {
     expect(cityDataStatus(MUMBAI)).toBe('AVAILABLE');
-    expect(cityDataStatus(PUNE)).toBe('EMPTY');
-    expect(cityDataStatus(BENGALURU)).toBe('EMPTY');
+    expect(cityDataStatus(PUNE)).toBe('AVAILABLE');
+    expect(cityDataStatus(BENGALURU)).toBe('AVAILABLE');
   });
 
   it('keeps data availability separate from publication status', () => {
-    // isPublished is false for ALL three cities today; cityDataStatus differs.
-    // Conflating them would either hide Mumbai or let unverified cities serve.
+    // isPublished is false for all cities today; data availability is separate from publication.
     for (const city of [MUMBAI, PUNE, BENGALURU]) {
       expect(isPublished(city)).toBe(false);
+      expect(cityDataStatus(city)).toBe('AVAILABLE');
     }
-    expect(cityDataStatus(MUMBAI)).not.toBe(cityDataStatus(PUNE));
   });
 
   it('registers Pune and Bengaluru in the per-city fallback map', () => {

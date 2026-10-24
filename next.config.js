@@ -23,7 +23,13 @@ const nextConfig = {
     return [
       {
         source: '/',
-        destination: '/civic',
+        destination: '/pulse',
+        basePath: false,
+        permanent: false,
+      },
+      {
+        source: '/civic',
+        destination: '/pulse',
         basePath: false,
         permanent: false,
       },

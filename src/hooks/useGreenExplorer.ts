@@ -19,6 +19,7 @@ import { DEFAULT_RADIUS_M, ACTIVE_CITY, CityId, CITY_REGISTRY } from '@/lib/gree
 import mumbaiPlaces from '@/data/mumbai-places.json';
 import { buildVegetationUrl } from '@/lib/green/city-endpoints';
 import { APP_BASE_PATH } from '@/lib/base-path';
+import { detectExactUserLocation } from '@/lib/user-location';
 
 // ── API base path ──────────────────────────────────────────────────────────
 // The app is deployed under /pulse (basePath in next.config.js).
@@ -28,8 +29,11 @@ import { APP_BASE_PATH } from '@/lib/base-path';
 const BASE = `${APP_BASE_PATH}/api/vegetation`;
 
 export interface GeoNotice {
-  type: 'INSIDE_MUMBAI' | 'OUTSIDE_MUMBAI' | 'DENIED' | 'ERROR';
+  type: 'INSIDE_MUMBAI' | 'OUTSIDE_MUMBAI' | 'INSIDE_CITY' | 'OUTSIDE_CITIES' | 'DENIED' | 'ERROR';
   message: string;
+  matchedCityId?: CityId | null;
+  cityName?: string;
+  nearestCityName?: string;
   distanceKm?: number;
   userLat?: number;
   userLon?: number;
@@ -40,7 +44,8 @@ interface UseGreenExplorerReturn {
   centre: SearchCentre;
   hasChosenCentre: boolean;
   activateCentre: (customCentre?: SearchCentre) => void;
-    setCentreFromSearch: (result: GeocodeResult) => void;
+  setCentreFromSearch: (result: GeocodeResult) => void;
+  fetchMyLocation: () => Promise<void>;
   geoError: string | null;
   geoNotice: GeoNotice | null;
   geoLoading: boolean;
@@ -202,6 +207,48 @@ function isWithinCity(city: CityId, lat: number, lon: number): boolean {
   return inBbox && distFromCentre <= 45;
 }
 
+/**
+ * Determines whether a coordinate falls inside any registered city (Mumbai, Pune, Bengaluru),
+ * or identifies the closest registered city and distance.
+ */
+export function matchCoordinatesToCity(lat: number, lon: number): {
+  matchedCityId: CityId | null;
+  matchedCityName: string | null;
+  nearestCityId: CityId;
+  nearestCityName: string;
+  distanceKm: number;
+} {
+  let matchedCityId: CityId | null = null;
+  let matchedCityName: string | null = null;
+  let nearestCityId: CityId = 'mumbai';
+  let nearestCityName: string = CITY_REGISTRY.mumbai?.name ?? 'Mumbai, India';
+  let minDistanceKm = Infinity;
+
+  const allCityIds = Object.keys(CITY_REGISTRY) as CityId[];
+  for (const cid of allCityIds) {
+    const config = CITY_REGISTRY[cid];
+    if (!config) continue;
+    const dist = haversineDistanceKm(lat, lon, config.centre[0], config.centre[1]);
+    if (dist < minDistanceKm) {
+      minDistanceKm = dist;
+      nearestCityId = cid;
+      nearestCityName = config.name;
+    }
+    if (isWithinCity(cid, lat, lon)) {
+      matchedCityId = cid;
+      matchedCityName = config.name;
+    }
+  }
+
+  return {
+    matchedCityId,
+    matchedCityName,
+    nearestCityId,
+    nearestCityName,
+    distanceKm: Math.round(minDistanceKm),
+  };
+}
+
 export function useGreenExplorer(city: CityId | undefined = undefined): UseGreenExplorerReturn {
   const [centre, setCentre] = useState<SearchCentre>(() => defaultCentreFor(city ?? ACTIVE_CITY.id));
   const [hasChosenCentre, setHasChosenCentre] = useState<boolean>(false);
@@ -213,6 +260,101 @@ export function useGreenExplorer(city: CityId | undefined = undefined): UseGreen
     setGeoNotice(null);
     setGeoError(null);
   }, []);
+
+  const fetchMyLocation = useCallback(async () => {
+    setGeoLoading(true);
+    setGeoError(null);
+    clearGeoNotice();
+
+    try {
+      const loc = await detectExactUserLocation();
+      const lat = loc.lat;
+      const lon = loc.lon;
+      const match = matchCoordinatesToCity(lat, lon);
+
+      const placeName = loc.name || (nearestMumbaiLocality(lat, lon) ?? `${loc.city || 'Your Location'}`);
+
+      if (isWithinCity('mumbai', lat, lon)) {
+        // User belongs to Mumbai — center on their location with pulsing pin
+        setCentre({
+          name: placeName,
+          lat,
+          lon,
+          source: 'geolocation',
+          accuracyM: loc.accuracy,
+        });
+        setHasChosenCentre(true);
+
+        const notice: GeoNotice = {
+          type: 'INSIDE_CITY',
+          message: `Your location (${placeName}) belongs to Mumbai. Map centered on your position.`,
+          matchedCityId: 'mumbai',
+          cityName: 'Mumbai, India',
+          userLat: lat,
+          userLon: lon,
+        };
+        setGeoNotice(notice);
+      } else {
+        // User is outside the currently selected city.
+        // Always center the map on the user's actual location so they can see
+        // where they are. The green-space data will still be from the current
+        // city, but the map view follows the user.
+        setCentre({
+          name: placeName,
+          lat,
+          lon,
+          source: 'geolocation',
+          accuracyM: loc.accuracy,
+        });
+        setHasChosenCentre(true);
+
+        if (match.matchedCityId) {
+          // User is inside a different supported city (e.g. Bengaluru or Pune)
+          const distKm = Math.round(haversineDistanceKm(lat, lon, ACTIVE_CITY.centre[0], ACTIVE_CITY.centre[1]));
+          setGeoNotice({
+            type: 'OUTSIDE_MUMBAI',
+            message: `You are in ${placeName} (~${distKm} km from ${ACTIVE_CITY.name.replace(/,\s*India$/, '')}). ` +
+              `Switch to ${match.matchedCityName} for local green-space data.`,
+            matchedCityId: match.matchedCityId,
+            cityName: match.matchedCityName ?? undefined,
+            nearestCityName: match.nearestCityName,
+            distanceKm: distKm,
+            userLat: lat,
+            userLon: lon,
+          });
+        } else {
+          // User is outside all supported cities
+          const distKm = Math.round(haversineDistanceKm(lat, lon, ACTIVE_CITY.centre[0], ACTIVE_CITY.centre[1]));
+          const outsideMsg = `You are in ${placeName} (~${distKm} km from ${ACTIVE_CITY.name.replace(/,\s*India$/, '')}). ` +
+            `Showing ${ACTIVE_CITY.name.replace(/,\s*India$/, '')} green spaces. Your location is marked on the map.`;
+          setGeoError(outsideMsg);
+          setGeoNotice({
+            type: 'OUTSIDE_CITIES',
+            message: outsideMsg,
+            cityName: ACTIVE_CITY.name,
+            nearestCityName: match.nearestCityName,
+            distanceKm: distKm,
+            userLat: lat,
+            userLon: lon,
+          });
+        }
+      }
+    } catch (err: any) {
+      let msg = 'Could not determine your location. Please check browser permissions.';
+      if (err?.code === 1) {
+        msg = 'Location access was denied. Please allow location access in your browser.';
+      } else if (err?.code === 3) {
+        msg = 'Location request timed out. Showing default city view.';
+      }
+      setGeoError(msg);
+      setGeoNotice({
+        type: 'ERROR',
+        message: msg,
+      });
+    } finally {
+      setGeoLoading(false);
+    }
+  }, [clearGeoNotice]);
 
 
   const [compositeType, setCompositeType] = useState<'dry_season' | 'latest_90d'>('dry_season');
@@ -417,6 +559,15 @@ export function useGreenExplorer(city: CityId | undefined = undefined): UseGreen
   const [selectedHex, setSelectedHex] = useState<HexCellMetric | null>(null);
   const [selectedNursery, setSelectedNursery] = useState<BmcNurseryRecord | null>(null);
 
+  // ── Initial status & tiles load on mount ──────────────────────────────────
+  useEffect(() => {
+    fetchStatus();
+    const timer = setTimeout(() => {
+      fetchTiles();
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [fetchStatus, fetchTiles]);
+
   // ── City change reset ──────────────────────────────────────────────────────────────
   // Switching city must not carry over the previous city's map centre, markers,
   // search results or selected park. This is explicit rather than relying on the
@@ -424,17 +575,7 @@ export function useGreenExplorer(city: CityId | undefined = undefined): UseGreen
   const firstCityRunRef = useRef<string | null>(null);
   useEffect(() => {
     if (firstCityRunRef.current === null) {
-firstCityRunRef.current = city ?? ACTIVE_CITY.id;
-
-    // Invalidate every in-flight request issued for the previous city, and abort
-    // them so no late response can repopulate the new city with old records.
-    cityGenRef.current += 1;
-    spacesAbortRef.current?.abort();
-    abortRef.current?.abort();
-    if (spacesDebounceTimerRef.current) clearTimeout(spacesDebounceTimerRef.current);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    setSpacesLoading(false);
-    setSearchLoading(false);
+      firstCityRunRef.current = city ?? ACTIVE_CITY.id;
       return;
     }
     if (firstCityRunRef.current === (city ?? ACTIVE_CITY.id)) return;
@@ -566,8 +707,8 @@ firstCityRunRef.current = city ?? ACTIVE_CITY.id;
     centre,
     hasChosenCentre,
     activateCentre,
-    
     setCentreFromSearch,
+    fetchMyLocation,
     geoError,
     geoNotice,
     geoLoading,

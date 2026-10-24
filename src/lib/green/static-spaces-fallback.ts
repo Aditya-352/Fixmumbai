@@ -689,14 +689,28 @@ export const STATIC_GREEN_SPACES_FALLBACK: StaticGreenSpaceSeed[] = [
     caption: 'Breach Candy Gardens — quiet seafront garden in upscale South Mumbai',
   },
 ];
+import { PUNA_BOUNDARIES_STATIC } from './puna-boundaries-static';
+import { PUNA_LOCATIONS_STATIC } from './puna-locations-static';
+import { BENGALURU_STATIC } from './bengaluru-static';
+import { DELHI_STATIC } from './delhi-static';
+import { KOLKATA_STATIC } from './kolkata-static';
+import { NAGPUR_STATIC } from './nagpur-static';
+import { HYDERABAD_STATIC } from './hyderabad-static';
+
 // Per-city registry. Only cities with registered datasets appear here.
 // Pune and Bengaluru have candidate datasets added in this phase.
 // cityDataStatus() reports AVAILABLE for these cities even though
 // assessMetrics() uses a separate isPublished() gate for metrics.
-export const STATIC_GREEN_SPACES_BY_CITY: Partial<
-  Record<import('./config').CityId, StaticGreenSpaceSeed[]>
+export const STATIC_GREEN_SPACES_BY_CITY: Record<
+  import('./config').CityId, any[]
 > = {
   mumbai: STATIC_GREEN_SPACES_FALLBACK,
+  pune: [...PUNA_BOUNDARIES_STATIC, ...PUNA_LOCATIONS_STATIC],
+  bengaluru: BENGALURU_STATIC,
+  delhi: DELHI_STATIC,
+  kolkata: KOLKATA_STATIC,
+  nagpur: NAGPUR_STATIC,
+  hyderabad: HYDERABAD_STATIC,
 };
 
 
