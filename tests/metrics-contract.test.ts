@@ -145,6 +145,7 @@ describe('C.1: pagination metadata is internally consistent', () => {
     type: 'all' as const,
     verifiedOnly: false,
     allCity: true,
+    forceStaticFallback: true,
   };
 
   it('reports returned/limit/offset consistently', async () => {
@@ -342,6 +343,7 @@ describe('C.1: existing Mumbai behaviour stays compatible', () => {
       verifiedOnly: false,
       allCity: true,
       limit: 500,
+      forceStaticFallback: true,
     });
     expect(spaces).toHaveLength(45);
     expect(meta.hasMore).toBe(false);

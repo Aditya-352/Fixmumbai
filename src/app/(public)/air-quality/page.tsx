@@ -271,7 +271,7 @@ export default function AirQualityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 sm:py-10">
+    <div className="min-h-screen bg-transparent py-8 sm:py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Back Link & Header */}
         <div>

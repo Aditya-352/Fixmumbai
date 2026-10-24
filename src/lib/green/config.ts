@@ -17,7 +17,14 @@ export interface NdviThresholds {
  * an error, never a silent fallback to Mumbai. A typo in a `?city=` parameter
  * must not cause the wrong city's data to be served.
  */
-export type CityId = 'mumbai' | 'pune' | 'bengaluru';
+export type CityId =
+  | 'mumbai'
+  | 'pune'
+  | 'bengaluru'
+  | 'delhi'
+  | 'kolkata'
+  | 'nagpur'
+  | 'hyderabad';
 
 /**
  * Lifecycle of a city's boundary metadata.
@@ -300,6 +307,210 @@ export const BENGALURU: CityConfig = {
   // produce a density that is wrong in both numerator and denominator.
 };
 
+// ── Delhi (registered, NOT published) ─────────────────────────────────────────
+// Governance note: the National Capital Territory of Delhi is administered by
+// the Municipal Corporation of Delhi (MCD) for the urban wards, the Delhi
+// Cantonment for the cantonment board area, and the Government of NCT Delhi
+// for the rural/village wards. The three are administered separately, so a
+// single "Delhi ward" figure spans all three lists and must be labelled as
+// such. The 272-ward count is the post-2021 delimitation across the MCD area
+// only and is NOT a whole-NCT ward count.
+export const DELHI: CityConfig = {
+  id: 'delhi',
+  name: 'Delhi, India',
+  country: 'India',
+  // PROVISIONAL query envelope: the National Capital Territory of Delhi,
+  // roughly the Yamuna basin between Alwar and the eastern Haryana border.
+  // NOT an administrative boundary.
+  bbox: [28.4, 76.84, 28.88, 77.35],
+  // Neutral fallback point near Connaught Place / central Delhi.
+  centre: [28.6139, 77.209],
+  defaultZoom: 12,
+  // Jul(6) Aug(7) Sep(8) and the retreating Oct(9) — the SW-monsoon window for
+  // Delhi, which is later and shorter than Mumbai's.
+  monsoonMonths: [6, 7, 8, 9],
+  maxRadiusM: Number(process.env.GREEN_EXPLORER_MAX_RADIUS_METERS ?? 50_000),
+  boundaryMeta: {
+    status: 'PROVISIONAL',
+    // Query envelope only. NOT an administrative boundary.
+    bbox: [28.4, 76.84, 28.88, 77.35],
+    measuredAreaKm2: 1483.0,
+    sourceName: 'Delhi ward map (2021 delimitation) — 272 MCD wards',
+    sourceUrl: null,
+    publisher: 'Municipal Corporation of Delhi (MCD)',
+    isOfficial: false,
+    vintage: '2021',
+    adminLevel: 'ward_collection',
+    featureCount: 272,
+    unitCount: 272,
+    isBoundingBoxOnly: true,
+    caveat:
+      'Third-party ward count with no linked geometry release. The 272 figure ' +
+      'covers the MCD area only: the NCT also has Delhi Cantonment board wards ' +
+      'and rural/village wards administered by the GNCTD, so the whole-NCT ward ' +
+      'total is higher. The 1483 km² area is the published NCT figure, which ' +
+      'overlaps the adjoining Haryana and Uttar Pradesh districts.',
+  },
+  populationMeta: {
+    value: 16_787_941,
+    level: 'municipal_corporation',
+    referenceYear: '2011',
+    sourceName: 'Primary Census Abstract — Urban Agglomeration, India 2011 (PCA11-UA-00)',
+    sourceUrl:
+      'https://censusindia.gov.in/nada/index.php/catalog/45261/download/48987/PCA11-UA-0000.xlsx',
+    publisher: 'Office of the Registrar General & Census Commissioner, India',
+    isOfficial: true,
+  },
+};
+
+// ── Kolkata (registered, NOT published) ───────────────────────────────────────
+// Governance note: the Kolkata Municipal Corporation (KMC) administers the
+// core city. The surrounding 24-Parganas and Howrah districts are administered
+// separately by their own panchayats, so a "Kolkata" extent that includes the
+// metropolitan spread is wider than the corporation's own footprint.
+export const KOLKATA: CityConfig = {
+  id: 'kolkata',
+  name: 'Kolkata, India',
+  country: 'India',
+  // PROVISIONAL query envelope: the KMC area plus the Hooghly-side
+  // suburbs within the metropolitan footprint.
+  bbox: [22.44, 88.18, 22.68, 88.55],
+  // Neutral fallback point at the Maidan / central Kolkata.
+  centre: [22.5726, 88.3639],
+  defaultZoom: 12,
+  // Jun(5) Jul(6) Aug(7) Sep(8) — the Bay-of-Bengal monsoon window, the same
+  // Jun–Sep span as Mumbai.
+  monsoonMonths: [5, 6, 7, 8],
+  maxRadiusM: Number(process.env.GREEN_EXPLORER_MAX_RADIUS_METERS ?? 50_000),
+  boundaryMeta: {
+    status: 'PROVISIONAL',
+    // Query envelope only. NOT an administrative boundary.
+    bbox: [22.44, 88.18, 22.68, 88.55],
+    measuredAreaKm2: 588.8,
+    sourceName: 'Kolkata Municipal Corporation wards (post-2015 merger) — 116 wards',
+    sourceUrl: null,
+    publisher: 'Kolkata Municipal Corporation (KMC)',
+    isOfficial: false,
+    vintage: '2015',
+    adminLevel: 'ward_collection',
+    featureCount: 116,
+    unitCount: 116,
+    isBoundingBoxOnly: true,
+    caveat:
+      'Third-party ward count with no linked geometry release. The 116 figure is ' +
+      'the KMC total after the 2015 merger of the 17 wards added to the former ' +
+      '101. The 588.8 km² area is the KMC published area and does not include ' +
+      'the adjacent Howrah or 24-Parganas districts inside this envelope.',
+  },
+  populationMeta: {
+    value: 4_496_694,
+    level: 'municipal_corporation',
+    referenceYear: '2011',
+    sourceName: 'Primary Census Abstract — Urban Agglomeration, India 2011 (PCA11-UA-00)',
+    sourceUrl:
+      'https://censusindia.gov.in/nada/index.php/catalog/45261/download/48987/PCA11-UA-0000.xlsx',
+    publisher: 'Office of the Registrar General & Census Commissioner, India',
+    isOfficial: true,
+  },
+};
+
+// ── Nagpur (registered, NOT published) ────────────────────────────────────────
+// Governance note: the Nagpur Municipal Corporation (NMC) covers the city
+// proper. The wider Nagpur Metropolitan Region also includes Butibodi,
+// Yashwant Stadium environs and outlying gram panchayats, which are not NMC
+// wards and must not be counted as such.
+export const NAGPUR: CityConfig = {
+  id: 'nagpur',
+  name: 'Nagpur, India',
+  country: 'India',
+  // PROVISIONAL query envelope: the NMC area.
+  bbox: [20.9, 78.8, 21.32, 79.3],
+  // Neutral fallback point at the centre of Nagpur.
+  centre: [21.1458, 79.0882],
+  defaultZoom: 12,
+  // Jun(6) Jul(7) Aug(8) Sep(9) — Nagpur's monsoon is later and shorter than
+  // the western coast's, peaking in Jul–Aug.
+  monsoonMonths: [6, 7, 8, 9],
+  maxRadiusM: Number(process.env.GREEN_EXPLORER_MAX_RADIUS_METERS ?? 50_000),
+  boundaryMeta: {
+    status: 'PROVISIONAL',
+    // Query envelope only. NOT an administrative boundary.
+    bbox: [20.9, 78.8, 21.32, 79.3],
+    measuredAreaKm2: 287.0,
+    sourceName: 'Nagpur Municipal Corporation wards (2022 delimitation) — 38 wards',
+    sourceUrl: null,
+    publisher: 'Nagpur Municipal Corporation (NMC)',
+    isOfficial: false,
+    vintage: '2022',
+    adminLevel: 'ward_collection',
+    featureCount: 38,
+    unitCount: 38,
+    isBoundingBoxOnly: true,
+    caveat:
+      'Third-party ward count with no linked geometry release. The 38 figure is ' +
+      'the NMC total after the 2022 reorganisation into 7 zones; the wider ' +
+      'Nagpur Metropolitan Region has more wards than the corporation.',
+  },
+  populationMeta: {
+    value: 2_844_658,
+    level: 'municipal_corporation',
+    referenceYear: '2011',
+    sourceName: 'Primary Census Abstract — Urban Agglomeration, India 2011 (PCA11-UA-00)',
+    sourceUrl:
+      'https://censusindia.gov.in/nada/index.php/catalog/45261/download/48987/PCA11-UA-0000.xlsx',
+    publisher: 'Office of the Registrar General & Census Commissioner, India',
+    isOfficial: true,
+  },
+};
+
+// ── Hyderabad (registered, NOT published) ────────────────────────────────────
+// Governance note: the Greater Hyderabad Municipal Corporation (GHMC) covers
+// the city. The wider Telangana metropolitan region extends into the
+// surroundings outside the corporation, which is not covered here.
+export const HYDERABAD: CityConfig = {
+  id: 'hyderabad',
+  name: 'Hyderabad, India',
+  country: 'India',
+  // PROVISIONAL query envelope: the GHMC area.
+  bbox: [17.25, 78.3, 17.55, 78.72],
+  // Neutral fallback point at the centre of Hyderabad.
+  centre: [17.385, 78.4867],
+  defaultZoom: 12,
+  // Jun(5) Jul(6) Aug(7) Sep(8) — the south-west monsoon window.
+  monsoonMonths: [5, 6, 7, 8],
+  maxRadiusM: Number(process.env.GREEN_EXPLORER_MAX_RADIUS_METERS ?? 50_000),
+  boundaryMeta: {
+    status: 'PROVISIONAL',
+    // Query envelope only. NOT an administrative boundary.
+    bbox: [17.25, 78.3, 17.55, 78.72],
+    measuredAreaKm2: 685.0,
+    sourceName: 'Greater Hyderabad Municipal Corporation divisions — 38 divisions',
+    sourceUrl: null,
+    publisher: 'Greater Hyderabad Municipal Corporation (GHMC)',
+    isOfficial: false,
+    vintage: null,
+    adminLevel: 'ward_collection',
+    featureCount: 38,
+    unitCount: 38,
+    isBoundingBoxOnly: true,
+    caveat:
+      'Third-party division count with no linked geometry release and no stated ' +
+      'vintage. GHMC is organised into 38 divisions, which are NOT the same as ' +
+      'wards; a ward-level count for the corporation is larger. The 685 km² ' +
+      'area is the corporation\'s published figure.',
+  },
+  populationMeta: {
+    value: 6_017_225,
+    level: 'municipal_corporation',
+    referenceYear: '2011',
+    sourceName: 'Primary Census Abstract — Urban Agglomeration, India 2011 (PCA11-UA-00)',
+    sourceUrl:
+      'https://censusindia.gov.in/nada/index.php/catalog/45261/download/48987/PCA11-UA-0000.xlsx',
+    publisher: 'Office of the Registrar General & Census Commissioner, India',
+    isOfficial: true,
+  },
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 /** The default city. Every existing caller that omits a city id gets this. */
@@ -310,6 +521,10 @@ export const CITY_REGISTRY: Record<CityId, CityConfig> = {
   mumbai: MUMBAI,
   pune: PUNE,
   bengaluru: BENGALURU,
+  delhi: DELHI,
+  kolkata: KOLKATA,
+  nagpur: NAGPUR,
+  hyderabad: HYDERABAD,
 };
 
 /** Ids of every registered city. */

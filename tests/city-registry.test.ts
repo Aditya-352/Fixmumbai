@@ -35,10 +35,10 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('registry: shape', () => {
-  it('registers exactly the three supported cities', () => {
-    expect(listCityIds().sort()).toEqual(['bengaluru', 'mumbai', 'pune']);
-    expect(Object.keys(CITY_REGISTRY).sort()).toEqual(['bengaluru', 'mumbai', 'pune']);
-    expect(listCities()).toHaveLength(3);
+  it('registers exactly the seven supported cities', () => {
+    expect(listCityIds().sort()).toEqual(['bengaluru', 'delhi', 'hyderabad', 'kolkata', 'mumbai', 'nagpur', 'pune']);
+    expect(Object.keys(CITY_REGISTRY).sort()).toEqual(['bengaluru', 'delhi', 'hyderabad', 'kolkata', 'mumbai', 'nagpur', 'pune']);
+    expect(listCities()).toHaveLength(7);
   });
 
   it('gives every city a stable id that matches its registry key', () => {
@@ -48,7 +48,7 @@ describe('registry: shape', () => {
   });
 
   it('keys the registry by the CityId union with no extras', () => {
-    const declared: CityId[] = ['mumbai', 'pune', 'bengaluru'];
+    const declared: CityId[] = ['mumbai', 'pune', 'bengaluru', 'delhi', 'kolkata', 'nagpur', 'hyderabad'];
     for (const id of declared) {
       expect(CITY_REGISTRY[id]).toBeDefined();
     }
@@ -125,7 +125,7 @@ describe('registry: lookup', () => {
     expect(hasCity('mumbai')).toBe(true);
     expect(hasCity('PUNE')).toBe(true);
     expect(hasCity('bangalore')).toBe(false);
-    expect(hasCity('delhi')).toBe(false);
+    expect(hasCity('delhi')).toBe(true);
     expect(hasCity('')).toBe(false);
     expect(hasCity(undefined)).toBe(false);
     expect(hasCity(null)).toBe(false);
@@ -170,7 +170,7 @@ describe('registry: unknown city ids are rejected, never defaulted', () => {
       const err = e as UnknownCityError;
       expect(err.code).toBe('UNKNOWN_CITY');
       expect(err.requestedId).toBe('atlantis');
-      expect(err.validCityIds.sort()).toEqual(['bengaluru', 'mumbai', 'pune']);
+      expect(err.validCityIds.sort()).toEqual(['bengaluru', 'delhi', 'hyderabad', 'kolkata', 'mumbai', 'nagpur', 'pune']);
       expect(err.name).toBe('UnknownCityError');
     }
   });

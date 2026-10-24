@@ -131,14 +131,14 @@ describe('D: city selector lists every city and states data availability', () =>
   const options = buildCityOptions();
 
   it('lists exactly the registered cities', () => {
-    expect(options.map((o) => o.id).sort()).toEqual(['bengaluru', 'mumbai', 'pune']);
+    expect(options.map((o) => o.id).sort()).toEqual(['bengaluru', 'delhi', 'hyderabad', 'kolkata', 'mumbai', 'nagpur', 'pune']);
   });
 
-  it('marks Mumbai available and the other two as having no dataset', () => {
+  it('marks cities with registered datasets as available', () => {
     const byId = Object.fromEntries(options.map((o) => [o.id, o]));
     expect(byId.mumbai.availability).toBe('AVAILABLE');
-    expect(byId.pune.availability).toBe('EMPTY');
-    expect(byId.bengaluru.availability).toBe('EMPTY');
+    expect(byId.pune.availability).toBe('AVAILABLE');
+    expect(byId.bengaluru.availability).toBe('AVAILABLE');
   });
 
   it('marks every framing as a bounding box, never a boundary', () => {
@@ -161,14 +161,14 @@ describe('D: city selector lists every city and states data availability', () =>
 // 4. Empty states carry no Mumbai data and claim nothing about parks
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('D: Pune and Bengaluru get honest empty states', () => {
+describe('D: Pune and Bengaluru datasets resolve honestly', () => {
   const emptyWarning =
     'NO_GREEN_SPACE_DATA_FOR_CITY: no green-space records are registered for Pune, India. ' +
     "No other city's records are substituted.";
 
-  it('resolves as EMPTY for both cities', () => {
+  it('resolves as AVAILABLE for both cities with candidate datasets', () => {
     for (const id of ['pune', 'bengaluru'] as CityId[]) {
-      expect(resolveCity(new URLSearchParams(`city=${id}`)).dataStatus).toBe('EMPTY');
+      expect(resolveCity(new URLSearchParams(`city=${id}`)).dataStatus).toBe('AVAILABLE');
     }
   });
 
