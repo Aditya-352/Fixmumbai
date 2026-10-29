@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import type { GeocodeResult } from '@/lib/green/types';
-import { Search, X, MapPin, TreePine, Trees, Building2, Compass, Loader2 } from 'lucide-react';
+import { Search, X, MapPin, TreePine, Trees, Building2, Compass, Loader2, Navigation } from 'lucide-react';
 
 interface SearchBoxProps {
   query: string;
@@ -14,6 +14,8 @@ interface SearchBoxProps {
   onResetCentre?: () => void;
   /** Short city name used in the placeholder and aria label. */
   cityName?: string;
+  onFetchLocation?: () => void;
+  geoLoading?: boolean;
 }
 
 export default function SearchBox({
@@ -25,6 +27,8 @@ export default function SearchBox({
   activeCentreName,
   onResetCentre,
   cityName = 'Mumbai',
+  onFetchLocation,
+  geoLoading = false,
 }: SearchBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -124,6 +128,23 @@ export default function SearchBox({
             aria-label="Clear search"
           >
             <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {onFetchLocation && (
+          <button
+            type="button"
+            onClick={onFetchLocation}
+            disabled={geoLoading}
+            className="w-6 h-6 rounded-lg text-[#087F5B] hover:bg-emerald-50 active:scale-90 transition-all flex items-center justify-center flex-shrink-0"
+            title="Fetch my location & check city"
+            aria-label="Fetch my current location"
+          >
+            {geoLoading ? (
+              <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+            ) : (
+              <Navigation className="w-3.5 h-3.5 text-[#087F5B]" />
+            )}
           </button>
         )}
       </div>

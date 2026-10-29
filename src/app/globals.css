@@ -10,11 +10,13 @@
   --background-end-rgb: 248, 250, 252;
 }
 
-body {
+html, body {
   color: rgb(var(--foreground-rgb));
   background-color: #FFFFFF;
   min-height: 100vh;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 @keyframes fadeIn {

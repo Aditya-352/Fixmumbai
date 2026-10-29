@@ -30,7 +30,7 @@
  * availability, response metadata) that do not belong in the city registry.
  */
 
-import { getCity, hasCity, UnknownCityError, type CityConfig, type CityId } from './config';
+import { getCity, hasCity, UnknownCityError, type CityConfig, type CityId, listCityIds } from './config';
 import { STATIC_GREEN_SPACES_BY_CITY } from './static-spaces-fallback';
 
 /** Base class for every city-parameter failure, carrying its HTTP status. */
@@ -185,7 +185,8 @@ function resolveOne(raw: string | undefined): CityConfig {
       }
       throw e;
     }
-    throw new UnknownCityParamError(raw, ['mumbai', 'pune', 'bengaluru']);
+    // Fall back to the registry itself so the list can never drift.
+    throw new UnknownCityParamError(raw, listCityIds());
   }
 
   return getCity(key);
@@ -223,6 +224,9 @@ export function cityMeta(resolved: ResolvedCity): CityResponseMeta {
  * Always includes the city so the response is self-describing.
  */
 export function emptyCityWarnings(resolved: ResolvedCity): string[] {
+  if (resolved.dataStatus === 'AVAILABLE') {
+    return [];
+  }
   return [
     `${NO_DATA_WARNING}: no green-space records are registered for ${resolved.city.name}. ` +
       `No other city's records are substituted.`,

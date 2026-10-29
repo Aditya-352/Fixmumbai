@@ -7,7 +7,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Compass, Wind, Trees, Camera } from 'lucide-react';
+import { Compass, Wind, Trees } from 'lucide-react';
 import type { LayerVisibilityState } from '@/lib/green/types';
 import { APP_BASE_PATH } from '@/lib/base-path';
 
@@ -47,12 +47,10 @@ export interface GreenSidebarProps {
   totalSpaces?: number;
   cityName?: string;
   centreName?: string;
-  onOpenPhotoModal?: (space: any) => void;
   isNdviProcessed?: boolean;
 }
 
 export default function GreenSidebar(props: GreenSidebarProps) {
-  const { onOpenPhotoModal } = props;
   const pathname = usePathname();
   const isGreenActive = pathname === '/green' || pathname === `${APP_BASE_PATH}/green`;
 
@@ -62,23 +60,6 @@ export default function GreenSidebar(props: GreenSidebarProps) {
       role="navigation"
       aria-label="Map explorer navigation"
     >
-      {/* ── Brand / Header ─────────────────────────────────────────────────── */}
-      <div className="p-4 border-b border-[#E5EBE7] bg-white">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-[#087F5B] flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:bg-[#076B4D] transition-colors">
-            F
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-black tracking-tight text-[#14231D]">
-              Fix<span className="text-[#087F5B]">Mumbai</span>
-            </span>
-            <span className="text-[9px] font-bold text-[#64746B] uppercase tracking-wider">
-              Civic GIS &amp; Nature
-            </span>
-          </div>
-        </Link>
-      </div>
-
       {/* ── Navigation: MAP EXPLORER ──────────────────────────────────────── */}
       <div className="px-3 pt-3.5 pb-1.5 flex-shrink-0">
         <p className="text-[10px] font-black text-[#64746B] uppercase tracking-widest px-1">
@@ -128,17 +109,6 @@ export default function GreenSidebar(props: GreenSidebarProps) {
 
 
 
-      {/* ── Add Photo Evidence ─────────────────────────────────────────────── */}
-      <div className="mt-auto px-3 py-3 flex-shrink-0">
-        <button
-          onClick={() => onOpenPhotoModal?.('upload')}
-          className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-[#087F5B] hover:bg-[#076B4D] active:scale-[0.98] text-white font-bold text-sm rounded-2xl shadow-[0_4px_14px_rgba(8,127,91,0.35)] transition-all duration-150 select-none"
-          aria-label="Add photo evidence"
-        >
-          <Camera className="w-5 h-5 flex-shrink-0" />
-          <span>Add Photo Evidence</span>
-        </button>
-      </div>
 
       {/* ── Footer Attribution ────────────────────────────────────────────── */}
       <div className="px-3 pb-3 border-t border-[#E5EBE7] bg-white flex-shrink-0 pt-2.5">

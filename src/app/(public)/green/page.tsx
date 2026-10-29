@@ -1,8 +1,18 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import GreenExplorer from '@/components/green/GreenExplorer';
+import dynamic from 'next/dynamic';
 
-export const dynamic = 'force-dynamic';
+const GreenExplorer = dynamic(() => import('@/components/green/GreenExplorer'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[calc(100dvh-64px)] bg-[#F7F9F8] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3 text-[#64746B]">
+        <div className="w-9 h-9 rounded-full border-4 border-[#087F5B] border-t-transparent animate-spin" />
+        <span className="text-sm font-bold text-[#14231D]">Loading Green Density Explorer…</span>
+      </div>
+    </div>
+  ),
+});
 
 export const metadata: Metadata = {
   title: 'Green Density Explorer | PriSEHAT-Pulse — Vegetation & Walkable Green Spaces',
@@ -13,15 +23,8 @@ export const metadata: Metadata = {
 
 /**
  * /pulse/green — Green Density & Nature Exploration
- *
- * The GreenExplorer component is fully client-rendered (next/dynamic ssr:false
- * for the Leaflet map). This server component only provides the SEO wrapper.
  */
 export default function GreenPage() {
-  return (
-    <>
-      {/* GreenExplorer fills the viewport below the site header */}
-      <GreenExplorer />
-    </>
-  );
+  return <GreenExplorer />;
 }
+

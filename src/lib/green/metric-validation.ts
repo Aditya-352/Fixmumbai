@@ -67,7 +67,8 @@ export interface MetricValidation {
 }
 
 export function assessMetrics(city: CityConfig): MetricValidation {
-  const hasData = cityDataStatus(city) === 'AVAILABLE';
+  // HUGSI metrics engine and ward boundaries are implemented exclusively for Mumbai
+  const hasData = city.id === 'mumbai' && cityDataStatus(city) === 'AVAILABLE';
   const availability: MetricAvailability = hasData ? 'AVAILABLE' : 'NO_DATA';
 
   if (availability === 'NO_DATA') {

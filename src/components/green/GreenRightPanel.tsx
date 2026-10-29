@@ -181,17 +181,13 @@ export default function GreenRightPanel({
   const [showHandbookModal, setShowHandbookModal] = useState(false);
 
   // HUGSI Metrics Interactive State
-  const [metricsBoundary, setMetricsBoundary] = useState<string>('ALL');
-  const [metricsYear, setMetricsYear] = useState<'2011' | '2021' | '2024'>('2024');
-  const [metricsDimension, setMetricsDimension] = useState<HexInterpretation>('PARALLEL_SIDES_100M');
-  const [metricsData, setMetricsData] = useState<MumbaiGreenMetricsSummary>(() =>
-    calculateComprehensiveHugsiMetrics({
-      boundaryCode: 'ALL',
-      year: '2024',
-      hexInterpretation: 'PARALLEL_SIDES_100M',
-      spaces,
-    })
-  );
+  const [metricsBoundary, setMetricsBoundary] = React.useState<string>('ALL');
+  const [metricsYear, setMetricsYear] = React.useState<'2011' | '2021' | '2024'>('2024');
+  const [metricsDimension, setMetricsDimension] = React.useState<HexInterpretation>('PARALLEL_SIDES_100M');
+  // Initialise with null so the first render is free. A useEffect (below) computes
+  // the real metrics asynchronously via setTimeout(0) so the browser can paint first.
+  const [metricsData, setMetricsData] = React.useState<MumbaiGreenMetricsSummary | null>(null);
+  const metricsDataComputed = metricsData !== null;
   const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
   /**
    * Single source of truth for the status of whatever figure is on screen.
@@ -216,6 +212,26 @@ export default function GreenRightPanel({
   React.useEffect(() => {
     setVisibleSpacesCount(60);
   }, [categoryFilter, spaces]);
+
+  // Defer the initial metrics computation so the browser paints the panel
+  // immediately. calculateComprehensiveHugsiMetrics can take several seconds
+  // when spaces contains polygon geometries; running it synchronously in the
+  // useState initialiser blocks the first render entirely.
+  React.useEffect(() => {
+    if (metricsData !== null) return; // already computed
+    const id = setTimeout(() => {
+      const result = calculateComprehensiveHugsiMetrics({
+        boundaryCode: 'ALL',
+        year: '2024',
+        hexInterpretation: 'PARALLEL_SIDES_100M',
+        spaces,
+      });
+      setMetricsData(result);
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only run once on mount
+
 
   const recalculateMetrics = React.useCallback(
     async (boundary: string, year: '2011' | '2021' | '2024', dim: HexInterpretation) => {
@@ -378,12 +394,12 @@ export default function GreenRightPanel({
           )}
 
           {/* Geolocation Notice / Outside Diameter Callout */}
-          {geoNotice?.type === 'OUTSIDE_MUMBAI' && (
+          {(geoNotice?.type === 'OUTSIDE_MUMBAI' || geoNotice?.type === 'OUTSIDE_CITIES') && (
             <div className="mx-3.5 mt-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-xs">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-amber-900 leading-tight">Outside Mumbai Coverage Diameter</p>
+                  <p className="text-xs font-black text-amber-900 leading-tight">Outside Covered Cities</p>
                   <p className="text-[11px] text-amber-800 mt-0.5 leading-snug">
                     {geoNotice.message}
                   </p>
@@ -391,12 +407,14 @@ export default function GreenRightPanel({
               </div>
             </div>
           )}
-          {geoNotice?.type === 'INSIDE_MUMBAI' && (
+          {(geoNotice?.type === 'INSIDE_MUMBAI' || geoNotice?.type === 'INSIDE_CITY') && (
             <div className="mx-3.5 mt-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <p className="text-[11px] font-bold text-emerald-900">
-                GPS active — showing green spaces nearest to your current location.
-              </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-emerald-900">
+                  {geoNotice.message}
+                </p>
+              </div>
             </div>
           )}
 
@@ -523,7 +541,16 @@ export default function GreenRightPanel({
 
       {currentTab === 'METRICS' && !metricsUnavailable && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Header Banner */}
+          {/* Loading skeleton while metricsData is being computed asynchronously */}
+          {!metricsDataComputed && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-500">
+              <div className="w-8 h-8 rounded-full border-4 border-emerald-600 border-t-transparent animate-spin" />
+              <span className="text-xs font-semibold text-slate-600">Computing green metrics…</span>
+            </div>
+          )}
+          {metricsDataComputed && (
+          <>
+
           <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 text-white p-4 rounded-2xl border border-emerald-800/80 shadow-md">
             {/* Header eyebrow: label + badge. flex-wrap lets the badge drop to its
                 own line on very narrow panels instead of both items wrapping into
@@ -1124,8 +1151,12 @@ export default function GreenRightPanel({
               </div>
             </div>
           )}
+          {/* end metricsDataComputed */}
+          </>
+          )}
         </div>
       )}
+
 
       {/* ── TAB 3: 27 BMC WARDWISE NURSERIES ────────────────────────────────── */}
       {currentTab === 'NURSERIES' && (

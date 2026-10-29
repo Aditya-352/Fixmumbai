@@ -157,7 +157,7 @@ export default function AirQualityPhotoModal({
     yPos += lineSpacing;
     ctx.fillStyle = '#94A3B8';
     ctx.font = `500 ${Math.max(11, Math.round(baseFontSize * 0.82))}px system-ui, -apple-system, sans-serif`;
-    ctx.fillText(`⏱️ ${timestampStr} • FixMumbai Civic Air Quality Audit`, padLeft, yPos);
+    ctx.fillText(`⏱️ ${timestampStr} • PriSEHAT Pulse Civic Air Quality Audit`, padLeft, yPos);
 
     const watermarkedDataUrl = sourceCanvas.toDataURL('image/jpeg', 0.92);
     setPhotoUrl(watermarkedDataUrl);
@@ -223,7 +223,7 @@ export default function AirQualityPhotoModal({
     if (!photoUrl) return;
     const a = document.createElement('a');
     a.href = photoUrl;
-    a.download = `FixMumbai_AQI_${locationName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
+    a.download = `PriSEHAT_Pulse_AQI_${locationName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -24,6 +24,7 @@ import { MapLayerControlContent } from './MapLayerControl';
 import {
   ShieldAlert,
   CheckCircle2,
+  AlertCircle,
   Calendar,
   Camera,
   Map,
@@ -31,8 +32,8 @@ import {
   Trees,
   X,
 } from 'lucide-react';
-import { DEFAULT_CITY, type CityId } from '@/lib/green/config';
-import { CitySelectionProvider, useCitySelection, type CityOption } from './CitySelection';
+import { type CityId } from '@/lib/green/config';
+import { useCitySelection, type CityOption } from './CitySelection';
 
 // Citizen photo upload — loaded lazily
 const CitizenPhotoUpload = dynamic(() => import('./CitizenPhotoUpload'), { ssr: false });
@@ -60,7 +61,11 @@ const TODAY = new Date().toLocaleDateString('en-IN', {
 });
 
 /**
- * Outer shell: the single owner of the selected city.
+ * Outer shell for the explorer.
+ *
+ * The selected city now lives in the app-wide `CitySelectionProvider` (mounted
+ * in the root layout), so the dashboard and this page can never disagree. This
+ * component only reads it.
  *
  * `ExplorerBody` is keyed on the city id, so changing city remounts it. That
  * guarantees complete state isolation — every hook starts empty, the map starts
@@ -69,37 +74,9 @@ const TODAY = new Date().toLocaleDateString('en-IN', {
  * unwind every piece of state by hand.
  */
 export default function GreenExplorer() {
-  const [cityId, setCityId] = React.useState<CityId>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const p = new URLSearchParams(window.location.search);
-        const c = p.get('city')?.toLowerCase();
-        if (c === 'pune' || c === 'bengaluru') return c as CityId;
-      } catch (_) {}
-    }
-    return DEFAULT_CITY.id;
-  });
+  const { cityId } = useCitySelection();
 
-  const handleSelectCity = React.useCallback((id: CityId) => {
-    setCityId(id);
-    if (typeof window !== 'undefined') {
-      try {
-        const url = new URL(window.location.href);
-        if (id === DEFAULT_CITY.id) {
-          url.searchParams.delete('city');
-        } else {
-          url.searchParams.set('city', id);
-        }
-        window.history.replaceState({}, '', url.toString());
-      } catch (_) {}
-    }
-  }, []);
-
-  return (
-    <CitySelectionProvider cityId={cityId} onSelect={handleSelectCity}>
-      <ExplorerBody key={cityId} cityId={cityId} />
-    </CitySelectionProvider>
-  );
+  return <ExplorerBody key={cityId} cityId={cityId} />;
 }
 
 /** City selector. Lists every registered city and is explicit about data availability. */
@@ -109,20 +86,19 @@ function CitySelector({ options, current, onSelect }: {
   onSelect: (id: CityId) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <label htmlFor="city-select" className="text-[10px] font-black uppercase tracking-wider text-[#64746B]">
+    <div className="flex items-center gap-1.5 flex-shrink-0">
+      <label htmlFor="city-select" className="hidden sm:inline-block text-[10px] font-black uppercase tracking-wider text-[#64746B]">
         City
       </label>
       <select
         id="city-select"
         value={current}
         onChange={(e) => onSelect(e.target.value as CityId)}
-        className="text-xs font-bold rounded-lg border border-[#E5EBE7] bg-white px-2 py-1 text-[#14231D] focus:outline-none focus:ring-2 focus:ring-[#087F5B]"
+        className="text-xs font-bold rounded-lg border border-[#E5EBE7] bg-white px-2 py-1 text-[#14231D] focus:outline-none focus:ring-2 focus:ring-[#087F5B] max-w-[130px] sm:max-w-none"
       >
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
-            {o.availability === 'EMPTY' ? ' — no dataset yet' : ''}
           </option>
         ))}
       </select>
@@ -175,6 +151,10 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
     setSearchQuery,
     searchResults,
     searchLoading,
+    fetchMyLocation,
+    geoNotice,
+    geoLoading,
+    clearGeoNotice,
   } = useGreenExplorer(cityId);
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
@@ -194,6 +174,16 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
     setPhotoModalMode(mode ?? 'upload');
     setPhotoModalOpen(true);
   }, []);
+
+  React.useEffect(() => {
+    const handleGlobalPhotoOpen = () => {
+      handleOpenPhotoModal('upload');
+    };
+    window.addEventListener('open-photo-evidence-modal', handleGlobalPhotoOpen);
+    return () => {
+      window.removeEventListener('open-photo-evidence-modal', handleGlobalPhotoOpen);
+    };
+  }, [handleOpenPhotoModal]);
 
   const handleSpaceClick = useCallback(
     (id: string) => {
@@ -272,7 +262,7 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
         <div className="flex items-center gap-2 sm:gap-3 text-xs flex-shrink-0">
 
           {/* Status badge */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F7F9F8] border border-[#E5EBE7]">
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F7F9F8] border border-[#E5EBE7]">
             {isNdviProcessed ? (
               <span
                 className={`flex items-center gap-1.5 font-bold text-[11px] ${
@@ -327,14 +317,13 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
           totalSpaces={spacesTotal ?? spaces.length}
           cityName={city.name.replace(/,\s*India$/, '')}
           centreName={centre.name}
-          onOpenPhotoModal={handleOpenPhotoModal}
           isNdviProcessed={isNdviProcessed}
         />
 
         {/* Central Map Area */}
         <div className="flex-1 relative overflow-hidden h-full">
-          {/* Floating Search Bar — Responsive width that doesn't collide with the mobile layers button */}
-          <div className="absolute top-2.5 sm:top-3.5 left-2.5 sm:left-3.5 z-[1000] w-[calc(100%-62px)] sm:w-80">
+          {/* Floating Search Bar + Location Status — Responsive width */}
+          <div className="absolute top-2.5 sm:top-3.5 left-2.5 sm:left-3.5 z-[1000] w-[calc(100%-62px)] sm:w-80 flex flex-col gap-2">
             <SearchBox
               query={searchQuery}
               onQueryChange={setSearchQuery}
@@ -342,7 +331,65 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
               loading={searchLoading}
               onSelect={setCentreFromSearch}
               cityName={city.name.replace(/,\s*India$/, '')}
+              onFetchLocation={fetchMyLocation}
+              geoLoading={geoLoading}
             />
+
+            {/* Geolocation Notice / Belongs to City Callout */}
+            {geoNotice && (
+              <div
+                className={`p-2.5 sm:p-3 rounded-2xl border shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-2 duration-200 select-text ${
+                  geoNotice.type === 'INSIDE_CITY' || geoNotice.type === 'INSIDE_MUMBAI'
+                    ? 'bg-emerald-50/95 border-emerald-300 text-emerald-950'
+                    : geoNotice.type === 'OUTSIDE_CITIES' || geoNotice.type === 'OUTSIDE_MUMBAI'
+                    ? 'bg-amber-50/95 border-amber-300 text-amber-950'
+                    : 'bg-rose-50/95 border-rose-300 text-rose-950'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {geoNotice.type === 'INSIDE_CITY' || geoNotice.type === 'INSIDE_MUMBAI' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
+                        {geoNotice.type === 'INSIDE_CITY' || geoNotice.type === 'INSIDE_MUMBAI'
+                          ? `✓ Belongs to ${geoNotice.cityName || 'Covered City'}`
+                          : geoNotice.type === 'OUTSIDE_CITIES' || geoNotice.type === 'OUTSIDE_MUMBAI'
+                          ? 'Outside Available Cities'
+                          : 'Location Info'}
+                      </span>
+                      <button
+                        onClick={clearGeoNotice}
+                        className="p-0.5 hover:bg-black/5 rounded-md text-current transition-colors"
+                        aria-label="Dismiss notice"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] sm:text-xs font-medium mt-0.5 leading-snug">
+                      {geoNotice.message}
+                    </p>
+
+                    {/* "Switch to [City]" button when user is in a supported city */}
+                    {geoNotice.matchedCityId && geoNotice.matchedCityId !== cityId && (
+                      <button
+                        onClick={() => {
+                          selectCity(geoNotice.matchedCityId!);
+                          clearGeoNotice();
+                        }}
+                        className="mt-2 w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-xl transition shadow-sm"
+                      >
+                        Switch to {geoNotice.cityName || geoNotice.matchedCityId} →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Leaflet Map (SSR: false) */}
@@ -366,6 +413,8 @@ function ExplorerBody({ cityId }: { cityId: CityId }) {
             routeDestination={routeDestination}
             highlightMarker={highlightMarker}
             onOpenMobileLayers={() => setMobileView('layers')}
+            onFetchLocation={fetchMyLocation}
+            geoLoading={geoLoading}
           />
 
           {/* Map Legend (Bottom-right) */}
