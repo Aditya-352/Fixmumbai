@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { APP_BASE_PATH } from '@/lib/base-path';
 
 export async function POST(req: Request) {
-  const response = NextResponse.redirect(new URL(`${APP_BASE_PATH}/admin/login`, req.url));
+  const response = NextResponse.redirect(new URL(`${APP_BASE_PATH}/admin/login`, process.env.NEXT_PUBLIC_APP_URL || req.url));
 
   response.cookies.set('prisehat_pulse_session', '', {
     httpOnly: true,

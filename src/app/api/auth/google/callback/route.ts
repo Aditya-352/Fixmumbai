@@ -14,12 +14,13 @@ export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  const publicUrl = (path: string) =>
-    new URL(path, appUrl);
+  // Behind the reverse proxy req.url is the internal host (e.g. localhost:3000),
+  // so every redirect must be built from the public app URL instead.
+  const publicUrl = (path: string) => new URL(path, appUrl || req.url);
 
   if (!clientId || !clientSecret || !appUrl) {
     return NextResponse.redirect(
-      new URL(`${APP_BASE_PATH}/admin/login?error=google_error`, req.url)
+      publicUrl(`${APP_BASE_PATH}/admin/login?error=google_error`)
     );
   }
 
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   if (!code || !returnedState || !savedState || returnedState !== savedState) {
     return NextResponse.redirect(
-      new URL(`${APP_BASE_PATH}/admin/login?error=invalid_state`, req.url)
+      publicUrl(`${APP_BASE_PATH}/admin/login?error=invalid_state`)
     );
   }
 
@@ -78,20 +79,47 @@ export async function GET(req: NextRequest) {
 
     if (!googleUser.email || !googleUser.email_verified) {
       return NextResponse.redirect(
-        new URL(`${APP_BASE_PATH}/admin/login?error=not_authorized`, req.url)
+        publicUrl(`${APP_BASE_PATH}/admin/login?error=not_authorized`)
       );
     }
 
-    const user = await db.user.findUnique({
-      where: { email: googleUser.email.toLowerCase() },
+    const email = googleUser.email.trim().toLowerCase();
+
+    let user = await db.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
     });
+
+    // Bootstrap: emails listed in ADMIN_EMAILS (comma separated) become
+    // SUPER_ADMIN on first verified Google sign-in, so a fresh database
+    // (prisma db push never seeds) is not locked out.
+    const bootstrapAdmins = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (bootstrapAdmins.includes(email)) {
+      if (!user) {
+        user = await db.user.create({
+          data: {
+            email,
+            name: googleUser.name || email,
+            role: 'SUPER_ADMIN',
+          },
+        });
+      } else if (!['AUTHORITY_ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+        user = await db.user.update({
+          where: { id: user.id },
+          data: { role: 'SUPER_ADMIN' },
+        });
+      }
+    }
 
     if (
       !user ||
       !['AUTHORITY_ADMIN', 'SUPER_ADMIN'].includes(user.role)
     ) {
       return NextResponse.redirect(
-        new URL(`${APP_BASE_PATH}/admin/login?error=not_authorized`, req.url)
+        publicUrl(`${APP_BASE_PATH}/admin/login?error=not_authorized`)
       );
     }
 
@@ -110,7 +138,7 @@ export async function GET(req: NextRequest) {
     });
 
     const response = NextResponse.redirect(
-      new URL(`${APP_BASE_PATH}/admin`, appUrl)
+      publicUrl(`${APP_BASE_PATH}/admin`)
     );
 
     response.cookies.set('prisehat_pulse_session', session, {
@@ -133,7 +161,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Google OAuth error:', error);
     return NextResponse.redirect(
-      new URL(`${APP_BASE_PATH}/admin/login?error=google_error`, req.url)
+      publicUrl(`${APP_BASE_PATH}/admin/login?error=google_error`)
     );
   }
 }
